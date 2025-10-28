@@ -5,6 +5,21 @@ The goal of this project is to bring Solid into the hands of regular people, wit
 
 It uses [Android Solid Services](https://github.com/pondersource/Android-Solid-Services) for communicating with pods.
 
+### Build and Run Android Application
+
+To build and run the development version of the Android app, use the run configuration from the run widget
+in your IDE’s toolbar or build it directly from the terminal:
+- on macOS/Linux
+  ```shell
+  ./gradlew :composeApp:assembleDebug
+  ```
+- on Windows
+  ```shell
+  .\gradlew.bat :composeApp:assembleDebug
+  ```
+
+
+
 ## Acknowledgments
 This project funded by [NLnet](https://nlnet.nl/) as a part of [Mobifree](https://mobifree.org/) <img src="https://nlnet.nl/logo/banner.svg" style="width: 10%; margin: 0 1% 0 1%;">
 / <img src="https://nlnet.nl/image/logos/NGI_Mobifree_tag.svg" style="width: 10%; margin: 0 1% 0 1%;">
