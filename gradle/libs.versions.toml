@@ -1,29 +1,29 @@
 [versions]
-agp = "9.0.0"
-kotlin = "2.3.10"
+agp = "9.1.0"
+kotlin = "2.3.20"
 ksp = "2.3.5"
-coreKtx = "1.17.0"
+coreKtx = "1.18.0"
 junit = "4.13.2"
 junitVersion = "1.3.0"
 espressoCore = "3.7.0"
 
 kotlinXCoroutine = "1.10.2"
-kotlinXSerialization = "1.10.0"
+kotlinXSerialization = "1.11.0"
 
 lifecucle-ktx = "2.10.0"
 
 googleMaterial = "1.13.0"
 
-composeBom = "2026.02.00"
-composeActivity = "1.12.4"
-composeGoogleFont = "1.10.3"
+composeBom = "2026.03.01"
+composeActivity = "1.13.0"
+composeGoogleFont = "1.10.6"
 
-googleDagger = "2.59.1"
+googleDagger = "2.59.2"
 androidxHilt = "1.3.0"
 
 navigation = "2.9.7"
 
-datasource = "1.2.0"
+datasource = "1.2.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
