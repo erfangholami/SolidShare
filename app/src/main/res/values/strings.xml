@@ -1,3 +1,22 @@
 <resources>
     <string name="app_name">Solid Share</string>
+    <string name="home">Home</string>
+    <string name="share">Share</string>
+    <string name="add">Add</string>
+    <string name="files">Files</string>
+    <string name="profile">Profile</string>
+    <string name="log_in">Log in</string>
+    <string name="onboarding_slide1_title">About Solid</string>
+    <string name="onboarding_slide1_description">Solid allows to have your own online storage, which you control. You store information once and decide who can access what.</string>
+    <string name="onboarding_slide2_title">Solid File Wallet</string>
+    <string name="onboarding_slide2_description">Allows you to access your Personal Online Data Stores (PODs) on Solid. You can view, upload, edit and shares your files on your Pods.</string>
+    <string name="onboarding_slide3_title">Getting Started</string>
+    <string name="onboarding_slide3_description">Register and log in with any Solid Pod provider. We\'ll show you a list to choose from or you can set up your own. It\'s open source!</string>
+    <string name="continue_string">Continue</string>
+    <string name="dont_have_a_server">Don\'t have a server?</string>
+    <string name="what_is_a_pod_how_to_get">What is a Pod, and how do I get one?</string>
+    <string name="personal_server">Personal Server</string>
+    <string name="type_your_personal_server_here">Type your personal server here …</string>
+    <string name="choose_server">Choose Server</string>
+    <string name="select_your_server">Select your server</string>
 </resources>

@@ -17,85 +17,117 @@ val provider = GoogleFont.Provider(
     certificates = R.array.com_google_android_gms_fonts_certs
 )
 
-val notoSans = GoogleFont("Noto Sans")
+val inter = GoogleFont("Inter")
 
-val NotoSansFontFamily = FontFamily(
-    Font(googleFont = notoSans, fontProvider = provider, weight = FontWeight.Normal),
-    Font(googleFont = notoSans, fontProvider = provider, weight = FontWeight.Medium),
-    Font(googleFont = notoSans, fontProvider = provider, weight = FontWeight.SemiBold),
+val interFontFamily = FontFamily(
+    Font(googleFont = inter, fontProvider = provider, weight = FontWeight.Normal),
+    Font(googleFont = inter, fontProvider = provider, weight = FontWeight.Medium),
 )
 
-val LocalTypography = Typography(
+val localTypography = Typography(
+    displayLarge = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 57.sp,
+        lineHeight = 64.sp,
+        letterSpacing = 0.15.sp
+    ),
+    displayMedium = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 45.sp,
+        lineHeight = 52.sp,
+        letterSpacing = 0.15.sp
+    ),
+    displaySmall = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
+        letterSpacing = 0.15.sp
+    ),
+    headlineLarge = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 36.sp,
+        lineHeight = 44.sp,
+        letterSpacing = 0.15.sp
+    ),
     headlineMedium = TextStyle(
-        fontFamily = NotoSansFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 32.sp,
-        lineHeight = 38.sp,
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 28.sp,
+        lineHeight = 36.sp,
+        letterSpacing = 0.15.sp
+    ),
+    headlineSmall = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 24.sp,
+        lineHeight = 32.sp,
+        letterSpacing = 0.15.sp
     ),
     titleLarge = TextStyle(
-        fontFamily = NotoSansFontFamily,
-        fontWeight = FontWeight.SemiBold,
-        fontSize = 20.sp,
-        lineHeight = 25.sp,
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Normal,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.15.sp
     ),
     titleMedium = TextStyle(
-        fontFamily = NotoSansFontFamily,
+        fontFamily = interFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 16.sp,
-        lineHeight = 22.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.15.sp
     ),
     titleSmall = TextStyle(
-        fontFamily = NotoSansFontFamily,
+        fontFamily = interFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-    ),
-    labelLarge = TextStyle(
-        fontFamily = NotoSansFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 15.sp,
-        lineHeight = 20.sp,
-    ),
-    labelMedium = TextStyle(
-        fontFamily = NotoSansFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-    ),
-    labelSmall = TextStyle(
-        fontFamily = NotoSansFontFamily,
-        fontWeight = FontWeight.Medium,
-        fontSize = 11.sp,
-        lineHeight = 16.sp,
+        letterSpacing = 0.15.sp
     ),
     bodyLarge = TextStyle(
-        fontFamily = NotoSansFontFamily,
+        fontFamily = interFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 16.sp,
         lineHeight = 24.sp,
+        letterSpacing = 0.15.sp
     ),
     bodyMedium = TextStyle(
-        fontFamily = NotoSansFontFamily,
+        fontFamily = interFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
+        letterSpacing = 0.15.sp
     ),
     bodySmall = TextStyle(
-        fontFamily = NotoSansFontFamily,
+        fontFamily = interFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
+        letterSpacing = 0.15.sp
+    ),
+    labelLarge = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 14.sp,
+        lineHeight = 20.sp,
+        letterSpacing = 0.15.sp
+    ),
+    labelMedium = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.15.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = interFontFamily,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.15.sp
     ),
 )
-
-@Immutable
-data class TextStyle(
-    val caption: TextStyle = TextStyle(
-        fontFamily = NotoSansFontFamily,
-        fontWeight = FontWeight.Normal,
-        fontSize = 12.sp,
-        lineHeight = 14.sp,
-    )
-)
-
-val LocalTextStyle = staticCompositionLocalOf { com.erfangh.solidshare.presentation.theme.TextStyle() }

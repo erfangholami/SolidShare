@@ -1,15 +1,11 @@
 <resources>
 
-    <!--<style name="Platform.Theme.SolidShare" parent="Theme.Material3.DayNight"></style>
 
-    <style name="Theme.SolidShare" parent="Platform.Theme.SolidShare"></style>
+    <style name="Theme.SolidShare" parent="Theme.Material3.DayNight"/>
 
     <style name="Theme.SolidShare.NoActionBar">
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
     </style>
 
-    <style name="Theme.SolidShare.AppBarOverlay" parent="ThemeOverlay.MaterialComponents.Dark.ActionBar" />
-
-    <style name="Theme.SolidShare.PopupOverlay" parent="ThemeOverlay.MaterialComponents.Light" />-->
 </resources>

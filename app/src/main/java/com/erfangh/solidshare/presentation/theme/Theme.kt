@@ -16,17 +16,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-
-val MaterialTheme.AppColors: Colors
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalColors.current
-
-val MaterialTheme.AppTextStyle: TextStyle
-    @Composable
-    @ReadOnlyComposable
-    get() = LocalTextStyle.current
-
 @Composable
 fun AppTheme(
     isDarkTheme: Boolean = isSystemInDarkTheme(),
@@ -34,8 +23,8 @@ fun AppTheme(
     content: @Composable () -> Unit
 ) {
 
-    val lightColorScheme = lightColorScheme()
-    val darkColorScheme = darkColorScheme()
+    val lightColorScheme = lightScheme
+    val darkColorScheme = darkScheme
 
     val colorScheme = when {
         dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
@@ -56,32 +45,18 @@ fun AppTheme(
     }
 
 
-    val AppColors =
-        if (isDarkTheme) {
-            DarkColorScheme
-        } else {
-            LightColorScheme
-        }
-
-    val appTextStyle = TextStyle()
-
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
-                !isDarkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = isDarkTheme
         }
     }
 
-    CompositionLocalProvider(
-        LocalColors provides AppColors,
-        LocalTextStyle provides appTextStyle,
-    ) {
-        MaterialTheme(
-            colorScheme = colorScheme,
-            typography = LocalTypography,
-            content = content
-        )
-    }
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = localTypography,
+        shapes = shapes,
+        content = content
+    )
 }

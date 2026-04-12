@@ -1,9 +1,9 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
     alias(libs.plugins.google.devtools.ksp)
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.hilt.android)
+    alias(libs.plugins.jetbrains.kotlin.serialization)
 }
 
 android {
@@ -56,6 +56,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 
+
+    implementation(libs.google.android.material)
+
     //Compose
     implementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(platform(libs.androidx.compose.bom))
@@ -71,11 +74,15 @@ dependencies {
     implementation(libs.google.hilt.android)
     ksp(libs.google.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
-    implementation(libs.androidx.hilt.work)
+    //implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
     //Navigation
     implementation(libs.androidx.navigation.compose)
+
+    //Local DataBase - Datasource
+    implementation(libs.androidx.datastore)
+    implementation(libs.androidx.datastore.preferences)
 
     //Test
     testImplementation(libs.junit)
