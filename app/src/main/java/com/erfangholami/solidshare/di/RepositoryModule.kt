@@ -1,11 +1,11 @@
 package com.erfangholami.solidshare.di
 
-import com.erfangholami.solidshare.data.local.auth.AuthLocalDataStore
 import com.erfangholami.solidshare.data.local.settings.SettingsLocalDataStore
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.auth.AuthRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepositoryImplementation
+import com.pondersource.solidandroidapi.Authenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -17,9 +17,9 @@ class RepositoryModule {
 
     @Provides
     fun provideAuthRepository(
-        authLocalDataStore: AuthLocalDataStore
+        authenticator: Authenticator
     ): AuthRepository {
-        return AuthRepositoryImplementation(authLocalDataStore)
+        return AuthRepositoryImplementation(authenticator)
     }
 
     @Provides

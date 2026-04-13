@@ -2,9 +2,10 @@ package com.erfangholami.solidshare.data.repo.auth
 
 import com.erfangholami.solidshare.domain.model.PodServer
 import com.erfangholami.solidshare.domain.model.PreviouslyLoggedInUser
+import com.pondersource.solidandroidapi.Authenticator
 import kotlinx.coroutines.flow.Flow
 
-interface AuthRepository {
+interface AuthRepository: Authenticator {
 
     fun getListOfPodServers(): Flow<List<PodServer>>
 

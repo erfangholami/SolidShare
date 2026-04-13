@@ -25,6 +25,8 @@ navigation = "2.9.7"
 
 datasource = "1.2.1"
 
+ass = "0.3.0"
+
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 
@@ -33,6 +35,8 @@ kotlinx-coroutins-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coro
 kotlinx-coroutins-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinXCoroutine"}
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinXSerialization"}
 
+#AndroidSolidServices
+pondersoource-ass-solidandroidapi = { group = "com.pondersource.solidandroidapi", name = "solidandroidapi", version.ref = "ass" }
 
 #Lifecycle
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecucle-ktx" }

@@ -93,7 +93,7 @@ fun MainPage(
     ) { innerPaddings ->
         NavHost(
             navController = nestedNavController,
-            startDestination = MainNavItem.Home,
+            startDestination = MainNavItem.Profile,
             modifier = Modifier
                 .systemBarsPadding()
                 .fillMaxSize()

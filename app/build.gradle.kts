@@ -15,9 +15,10 @@ android {
         minSdk = 26
         targetSdk = 35
         versionCode = 1
-        versionName = "1.0"
+        versionName = "0.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["appAuthRedirectScheme"] = namespace.toString()
     }
 
     buildTypes {
@@ -34,12 +35,18 @@ android {
         compose = true
     }
 
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.15"
+    packaging {
+        resources {
+            excludes += setOf("META-INF/NOTICE.md", "META-INF/LICENSE.md", "META-INF/DEPENDENCIES")
+        }
     }
 }
 kotlin {
     jvmToolchain(11)
+}
+
+composeCompiler {
+
 }
 
 dependencies {
@@ -50,6 +57,8 @@ dependencies {
     implementation(libs.kotlinx.coroutins.core)
     implementation(libs.kotlinx.coroutins.android)
     implementation(libs.kotlinx.serialization.json)
+
+    implementation(libs.pondersoource.ass.solidandroidapi)
 
     //Lifecycle
     implementation(libs.androidx.lifecycle.viewmodel.ktx)

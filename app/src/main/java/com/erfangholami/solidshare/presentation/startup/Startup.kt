@@ -23,20 +23,21 @@ fun Startup(
     navController: NavController,
     viewModel: StartupViewModel
 ) {
-
     val settingState by viewModel.settingsState.collectAsStateWithLifecycle()
     val hasLoggedInUserState by viewModel.hasLoggedInUser.collectAsStateWithLifecycle()
-
 
     BackHandler {
         navController.popBackStack()
     }
 
     LaunchedEffect(settingState, hasLoggedInUserState) {
-        if(hasLoggedInUserState) {
+        // null means Authenticator hasn't finished initializing yet — wait.
+        val isLoggedIn = hasLoggedInUserState ?: return@LaunchedEffect
+
+        if (isLoggedIn) {
             navController.navigate(MainNavItem)
         } else {
-            if(settingState.hasCompletedOnboarding) {
+            if (settingState.hasCompletedOnboarding) {
                 navController.navigate(AuthNavItem)
             } else {
                 navController.navigate(OnBoarding)
@@ -54,12 +55,7 @@ fun Startup(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-
-            Text(
-                text = "Solid Share",
-            )
+            Text(text = "Solid Share")
         }
     }
-
-
 }

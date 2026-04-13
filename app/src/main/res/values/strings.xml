@@ -19,4 +19,11 @@
     <string name="type_your_personal_server_here">Type your personal server here …</string>
     <string name="choose_server">Choose Server</string>
     <string name="select_your_server">Select your server</string>
+    <string name="add_account">Add account</string>
+    <string name="accounts">Accounts</string>
+    <string name="current_account">Current account</string>
+    <string name="account">Account</string>
+    <string name="switch_account">Switch account</string>
+    <string name="log_out">Log out</string>
+    <string name="or_enter_custom_server">Or enter your own server URL</string>
 </resources>
