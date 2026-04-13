@@ -8,7 +8,7 @@ plugins {
 
 android {
     namespace = "com.erfangholami.solidshare"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.erfangholami.solidshare"
