@@ -1,61 +1,53 @@
 package com.erfangholami.solidshare.presentation.startup
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
-import com.erfangholami.solidshare.presentation.navigation.OnBoarding
 
 @Composable
 fun Startup(
     navController: NavController,
     viewModel: StartupViewModel
 ) {
-    val settingState by viewModel.settingsState.collectAsStateWithLifecycle()
-    val hasLoggedInUserState by viewModel.hasLoggedInUser.collectAsStateWithLifecycle()
-
-    BackHandler {
-        navController.popBackStack()
-    }
-
-    LaunchedEffect(settingState, hasLoggedInUserState) {
-        // null means Authenticator hasn't finished initializing yet — wait.
-        val isLoggedIn = hasLoggedInUserState ?: return@LaunchedEffect
-
-        if (isLoggedIn) {
-            navController.navigate(MainNavItem)
+    LaunchedEffect(Unit) {
+        if (viewModel.isLoggedIn()) {
+            navController.navigate(MainNavItem) {
+                popUpTo(navController.graph.id) {
+                    inclusive = true
+                }
+            }
         } else {
-            if (settingState.hasCompletedOnboarding) {
-                navController.navigate(AuthNavItem)
-            } else {
-                navController.navigate(OnBoarding)
+            navController.navigate(AuthNavItem) {
+                popUpTo(navController.graph.id) {
+                    inclusive = true
+                }
             }
         }
     }
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-    ) { innerPaddings ->
-        Column(
+    Column(
+        modifier = Modifier
+            .fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(text = "Startup")
+        CircularProgressIndicator(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPaddings),
-            verticalArrangement = Arrangement.Center,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(text = "Solid Share")
-        }
+                .padding(24.dp)
+                .size(32.dp)
+        )
     }
 }

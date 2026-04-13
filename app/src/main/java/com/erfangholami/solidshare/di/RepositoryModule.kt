@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.di
 
+import com.erfangholami.solidshare.data.local.auth.AuthLocalDataStore
 import com.erfangholami.solidshare.data.local.settings.SettingsLocalDataStore
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.auth.AuthRepositoryImplementation
@@ -17,9 +18,10 @@ class RepositoryModule {
 
     @Provides
     fun provideAuthRepository(
-        authenticator: Authenticator
+        authenticator: Authenticator,
+        authLocalDataStore: AuthLocalDataStore,
     ): AuthRepository {
-        return AuthRepositoryImplementation(authenticator)
+        return AuthRepositoryImplementation(authenticator, authLocalDataStore)
     }
 
     @Provides

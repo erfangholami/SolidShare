@@ -55,7 +55,7 @@ fun NavGraphBuilder.onboardingGraph(navController: NavController) {
 }
 
 fun NavGraphBuilder.authGraph(navController: NavController) {
-    navigation<AuthNavItem>(AuthNavItem.Login) {
+    navigation<AuthNavItem>(AuthNavItem.Login()) {
         composable<AuthNavItem.Login> {
             Login(navController, hiltViewModel<LoginViewModel>())
         }
@@ -80,7 +80,7 @@ object StartUpNavItem {
 @Serializable
 object AuthNavItem {
     @Serializable
-    object Login
+    data class Login(val isAddingAccount: Boolean = false)
 }
 
 @Serializable

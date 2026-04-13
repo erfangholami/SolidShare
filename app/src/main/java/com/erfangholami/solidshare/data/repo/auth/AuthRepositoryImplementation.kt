@@ -1,20 +1,20 @@
 package com.erfangholami.solidshare.data.repo.auth
 
 import android.content.Intent
+import com.erfangholami.solidshare.data.local.auth.AuthLocalDataStore
 import com.erfangholami.solidshare.domain.model.PodServer
-import com.erfangholami.solidshare.domain.model.PreviouslyLoggedInUser
 import com.pondersource.shared.data.Profile
 import com.pondersource.solidandroidapi.Authenticator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.map
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.TokenResponse
 
 class AuthRepositoryImplementation(
     private val authenticator: Authenticator,
+    private val localAuthDataStore: AuthLocalDataStore,
 ) : AuthRepository {
 
     override fun getListOfPodServers(): Flow<List<PodServer>> {
@@ -27,47 +27,52 @@ class AuthRepositoryImplementation(
         }
     }
 
-    override fun getPreviouslyLoggedInUsers(): Flow<List<PreviouslyLoggedInUser>> {
-        return getLoggedInUsers()
+    override fun getListOfLoggedOutWebIDs(): Flow<List<String>> {
+        return localAuthDataStore.getListOfLoggedOutWebIDs()
     }
 
-    override fun getLoggedInUsers(): Flow<List<PreviouslyLoggedInUser>> {
-        return authenticator.activeProfileFlow.map {
-            if (authenticator.isUserAuthorized()) {
-                authenticator.getAllLoggedInProfiles().mapNotNull { profile ->
-                    val webId = profile.userInfo?.webId ?: return@mapNotNull null
-                    PreviouslyLoggedInUser(webId, PodServer("", ""))
-                }
-            } else {
-                emptyList()
-            }
-        }
-    }
-
-    override val activeProfileFlow: StateFlow<Profile>
+    override val activeProfileFlow: StateFlow<Profile?>
         get() = authenticator.activeProfileFlow
 
-    override suspend fun createAuthenticationIntentWithWebId(
-        clientName: String,
-        webId: String,
-        redirectUri: String
-    ): Pair<Intent?, String?> {
-        return authenticator.createAuthenticationIntentWithWebId(clientName, webId, redirectUri)
-    }
+    override val loggedInProfilesFlow: StateFlow<List<Profile>>
+        get() = authenticator.loggedInProfilesFlow
 
-    override suspend fun createAuthenticationIntentWithOidcIssuer(
-        clientName: String,
-        oidcIssuer: String,
+    override val isAuthorizedFlow: StateFlow<Boolean>
+        get() = authenticator.isAuthorizedFlow
+
+    override val activeWebIdFlow: StateFlow<String?>
+        get() = authenticator.activeWebIdFlow
+
+    override suspend fun createAuthenticationIntent(
+        webId: String?,
+        oidcIssuer: String?,
+        appName: String,
         redirectUri: String
     ): Pair<Intent?, String?> {
-        return authenticator.createAuthenticationIntentWithOidcIssuer(clientName, oidcIssuer, redirectUri)
+        return authenticator.createAuthenticationIntent(webId, oidcIssuer, appName, redirectUri)
     }
 
     override suspend fun submitAuthorizationResponse(
         authResponse: AuthorizationResponse?,
         authException: AuthorizationException?
     ): String? {
-        return authenticator.submitAuthorizationResponse(authResponse, authException)
+
+        return try {
+            val webId = authenticator.submitAuthorizationResponse(authResponse, authException)
+            if(!webId.isNullOrEmpty()) {
+                removeLoggedOutWebId(webId)
+            }
+            webId
+        } catch (_: Exception){
+            null
+        }
+    }
+
+    override suspend fun getTerminationSessionIntent(
+        webId: String,
+        logoutRedirectUrl: String,
+    ): Pair<Intent?, String?> {
+        return authenticator.getTerminationSessionIntent(webId, logoutRedirectUrl)
     }
 
     override suspend fun getLastTokenResponse(
@@ -101,8 +106,8 @@ class AuthRepositoryImplementation(
         return authenticator.getProfile(webId)
     }
 
-    override fun getProfile(): Profile {
-        return authenticator.getProfile()
+    override fun getActiveProfile(): Profile {
+        return authenticator.getActiveProfile()
     }
 
     override suspend fun getActiveWebId(): String? {
@@ -113,18 +118,23 @@ class AuthRepositoryImplementation(
         return authenticator.setActiveWebId(webId)
     }
 
-    override suspend fun resetProfile() {
-        authenticator.resetProfile()
+    override suspend fun removeProfile(webId: String) {
+        addLoggedOutWebId(webId)
+        authenticator.removeProfile(webId)
     }
 
-    override suspend fun resetProfile(webId: String) {
-        authenticator.resetProfile(webId)
+    override suspend fun removeAllProfiles() {
+        getAllLoggedInProfiles().forEach {
+            addLoggedOutWebId(it.userInfo!!.webId)
+        }
+        authenticator.removeAllProfiles()
     }
 
-    override suspend fun getTerminationSessionIntent(
-        webId: String,
-        logoutRedirectUrl: String
-    ): Pair<Intent?, String?> {
-        return authenticator.getTerminationSessionIntent(webId, logoutRedirectUrl)
+    private suspend fun addLoggedOutWebId(webId: String) {
+        localAuthDataStore.addLoggedOutWebId(webId)
+    }
+
+    private suspend fun removeLoggedOutWebId(webId: String) {
+        localAuthDataStore.removeLoggedOutWebId(webId)
     }
 }

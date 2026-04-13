@@ -1,137 +1,198 @@
 package com.erfangholami.solidshare.presentation.main
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
+import com.pondersource.shared.data.Profile
 
 @Composable
 fun Profile(
     navController: NavController,
     viewModel: ProfileViewModel,
 ) {
-    val activeProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
-    val allProfiles by viewModel.allProfiles.collectAsStateWithLifecycle()
+    val navigateToLogin by viewModel.navigateToLogin.collectAsState()
+    val accounts by viewModel.accounts.collectAsState()
+    val activeWebId by viewModel.activeWebId.collectAsState()
 
-    LaunchedEffect(viewModel) {
-        viewModel.navigateToLogin.collect {
+    LaunchedEffect(navigateToLogin) {
+        if (navigateToLogin) {
             navController.navigate(AuthNavItem) {
                 popUpTo(navController.graph.id) { inclusive = true }
             }
         }
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.accounts),
-            style = MaterialTheme.typography.titleLarge,
-        )
-
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+    if (viewModel.logoutLoading.value) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
         ) {
-            items(allProfiles) { profile ->
-                val webId = profile.userInfo?.webId ?: return@items
-                val isActive = activeProfile.userInfo?.webId == webId
+            CircularProgressIndicator()
+        }
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Spacer(modifier = Modifier.height(8.dp))
 
-                ProfileAccountCard(
-                    webId = webId,
-                    isActive = isActive,
-                    onSwitch = { viewModel.switchAccount(webId) },
-                    onLogout = { viewModel.logout(webId) }
-                )
+            Text(
+                text = stringResource(R.string.accounts),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = RoundedCornerShape(12.dp)
+                    )
+                    .clip(RoundedCornerShape(12.dp)),
+                verticalArrangement = Arrangement.spacedBy(0.dp),
+            ) {
+                items(accounts) { profile ->
+                    AccountRow(
+                        profile = profile,
+                        isActive = profile.userInfo?.webId == activeWebId,
+                        onClick = {
+                            profile.userInfo?.webId?.let { webId ->
+                                viewModel.switchAccount(webId)
+                            }
+                        },
+                    )
+                    if (profile != accounts.last()) {
+                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
             }
 
-            item {
-                OutlinedButton(
-                    onClick = { navController.navigate(AuthNavItem) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
-                    Text(text = stringResource(R.string.add_account))
-                }
+            OutlinedButton(
+                onClick = {
+                    navController.navigate(AuthNavItem.Login(isAddingAccount = true))
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(text = stringResource(R.string.add_account))
+            }
+
+            HorizontalDivider()
+
+            Button(
+                onClick = { viewModel.logout() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(text = stringResource(R.string.logout_active_account))
+            }
+
+            OutlinedButton(
+                onClick = { viewModel.logoutAll() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error,
+                ),
+            ) {
+                Text(text = stringResource(R.string.logout_all))
             }
         }
     }
 }
 
 @Composable
-fun ProfileAccountCard(
-    webId: String,
+private fun AccountRow(
+    profile: Profile,
     isActive: Boolean,
-    onSwitch: () -> Unit,
-    onLogout: () -> Unit,
+    onClick: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
+    val webId = profile.userInfo?.webId ?: return
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .background(
+                if (isActive) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                else MaterialTheme.colorScheme.surface
+            )
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(
+                    if (isActive) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.surfaceVariant
+                ),
+            contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = if (isActive) stringResource(R.string.current_account) else stringResource(R.string.account),
-                style = MaterialTheme.typography.labelSmall,
-                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                text = webId.firstOrNull()?.uppercaseChar()?.toString() ?: "?",
+                color = if (isActive) MaterialTheme.colorScheme.onPrimary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.titleMedium,
             )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = webId,
                 style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-
-            HorizontalDivider()
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (!isActive) {
-                    FilledTonalButton(
-                        onClick = onSwitch,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(text = stringResource(R.string.switch_account))
-                    }
-                }
-                TextButton(
-                    onClick = onLogout,
-                    modifier = if (isActive) Modifier.fillMaxWidth() else Modifier.weight(1f),
-                    colors = ButtonDefaults.textButtonColors(
-                        contentColor = MaterialTheme.colorScheme.error
-                    )
-                ) {
-                    Text(text = stringResource(R.string.log_out))
-                }
+            if (isActive) {
+                Text(
+                    text = stringResource(R.string.active_account),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                )
             }
         }
     }
