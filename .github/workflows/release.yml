@@ -2,8 +2,13 @@ name: Release
 
 on:
   push:
-    branches:
-      - master
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Version tag (e.g. v0.3.0)'
+        required: true
 
 jobs:
   build-and-release:
