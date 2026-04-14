@@ -1,20 +1,28 @@
 package com.erfangholami.solidshare.presentation.startup
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
+import com.erfangholami.solidshare.presentation.navigation.OnBoarding
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.CoroutineContext
 
 @Composable
 fun Startup(
@@ -22,32 +30,37 @@ fun Startup(
     viewModel: StartupViewModel
 ) {
     LaunchedEffect(Unit) {
-        if (viewModel.isLoggedIn()) {
-            navController.navigate(MainNavItem) {
-                popUpTo(navController.graph.id) {
-                    inclusive = true
-                }
+        val destination = withContext(Dispatchers.IO) {
+            if (viewModel.isLoggedIn()) {
+                MainNavItem
+            } else if (viewModel.hasCompletedOnBoarding()) {
+                AuthNavItem
+            } else {
+                OnBoarding
             }
-        } else {
-            navController.navigate(AuthNavItem) {
-                popUpTo(navController.graph.id) {
-                    inclusive = true
-                }
+        }
+        navController.navigate(destination) {
+            popUpTo(navController.graph.id) {
+                inclusive = true
             }
         }
     }
 
-    Column(
+    Scaffold(
         modifier = Modifier
             .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(text = "Startup")
-        CircularProgressIndicator(
+    ) { innerPaddings ->
+
+        Box(
             modifier = Modifier
-                .padding(24.dp)
-                .size(32.dp)
-        )
+                .padding(innerPaddings)
+                .fillMaxSize()
+        ) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .size(32.dp)
+                    .align(Alignment.Center)
+            )
+        }
     }
 }

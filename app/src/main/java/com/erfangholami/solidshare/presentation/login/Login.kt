@@ -115,14 +115,6 @@ fun Login(
 
     }
 
-    LaunchedEffect(Unit) {
-        if (!viewModel.isAddingAccount && viewModel.isLoggedIn()) {
-            navController.navigate(MainNavItem) {
-                popUpTo(navController.graph.id) { inclusive = true }
-            }
-        }
-    }
-
     LaunchedEffect(viewModel.loginBrowserIntent.value) {
         viewModel.loginBrowserIntent.value?.let { intent ->
             doAuthenticationInBrowser.launch(intent)
