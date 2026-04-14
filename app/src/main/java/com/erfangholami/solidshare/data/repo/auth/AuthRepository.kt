@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository: Authenticator {
 
-    fun getListOfPodServers(): Flow<List<PodServer>>
+    fun getListOfPodServers(): List<PodServer>
 
     fun getListOfLoggedOutWebIDs(): Flow<List<String>>
 

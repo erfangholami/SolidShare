@@ -1,24 +1,19 @@
 package com.erfangholami.solidshare.presentation.login
 
 import android.content.Intent
+import androidx.annotation.IntegerRes
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
+import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
-import com.erfangholami.solidshare.domain.model.LoginFilledData
-import com.erfangholami.solidshare.domain.model.LoginFilledMethod
-import com.erfangholami.solidshare.domain.model.PodServer
 import com.erfangholami.solidshare.presentation.base.BaseViewModel
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
 import javax.inject.Inject
@@ -36,12 +31,13 @@ class LoginViewModel @Inject constructor(
 
     val isAddingAccount: Boolean = savedStateHandle.toRoute<AuthNavItem.Login>().isAddingAccount
 
-    val podServersState = authRepository.getListOfPodServers()
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            runBlocking { authRepository.getListOfPodServers().first() }
+    val podServers = authRepository.getListOfPodServers().map {
+        UiPodServer(
+            name = it.name,
+            icon = R.drawable.ic_solid,
+            url = it.url
         )
+    }
 
     val previouslyLoggedOutWebIds = authRepository.getListOfLoggedOutWebIDs()
         .stateIn(
@@ -114,3 +110,9 @@ class LoginViewModel @Inject constructor(
         return authRepository.isUserAuthorized()
     }
 }
+
+data class UiPodServer(
+    val name: String,
+    @field:IntegerRes val icon: Int,
+    val url: String,
+)

@@ -17,14 +17,12 @@ class AuthRepositoryImplementation(
     private val localAuthDataStore: AuthLocalDataStore,
 ) : AuthRepository {
 
-    override fun getListOfPodServers(): Flow<List<PodServer>> {
-        return flow {
-            emit(listOf(
-                PodServer("SolidCommunity", "https://solidcommunity.net"),
-                PodServer("Inrupt PodSpaces", "https://login.inrupt.com"),
-                PodServer("Data Pod", "https://datapod.com"),
-            ))
-        }
+    override fun getListOfPodServers(): List<PodServer> {
+        return listOf(
+            PodServer("SolidCommunity.net", "https://solidcommunity.net"),
+            PodServer("Inrupt PodSpaces", "https://login.inrupt.com"),
+            PodServer("Data Pod", "https://datapod.igrant.io/"),
+        )
     }
 
     override fun getListOfLoggedOutWebIDs(): Flow<List<String>> {

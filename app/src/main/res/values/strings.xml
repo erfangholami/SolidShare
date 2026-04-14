@@ -29,14 +29,15 @@
     <string name="logout_active_account">Logout active account</string>
     <string name="logout_all">Logout all</string>
     <string name="or_enter_custom_server">Or enter your own server URL</string>
-    <string name="login_title">Sign in to your Pod</string>
+    <string name="login_title">Login</string>
+    <string name="login_back_title">Welcome Back</string>
     <string name="login_subtitle">Choose a provider or enter your pod server URL</string>
-    <string name="login_with_inrupt">Login with Inrupt</string>
-    <string name="login_with_solidcommunity">Login with Solid Community</string>
-    <string name="login_with_datapod">Login with Data Pod</string>
+    <string name="login_select_provider">Select a pod provider</string>
+    <string name="login_provider_inrupt">Inrupt</string>
+    <string name="login_provider_solidcommunity">Solid Community</string>
+    <string name="login_provider_datapod">Data Pod</string>
     <string name="login_or">OR</string>
     <string name="login_custom_issuer_label">Pod provider URL</string>
     <string name="login_custom_issuer_placeholder">https://your-pod-server.example</string>
     <string name="login_custom_issuer_error">Please enter a valid URL</string>
-    <string name="login_with_custom_issuer">Login with custom provider</string>
 </resources>
