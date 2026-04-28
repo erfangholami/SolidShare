@@ -104,9 +104,6 @@ fun MainPage(
             composable<MainNavItem.Share> {
                 Share(parentNavController, hiltViewModel<ShareViewModel>())
             }
-            composable<MainNavItem.Add> {
-                Add(parentNavController, hiltViewModel<AddViewModel>())
-            }
             composable<MainNavItem.Directory> {
                 Files(parentNavController, hiltViewModel<FilesViewModel>())
             }
