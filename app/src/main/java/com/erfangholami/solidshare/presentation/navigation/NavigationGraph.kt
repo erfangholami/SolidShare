@@ -107,13 +107,6 @@ object MainNavItem {
         )
 
         @Serializable
-        object AddItem: MainNavBottomItem<Add>(
-            R.string.add,
-            R.drawable.ic_add,
-            Add
-        )
-
-        @Serializable
         object DirectoryItem: MainNavBottomItem<Directory>(
             R.string.files,
             R.drawable.ic_folder,
@@ -133,9 +126,6 @@ object MainNavItem {
 
     @Serializable
     object Share
-
-    @Serializable
-    object Add
 
     @Serializable
     object Directory

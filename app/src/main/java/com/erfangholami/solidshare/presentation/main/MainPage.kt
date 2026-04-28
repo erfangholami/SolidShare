@@ -50,7 +50,6 @@ fun MainPage(
         listOf(
             MainNavItem.MainNavBottomItem.HomeItem,
             MainNavItem.MainNavBottomItem.ShareItem,
-            MainNavItem.MainNavBottomItem.AddItem,
             MainNavItem.MainNavBottomItem.DirectoryItem,
             MainNavItem.MainNavBottomItem.ProfileItem,
         )
