@@ -39,7 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
-import com.pondersource.shared.data.Profile
+import com.pondersource.shared.domain.profile.Profile
 
 @Composable
 fun Profile(

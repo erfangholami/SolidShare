@@ -3,11 +3,10 @@ package com.erfangholami.solidshare.data.repo.auth
 import android.content.Intent
 import com.erfangholami.solidshare.data.local.auth.AuthLocalDataStore
 import com.erfangholami.solidshare.domain.model.PodServer
-import com.pondersource.shared.data.Profile
+import com.pondersource.shared.domain.profile.Profile
 import com.pondersource.solidandroidapi.Authenticator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.flow
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
 import net.openid.appauth.TokenResponse
