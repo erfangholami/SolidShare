@@ -3,7 +3,6 @@ package com.erfangholami.solidshare.presentation.main
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -48,8 +47,8 @@ fun MainPage(
 
     val bottomItems = remember {
         listOf(
-            MainNavItem.MainNavBottomItem.HomeItem,
-            MainNavItem.MainNavBottomItem.ShareItem,
+            /*MainNavItem.MainNavBottomItem.HomeItem,
+            MainNavItem.MainNavBottomItem.ShareItem,*/
             MainNavItem.MainNavBottomItem.DirectoryItem,
             MainNavItem.MainNavBottomItem.ProfileItem,
         )
@@ -92,18 +91,17 @@ fun MainPage(
     ) { innerPaddings ->
         NavHost(
             navController = nestedNavController,
-            startDestination = MainNavItem.Profile,
+            startDestination = MainNavItem.Directory,
             modifier = Modifier
-                .systemBarsPadding()
                 .fillMaxSize()
                 .padding(innerPaddings),
         ) {
-            composable<MainNavItem.Home> {
+            /*composable<MainNavItem.Home> {
                 Home(parentNavController, hiltViewModel<HomeViewModel>())
             }
             composable<MainNavItem.Share> {
                 Share(parentNavController, hiltViewModel<ShareViewModel>())
-            }
+            }*/
             composable<MainNavItem.Directory> {
                 Files(parentNavController, hiltViewModel<FilesViewModel>())
             }
