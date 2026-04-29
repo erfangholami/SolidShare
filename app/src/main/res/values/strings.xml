@@ -40,4 +40,19 @@
     <string name="login_custom_issuer_label">Pod provider URL</string>
     <string name="login_custom_issuer_placeholder">https://your-pod-server.example</string>
     <string name="login_custom_issuer_error">Please enter a valid URL</string>
+    <string name="upload_file">Upload file</string>
+    <string name="new_folder">New folder</string>
+    <string name="add_resource">Add Resource</string>
+    <string name="take_photo">Take photo</string>
+    <string name="record_video">Record video</string>
+    <string name="choose_from_gallery">Choose from gallery</string>
+    <string name="delete">Delete</string>
+    <string name="open_with">Open with</string>
+    <string name="download_to_device">Download to device</string>
+    <string name="create_new_folder">Create new folder</string>
+    <string name="cancel">Cancel</string>
+    <string name="create">Create</string>
+    <string name="folder_name">Folder name</string>
+    <string name="folder_name_already_exists">A folder or file with this name already exists</string>
+    <string name="folder_name_invalid_slash">Folder name cannot contain \"/\"</string>
 </resources>
