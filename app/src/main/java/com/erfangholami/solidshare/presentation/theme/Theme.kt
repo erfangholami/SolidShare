@@ -7,10 +7,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+
+val MaterialTheme.solidShareColors: SolidShareColors
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalSolidShareColors.current
 
 @Composable
 fun AppTheme(
@@ -39,20 +46,34 @@ fun AppTheme(
             lightColorScheme
         }
     }
+    val customColorScheme = when {
+        isDarkTheme -> {
+            SolidShareColors()
+        }
+
+        else -> {
+            SolidShareColors()
+        }
+    }
 
 
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !isDarkTheme
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars =
+                !isDarkTheme
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = localTypography,
-        shapes = shapes,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalSolidShareColors provides customColorScheme
+    ) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = localTypography,
+            shapes = shapes,
+            content = content
+        )
+    }
 }
