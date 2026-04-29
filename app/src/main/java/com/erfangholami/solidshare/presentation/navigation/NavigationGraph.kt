@@ -62,11 +62,17 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
     }
 }
 
-fun NavGraphBuilder.mainGraph(navController: NavController){
+fun NavGraphBuilder.mainGraph(navController: NavController) {
     composable<MainNavItem> {
         MainPage(navController, hiltViewModel<MainViewModel>())
     }
 }
+
+@Serializable
+object ContainerRoot
+
+@Serializable
+data class ContainerNested(val containerUrl: String)
 
 @Serializable
 object OnBoarding
@@ -87,34 +93,34 @@ object AuthNavItem {
 object MainNavItem {
 
     @Serializable
-    sealed class MainNavBottomItem<T: Any>(
+    sealed class MainNavBottomItem<T : Any>(
         @field:StringRes val title: Int,
         @field:DrawableRes val icon: Int,
         val route: T,
     ) {
         @Serializable
-        object HomeItem: MainNavBottomItem<Home>(
+        object HomeItem : MainNavBottomItem<Home>(
             R.string.home,
             R.drawable.ic_home,
             Home
         )
 
         @Serializable
-        object ShareItem: MainNavBottomItem<Share>(
+        object ShareItem : MainNavBottomItem<Share>(
             R.string.share,
             R.drawable.ic_share,
             Share
         )
 
         @Serializable
-        object DirectoryItem: MainNavBottomItem<Directory>(
+        object DirectoryItem : MainNavBottomItem<Directory>(
             R.string.files,
             R.drawable.ic_folder,
             Directory
         )
 
         @Serializable
-        object ProfileItem: MainNavBottomItem<Profile>(
+        object ProfileItem : MainNavBottomItem<Profile>(
             R.string.profile,
             R.drawable.ic_profile,
             Profile

@@ -94,8 +94,10 @@ dependencies {
     implementation(libs.google.hilt.android)
     ksp(libs.google.hilt.compiler)
     implementation(libs.androidx.hilt.navigation.compose)
-    //implementation(libs.androidx.hilt.work)
+    implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
+
+    implementation(libs.androidx.work.runtime.ktx)
 
     //Navigation
     implementation(libs.androidx.navigation.compose)

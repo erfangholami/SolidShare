@@ -26,6 +26,7 @@ navigation = "2.9.7"
 datasource = "1.2.1"
 
 ass = "0.3.1"
+workManager = "2.11.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -69,6 +70,9 @@ androidx-navigation-compose = { group = "androidx.navigation", name = "navigatio
 #Local datastore
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datasource" }
 androidx-datastore = { group = "androidx.datastore", name = "datastore", version.ref = "datasource" }
+
+#WorkManager
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "workManager" }
 
 
 #Test
