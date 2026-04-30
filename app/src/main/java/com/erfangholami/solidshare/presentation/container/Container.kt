@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
@@ -59,6 +60,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.presentation.isScrollingUp
 import com.erfangholami.solidshare.util.MIME_TYPE_IMAGE
 import com.erfangholami.solidshare.util.MIME_TYPE_VIDEO
 import com.erfangholami.solidshare.util.createMediaName
@@ -93,6 +95,8 @@ fun Container(
     var showCreateNewFolderDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
     var pendingCameraAction by rememberSaveable { mutableStateOf<CameraAction?>(null) }
+
+    val containerItemListState = rememberLazyListState()
 
     val takePhotoLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
@@ -240,7 +244,11 @@ fun Container(
                     if (state.items.isEmpty()) {
                         EmptyState(modifier = Modifier.fillMaxSize())
                     } else {
-                        LazyColumn(modifier = Modifier.fillMaxSize()) {
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize(),
+                            state = containerItemListState
+                        ) {
                             items(state.items, key = { it.identifier }) { item ->
                                 ContainerItemRow(
                                     item = item,
@@ -325,6 +333,7 @@ fun Container(
         }
 
         ContainerFab(
+            isVisible = containerItemListState.isScrollingUp().value,
             isExpanded = isFabExpanded,
             onToggle = { viewModel.toggleFab() },
             modifier = Modifier
