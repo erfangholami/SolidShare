@@ -36,8 +36,10 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 fun FileActionsBottomSheet(
     item: ContainerItem,
     onDismiss: () -> Unit,
+    onShare: () -> Unit,
     onDownload: () -> Unit,
     onOpenWith: () -> Unit,
+    onDelete: () -> Unit
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -60,7 +62,7 @@ fun FileActionsBottomSheet(
                 icon = Icons.Filled.Share,
                 label = stringResource(R.string.share),
                 enabled = false,
-                onClick = {},
+                onClick = onShare,
             )
 
             ActionRow(
@@ -80,9 +82,8 @@ fun FileActionsBottomSheet(
             ActionRow(
                 icon = Icons.Filled.Delete,
                 label = stringResource(R.string.delete),
-                enabled = false,
-                tint = MaterialTheme.colorScheme.error.copy(alpha = 0.4f),
-                onClick = {},
+                tint = MaterialTheme.colorScheme.error,
+                onClick = onDelete,
             )
         }
     }

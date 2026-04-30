@@ -80,6 +80,7 @@ fun Container(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val isDownloading by viewModel.isDownloading.collectAsStateWithLifecycle()
     val isCreatingFolder by viewModel.isCreatingFolder.collectAsStateWithLifecycle()
+    val isDeletingResource by viewModel.isDeletingResource.collectAsStateWithLifecycle()
     val selectedItem by viewModel.selectedItem.collectAsStateWithLifecycle()
     val isFabExpanded by viewModel.isFabExpanded.collectAsStateWithLifecycle()
     val showMediaSheet by viewModel.showAddResourceSheet.collectAsStateWithLifecycle()
@@ -206,6 +207,12 @@ fun Container(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.resourceDeletion.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     Box(modifier = modifier) {
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -296,6 +303,25 @@ fun Container(
             }
         }
 
+        if (isDeletingResource) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
+                    Spacer(Modifier.height(12.dp))
+                    Text(
+                        stringResource(R.string.deleting_resource),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                }
+            }
+        }
+
         ContainerFab(
             isExpanded = isFabExpanded,
             onToggle = { viewModel.toggleFab() },
@@ -317,8 +343,14 @@ fun Container(
             FileActionsBottomSheet(
                 item = selectedItem!!,
                 onDismiss = { viewModel.dismissBottomSheet() },
+                onShare = {
+
+                },
                 onDownload = { viewModel.onDownloadClick() },
                 onOpenWith = { viewModel.onOpenWithClick() },
+                onDelete = {
+                    viewModel.deleteResource(selectedItem!!)
+                }
             )
         }
 

@@ -215,4 +215,27 @@ class FileRepositoryImplementation(
             is SolidNetworkResponse.Exception -> throw response.exception
         }
     }
+
+    override suspend fun deleteResource(webId: String, resourceUrl: String, isContainer: Boolean) {
+        val profile = authenticator.getProfile(webId)
+        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        val resourceUri = encodeUriString(resourceUrl)
+        if (isContainer) {
+            when (val response = resourceManager.deleteContainer(resourceUri)) {
+                is SolidNetworkResponse.Success -> Unit
+                is SolidNetworkResponse.Error ->
+                    throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
+
+                is SolidNetworkResponse.Exception -> throw response.exception
+            }
+        } else {
+            when (val response = resourceManager.delete(resourceUri)) {
+                is SolidNetworkResponse.Success -> Unit
+                is SolidNetworkResponse.Error ->
+                    throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
+
+                is SolidNetworkResponse.Exception -> throw response.exception
+            }
+        }
+    }
 }

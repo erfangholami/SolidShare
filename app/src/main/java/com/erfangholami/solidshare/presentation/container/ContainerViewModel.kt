@@ -84,6 +84,12 @@ class ContainerViewModel @Inject constructor(
     private val _folderCreationError = MutableSharedFlow<String>()
     val folderCreationError: SharedFlow<String> = _folderCreationError.asSharedFlow()
 
+    private val _isDeletingResource = MutableStateFlow(false)
+    val isDeletingResource: StateFlow<Boolean> = _isDeletingResource.asStateFlow()
+
+    private val _resourceDeletionError = MutableSharedFlow<String>()
+    val resourceDeletion: SharedFlow<String> = _resourceDeletionError.asSharedFlow()
+
     init {
         if (containerUrl == null) {
             viewModelScope.launch {
@@ -261,6 +267,26 @@ class ContainerViewModel @Inject constructor(
             }.toSet()
         } else {
             emptySet()
+        }
+    }
+
+    fun deleteResource(selectedItem: ContainerItem) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _isDeletingResource.value = true
+            dismissBottomSheet()
+            try {
+                val webId = authRepository.getActiveWebId() ?: return@launch
+                fileRepository.deleteResource(
+                    webId,
+                    selectedItem.identifier,
+                    selectedItem.isContainer
+                )
+                load()
+            } catch (e: Exception) {
+                _resourceDeletionError.emit(e.message ?: "Failed to create folder")
+            } finally {
+                _isDeletingResource.value = false
+            }
         }
     }
 }

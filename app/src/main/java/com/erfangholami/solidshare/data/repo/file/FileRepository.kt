@@ -37,4 +37,10 @@ interface FileRepository {
         containerUrl: String,
         folderName: String
     )
+
+    suspend fun deleteResource(
+        webId: String,
+        resourceUrl: String,
+        isContainer: Boolean
+    )
 }
