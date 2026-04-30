@@ -72,6 +72,9 @@ class ContainerViewModel @Inject constructor(
     private val _selectedItem = MutableStateFlow<ContainerItem?>(null)
     val selectedItem: StateFlow<ContainerItem?> = _selectedItem.asStateFlow()
 
+    private val _showResourceActionsSheet = MutableStateFlow(false)
+    val showResourceActionsSheet: StateFlow<Boolean> = _showResourceActionsSheet.asStateFlow()
+
     private val _isFabExpanded = MutableStateFlow(false)
     val isFabExpanded: StateFlow<Boolean> = _isFabExpanded.asStateFlow()
 
@@ -129,15 +132,16 @@ class ContainerViewModel @Inject constructor(
     fun onMoreOptionsClick(item: ContainerItem) {
         dismissAddResourceSheet()
         _selectedItem.value = item
+        _showResourceActionsSheet.value = true
     }
 
-    fun dismissBottomSheet() {
-        _selectedItem.value = null
+    fun dismissResourceActionsSheet() {
+        _showResourceActionsSheet.value = false
     }
 
     fun onDownloadClick() {
         val item = _selectedItem.value ?: return
-        dismissBottomSheet()
+        dismissResourceActionsSheet()
         viewModelScope.launch(Dispatchers.IO) {
             val webId = authRepository.getActiveWebId() ?: return@launch
             val fileName = item.name
@@ -158,7 +162,7 @@ class ContainerViewModel @Inject constructor(
 
     fun onOpenWithClick() {
         val item = _selectedItem.value ?: return
-        dismissBottomSheet()
+        dismissResourceActionsSheet()
         onFileClick(item)
     }
 
@@ -270,10 +274,11 @@ class ContainerViewModel @Inject constructor(
         }
     }
 
-    fun deleteResource(selectedItem: ContainerItem) {
+    fun deleteResource() {
         viewModelScope.launch(Dispatchers.IO) {
+            val selectedItem = _selectedItem.value ?: return@launch
             _isDeletingResource.value = true
-            dismissBottomSheet()
+            dismissResourceActionsSheet()
             try {
                 val webId = authRepository.getActiveWebId() ?: return@launch
                 fileRepository.deleteResource(

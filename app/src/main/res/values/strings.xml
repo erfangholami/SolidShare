@@ -62,4 +62,6 @@
     <string name="folder_name_invalid_slash">Folder name cannot contain \"/\"</string>
     <string name="creating_folder">Creating folder…</string>
     <string name="deleting_resource">Deleting resource…</string>
+    <string name="delete_resource">Delete resource</string>
+    <string name="deleting_resource_description">\"%1$s\" will be permanently deleted. This action cannot be undone.</string>
 </resources>

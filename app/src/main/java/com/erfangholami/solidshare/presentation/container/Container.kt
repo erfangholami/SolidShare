@@ -81,6 +81,7 @@ fun Container(
     val isDownloading by viewModel.isDownloading.collectAsStateWithLifecycle()
     val isCreatingFolder by viewModel.isCreatingFolder.collectAsStateWithLifecycle()
     val isDeletingResource by viewModel.isDeletingResource.collectAsStateWithLifecycle()
+    val showResourceActionsSheet by viewModel.showResourceActionsSheet.collectAsStateWithLifecycle()
     val selectedItem by viewModel.selectedItem.collectAsStateWithLifecycle()
     val isFabExpanded by viewModel.isFabExpanded.collectAsStateWithLifecycle()
     val showMediaSheet by viewModel.showAddResourceSheet.collectAsStateWithLifecycle()
@@ -90,6 +91,7 @@ fun Container(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showCreateNewFolderDialog by rememberSaveable { mutableStateOf(false) }
+    var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
     var pendingCameraAction by rememberSaveable { mutableStateOf<CameraAction?>(null) }
 
     val takePhotoLauncher = rememberLauncherForActivityResult(
@@ -339,17 +341,18 @@ fun Container(
     }
 
     when {
-        selectedItem != null -> {
+        showResourceActionsSheet -> {
             FileActionsBottomSheet(
                 item = selectedItem!!,
-                onDismiss = { viewModel.dismissBottomSheet() },
+                onDismiss = { viewModel.dismissResourceActionsSheet() },
                 onShare = {
 
                 },
                 onDownload = { viewModel.onDownloadClick() },
                 onOpenWith = { viewModel.onOpenWithClick() },
                 onDelete = {
-                    viewModel.deleteResource(selectedItem!!)
+                    viewModel.dismissResourceActionsSheet()
+                    showDeleteResourceDialog = true
                 }
             )
         }
@@ -389,6 +392,16 @@ fun Container(
                 onCreate = { folderName ->
                     showCreateNewFolderDialog = false
                     viewModel.createNewFolder(folderName)
+                },
+            )
+        }
+        showDeleteResourceDialog -> {
+            DeleteResourceDialog(
+                resourceName = selectedItem?.name.orEmpty(),
+                onDismiss = { showDeleteResourceDialog = false },
+                onDelete = {
+                    showDeleteResourceDialog = false
+                    viewModel.deleteResource()
                 },
             )
         }
