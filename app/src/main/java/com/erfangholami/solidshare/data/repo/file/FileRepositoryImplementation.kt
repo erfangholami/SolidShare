@@ -11,20 +11,20 @@ import androidx.collection.LruCache
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.getResourceType
-import com.pondersource.shared.domain.container.SolidContainer
 import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
 import com.pondersource.shared.domain.network.SolidNetworkResponse
+import com.pondersource.shared.domain.resource.SolidContainer
 import com.pondersource.shared.domain.resource.SolidNonRDFResource
 import com.pondersource.shared.domain.util.encodeUriString
 import com.pondersource.shared.domain.util.getContentLength
-import com.pondersource.solidandroidapi.Authenticator
-import com.pondersource.solidandroidapi.SolidAccountResourceManager
+import com.pondersource.solidandroidapi.auth.Authenticator
+import com.pondersource.solidandroidapi.resource.SolidAccountResourceManager
 import java.io.ByteArrayInputStream
 import java.io.File
 
 
 class FileRepositoryImplementation(
-    private val context: Context,
+    val context: Context,
     private val authenticator: Authenticator,
 ) : FileRepository {
 
@@ -34,8 +34,7 @@ class FileRepositoryImplementation(
         webId: String,
         containerUrl: String
     ): List<ContainerItem> {
-        val profile = authenticator.getProfile(webId)
-        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        val resourceManager = getResourceManager(webId)
         val response =
             resourceManager.read(encodeUriString(containerUrl), SolidContainer::class.java)
         return when (response) {
@@ -111,8 +110,8 @@ class FileRepositoryImplementation(
         mimeType: String,
         onProgress: (Int) -> Unit,
     ): Uri {
-        val profile = authenticator.getProfile(webId)
-        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        val resourceManager = getResourceManager(webId)
+        onProgress(0)
         val response =
             resourceManager.read(encodeUriString(fileUrl), SolidNonRDFResource::class.java)
 
@@ -121,7 +120,7 @@ class FileRepositoryImplementation(
                 val resource = response.data
                 val contentLength = resource.getHeaders().getContentLength()
 
-                onProgress(0)
+                onProgress(50)
 
                 val destUri = insertIntoDownloads(fileName, mimeType)
                     ?: throw Exception("Could not create entry in Downloads")
@@ -137,7 +136,8 @@ class FileRepositoryImplementation(
                             bytesWritten += read
                             if (contentLength > 0) {
                                 onProgress(
-                                    ((bytesWritten * 100) / contentLength).toInt().coerceIn(0, 99)
+                                    50 + ((bytesWritten * 50) / contentLength).toInt()
+                                        .coerceIn(0, 49)
                                 )
                             }
                         }
@@ -188,8 +188,7 @@ class FileRepositoryImplementation(
         onProgress: (Int) -> Unit,
     ) {
         onProgress(10)
-        val profile = authenticator.getProfile(webId)
-        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        val resourceManager = getResourceManager(webId)
         onProgress(20)
 
         val fileUrl = containerUrl.trimEnd('/') + "/$fileName"
@@ -210,8 +209,7 @@ class FileRepositoryImplementation(
     }
 
     override suspend fun createFolder(webId: String, containerUrl: String, folderName: String) {
-        val profile = authenticator.getProfile(webId)
-        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        val resourceManager = getResourceManager(webId)
         val folderUri = encodeUriString(containerUrl.trimEnd('/') + "/${folderName.trim()}/")
         val container = SolidContainer(folderUri)
         when (val response = resourceManager.create(container)) {
@@ -224,25 +222,19 @@ class FileRepositoryImplementation(
     }
 
     override suspend fun deleteResource(webId: String, resourceUrl: String, isContainer: Boolean) {
-        val profile = authenticator.getProfile(webId)
-        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        val resourceManager = getResourceManager(webId)
         val resourceUri = encodeUriString(resourceUrl)
-        if (isContainer) {
-            when (val response = resourceManager.deleteContainer(resourceUri)) {
-                is SolidNetworkResponse.Success -> Unit
-                is SolidNetworkResponse.Error ->
-                    throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
+        when (val response = resourceManager.delete(resourceUri)) {
+            is SolidNetworkResponse.Success -> Unit
+            is SolidNetworkResponse.Error ->
+                throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
 
-                is SolidNetworkResponse.Exception -> throw response.exception
-            }
-        } else {
-            when (val response = resourceManager.delete(resourceUri)) {
-                is SolidNetworkResponse.Success -> Unit
-                is SolidNetworkResponse.Error ->
-                    throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
-
-                is SolidNetworkResponse.Exception -> throw response.exception
-            }
+            is SolidNetworkResponse.Exception -> throw response.exception
         }
+    }
+
+    private fun getResourceManager(webId: String): SolidAccountResourceManager {
+        val profile = authenticator.getProfile(webId)
+        return SolidAccountResourceManager.getInstance(authenticator, profile)
     }
 }
