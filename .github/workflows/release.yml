@@ -31,12 +31,18 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > ${{ github.workspace }}/keystore.jks
 
-      - name: Build release APK and AAB
+      - name: Create keystore.properties
         env:
-          KEYSTORE_PATH: ${{ github.workspace }}/keystore.jks
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+        run: |
+          echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/keystore.jks" > keystore.properties
+          echo "KEYSTORE_PASSWORD=$SIGNING_STORE_PASSWORD" >> keystore.properties
+          echo "KEY_ALIAS=$SIGNING_KEY_ALIAS" >> keystore.properties
+          echo "KEY_PASSWORD=$SIGNING_KEY_PASSWORD" >> keystore.properties
+
+      - name: Build release APK and AAB
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease \
