@@ -13,6 +13,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,15 +23,29 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ViewList
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -39,6 +54,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -87,6 +103,9 @@ fun Container(
     val selectedItem by viewModel.selectedItem.collectAsStateWithLifecycle()
     val isFabExpanded by viewModel.isFabExpanded.collectAsStateWithLifecycle()
     val showMediaSheet by viewModel.showAddResourceSheet.collectAsStateWithLifecycle()
+    val sortField by viewModel.sortField.collectAsStateWithLifecycle()
+    val sortDirection by viewModel.sortDirection.collectAsStateWithLifecycle()
+    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -96,7 +115,12 @@ fun Container(
     var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
     var pendingCameraAction by rememberSaveable { mutableStateOf<CameraAction?>(null) }
 
-    val containerItemListState = rememberLazyListState()
+    val containerListState = rememberLazyListState()
+    val containerGridState = rememberLazyGridState()
+    val listIsScrollingUp = containerListState.isScrollingUp()
+    val gridIsScrollingUp = containerGridState.isScrollingUp()
+    val isFabVisible =
+        if (viewMode == ViewMode.LIST) listIsScrollingUp.value else gridIsScrollingUp.value
 
     val takePhotoLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
@@ -234,9 +258,7 @@ fun Container(
                 is ContainerViewModel.UiState.Error ->
                     ErrorState(
                         message = state.message,
-                        onRetry = {
-                            viewModel.refresh()
-                        },
+                        onRetry = { viewModel.refresh() },
                         modifier = Modifier.fillMaxSize(),
                     )
 
@@ -244,30 +266,73 @@ fun Container(
                     if (state.items.isEmpty()) {
                         EmptyState(modifier = Modifier.fillMaxSize())
                     } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxSize(),
-                            state = containerItemListState
-                        ) {
-                            items(state.items, key = { it.identifier }) { item ->
-                                ContainerItemRow(
-                                    item = item,
-                                    onClick = {
-                                        viewModel.dismissAddResourceSheet()
-                                        if (item.isContainer) {
-                                            onContainerClick(item.identifier)
-                                        } else {
-                                            viewModel.onFileClick(item)
-                                        }
-                                    },
-                                    onMoreOptions = {
-                                        viewModel.onMoreOptionsClick(item)
-                                    },
-                                )
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 80.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                )
+                        Column(modifier = Modifier.fillMaxSize()) {
+                            ContainerSortBar(
+                                sortField = sortField,
+                                sortDirection = sortDirection,
+                                viewMode = viewMode,
+                                onSortFieldClick = { viewModel.setSortField(it) },
+                                onViewModeToggle = { viewModel.toggleViewMode() },
+                            )
+                            HorizontalDivider(
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                            )
+                            if (viewMode == ViewMode.LIST) {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    state = containerListState,
+                                    contentPadding = PaddingValues(bottom = 88.dp),
+                                ) {
+                                    items(state.items, key = { it.identifier }) { item ->
+                                        ContainerItemRow(
+                                            item = item,
+                                            onClick = {
+                                                viewModel.dismissAddResourceSheet()
+                                                if (item.isContainer) {
+                                                    onContainerClick(item.identifier)
+                                                } else {
+                                                    viewModel.onFileClick(item)
+                                                }
+                                            },
+                                            onMoreOptions = { viewModel.onMoreOptionsClick(item) },
+                                        )
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(start = 80.dp),
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                                alpha = 0.5f
+                                            ),
+                                        )
+                                    }
+                                }
+                            } else {
+                                LazyVerticalGrid(
+                                    columns = GridCells.Fixed(2),
+                                    modifier = Modifier.fillMaxSize(),
+                                    state = containerGridState,
+                                    contentPadding = PaddingValues(
+                                        start = 12.dp,
+                                        end = 12.dp,
+                                        top = 12.dp,
+                                        bottom = 88.dp,
+                                    ),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                ) {
+                                    items(state.items, key = { it.identifier }) { item ->
+                                        ContainerItemCard(
+                                            item = item,
+                                            onClick = {
+                                                viewModel.dismissAddResourceSheet()
+                                                if (item.isContainer) {
+                                                    onContainerClick(item.identifier)
+                                                } else {
+                                                    viewModel.onFileClick(item)
+                                                }
+                                            },
+                                            onMoreOptions = { viewModel.onMoreOptionsClick(item) },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -333,7 +398,7 @@ fun Container(
         }
 
         ContainerFab(
-            isVisible = containerItemListState.isScrollingUp().value,
+            isVisible = isFabVisible,
             isExpanded = isFabExpanded,
             onToggle = { viewModel.toggleFab() },
             modifier = Modifier
@@ -354,9 +419,7 @@ fun Container(
             FileActionsBottomSheet(
                 item = selectedItem!!,
                 onDismiss = { viewModel.dismissResourceActionsSheet() },
-                onShare = {
-
-                },
+                onShare = {},
                 onDownload = { viewModel.onDownloadClick() },
                 onOpenWith = { viewModel.onOpenWithClick() },
                 onDelete = {
@@ -418,6 +481,97 @@ fun Container(
 }
 
 @Composable
+private fun ContainerSortBar(
+    sortField: SortField,
+    sortDirection: SortDirection,
+    viewMode: ViewMode,
+    onSortFieldClick: (SortField) -> Unit,
+    onViewModeToggle: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var dropdownExpanded by remember { mutableStateOf(false) }
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box {
+            TextButton(onClick = { dropdownExpanded = true }) {
+                Icon(
+                    imageVector = Icons.Filled.SwapVert,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(4.dp))
+                Text(
+                    text = stringResource(sortField.labelRes()),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                Icon(
+                    imageVector = if (sortDirection == SortDirection.ASCENDING)
+                        Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .padding(start = 2.dp)
+                        .size(14.dp),
+                )
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            DropdownMenu(
+                expanded = dropdownExpanded,
+                onDismissRequest = { dropdownExpanded = false },
+            ) {
+                SortField.entries.forEach { field ->
+                    val isSelected = field == sortField
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = stringResource(field.labelRes()),
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurface,
+                            )
+                        },
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    imageVector = if (sortDirection == SortDirection.ASCENDING)
+                                        Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            }
+                        } else null,
+                        onClick = {
+                            dropdownExpanded = false
+                            onSortFieldClick(field)
+                        },
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.weight(1f))
+
+        IconButton(onClick = onViewModeToggle) {
+            Icon(
+                imageVector = if (viewMode == ViewMode.LIST) Icons.Filled.GridView else Icons.AutoMirrored.Filled.ViewList,
+                contentDescription = stringResource(
+                    if (viewMode == ViewMode.LIST) R.string.grid_view else R.string.list_view
+                ),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
 private fun ContainerItemRow(
     item: ContainerItem,
     onClick: () -> Unit,
@@ -465,6 +619,73 @@ private fun ContainerItemRow(
                 contentDescription = stringResource(R.string.more_options),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+        }
+    }
+}
+
+@Composable
+private fun ContainerItemCard(
+    item: ContainerItem,
+    onClick: () -> Unit,
+    onMoreOptions: () -> Unit,
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+    ) {
+        Column {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(96.dp)
+                    .background(item.resourceType.tint.copy(alpha = 0.12f)),
+            ) {
+                Icon(
+                    imageVector = item.resourceType.icon,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .align(Alignment.Center),
+                    tint = item.resourceType.tint,
+                )
+                IconButton(
+                    onClick = onMoreOptions,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = stringResource(R.string.more_options),
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = item.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = item.getItemSubtitle(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
     }
 }
@@ -525,14 +746,9 @@ private fun ErrorState(
         )
         Spacer(Modifier.height(20.dp))
         Button(onClick = onRetry) {
-            Text(
-                stringResource(R.string.retry)
-            )
+            Text(stringResource(R.string.retry))
         }
     }
 }
 
-private enum class CameraAction {
-    PHOTO,
-    VIDEO,
-}
+private enum class CameraAction { PHOTO, VIDEO }

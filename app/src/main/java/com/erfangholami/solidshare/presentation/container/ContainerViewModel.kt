@@ -57,6 +57,8 @@ class ContainerViewModel @Inject constructor(
     @Volatile
     var pendingCaptureUri: Uri? = null
 
+    private val _activeWebId = MutableStateFlow<String?>(null)
+
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
@@ -93,16 +95,36 @@ class ContainerViewModel @Inject constructor(
     private val _resourceDeletionError = MutableSharedFlow<String>()
     val resourceDeletion: SharedFlow<String> = _resourceDeletionError.asSharedFlow()
 
+    private var rawItems: List<ContainerItem> = emptyList()
+
+    private val _sortField = MutableStateFlow(SortField.NAME)
+    val sortField: StateFlow<SortField> = _sortField.asStateFlow()
+
+    private val _sortDirection = MutableStateFlow(SortDirection.ASCENDING)
+    val sortDirection: StateFlow<SortDirection> = _sortDirection.asStateFlow()
+
+    private val _viewMode = MutableStateFlow(ViewMode.LIST)
+    val viewMode: StateFlow<ViewMode> = _viewMode.asStateFlow()
+
     init {
-        if (containerUrl == null) {
-            viewModelScope.launch {
+        viewModelScope.launch {
+            authRepository.activeWebIdFlow
+                .filterNotNull()
+                .distinctUntilChanged()
+                .collect {
+                    _activeWebId.value = it
+                }
+        }
+
+        viewModelScope.launch {
+            if (containerUrl == null) {
                 authRepository.activeWebIdFlow
                     .filterNotNull()
                     .distinctUntilChanged()
                     .collect { load() }
+            } else {
+                load()
             }
-        } else {
-            load()
         }
     }
 
@@ -115,7 +137,7 @@ class ContainerViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _isDownloading.value = true
             try {
-                val webId = authRepository.getActiveWebId() ?: run {
+                val webId = _activeWebId.value ?: run {
                     _fileOpenEvent.emit(FileOpenEvent.Error("No active user"))
                     return@launch
                 }
@@ -143,7 +165,7 @@ class ContainerViewModel @Inject constructor(
         val item = _selectedItem.value ?: return
         dismissResourceActionsSheet()
         viewModelScope.launch(Dispatchers.IO) {
-            val webId = authRepository.getActiveWebId() ?: return@launch
+            val webId = _activeWebId.value ?: return@launch
             val fileName = item.name
             val mimeType = item.mimeType ?: OCTET_STREAM
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
@@ -179,7 +201,7 @@ class ContainerViewModel @Inject constructor(
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
         dismissAddResourceSheet()
         viewModelScope.launch(Dispatchers.IO) {
-            val webId = authRepository.getActiveWebId() ?: return@launch
+            val webId = _activeWebId.value ?: return@launch
             val containerUrl = resolvedContainerUrl ?: return@launch
             val request = OneTimeWorkRequestBuilder<UploadWorker>()
                 .setInputData(
@@ -224,7 +246,7 @@ class ContainerViewModel @Inject constructor(
 
         viewModelScope.launch(Dispatchers.IO) {
             try {
-                val webId = authRepository.getActiveWebId() ?: run {
+                val webId = _activeWebId.value ?: run {
                     _uiState.value = UiState.Error("No active user")
                     return@launch
                 }
@@ -237,7 +259,8 @@ class ContainerViewModel @Inject constructor(
                 }
                 resolvedContainerUrl = url
                 val items = fileRepository.getContainerContents(webId, url)
-                _uiState.value = UiState.Success(items)
+                rawItems = items
+                applySort()
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(e.message ?: "Unknown error")
             } finally {
@@ -250,7 +273,7 @@ class ContainerViewModel @Inject constructor(
         viewModelScope.launch(Dispatchers.IO) {
             _isCreatingFolder.value = true
             try {
-                val webId = authRepository.getActiveWebId() ?: return@launch
+                val webId = _activeWebId.value ?: return@launch
                 val containerUrl = resolvedContainerUrl ?: return@launch
                 fileRepository.createFolder(webId, containerUrl, folderName)
                 load()
@@ -274,13 +297,43 @@ class ContainerViewModel @Inject constructor(
         }
     }
 
+    fun setSortField(field: SortField) {
+        if (_sortField.value == field) {
+            _sortDirection.value = if (_sortDirection.value == SortDirection.ASCENDING)
+                SortDirection.DESCENDING else SortDirection.ASCENDING
+        } else {
+            _sortField.value = field
+            _sortDirection.value = SortDirection.ASCENDING
+        }
+        applySort()
+    }
+
+    fun toggleViewMode() {
+        _viewMode.value = if (_viewMode.value == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST
+    }
+
+    private fun applySort() {
+        _uiState.value = UiState.Success(sortedItems(rawItems))
+    }
+
+    private fun sortedItems(items: List<ContainerItem>): List<ContainerItem> {
+        val fieldComparator: Comparator<ContainerItem> = when (_sortField.value) {
+            SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
+            SortField.LAST_MODIFIED -> compareBy(nullsLast(naturalOrder())) { it.lastModified }
+            SortField.SIZE -> compareBy(nullsLast(naturalOrder())) { it.sizeBytes }
+        }
+        val directed = if (_sortDirection.value == SortDirection.DESCENDING)
+            fieldComparator.reversed() else fieldComparator
+        return items.sortedWith(compareByDescending<ContainerItem> { it.isContainer }.then(directed))
+    }
+
     fun deleteResource() {
         viewModelScope.launch(Dispatchers.IO) {
             val selectedItem = _selectedItem.value ?: return@launch
             _isDeletingResource.value = true
             dismissResourceActionsSheet()
             try {
-                val webId = authRepository.getActiveWebId() ?: return@launch
+                val webId = _activeWebId.value ?: return@launch
                 fileRepository.deleteResource(
                     webId,
                     selectedItem.identifier,

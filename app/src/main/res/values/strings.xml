@@ -64,4 +64,9 @@
     <string name="deleting_resource">Deleting resource…</string>
     <string name="delete_resource">Delete resource</string>
     <string name="deleting_resource_description">\"%1$s\" will be permanently deleted. This action cannot be undone.</string>
+    <string name="sort_name">Name</string>
+    <string name="sort_last_modified">Last modified</string>
+    <string name="sort_size">Size</string>
+    <string name="list_view">List view</string>
+    <string name="grid_view">Grid view</string>
 </resources>
