@@ -65,17 +65,19 @@ fun FileActionsBottomSheet(
                 onClick = onShare,
             )
 
-            ActionRow(
-                icon = Icons.Filled.Download,
-                label = stringResource(R.string.download_to_device),
-                onClick = onDownload,
-            )
+            if (!item.isContainer) {
+                ActionRow(
+                    icon = Icons.Filled.Download,
+                    label = stringResource(R.string.download_to_device),
+                    onClick = onDownload,
+                )
 
-            ActionRow(
-                icon = Icons.AutoMirrored.Filled.OpenInNew,
-                label = stringResource(R.string.open_with),
-                onClick = onOpenWith,
-            )
+                ActionRow(
+                    icon = Icons.AutoMirrored.Filled.OpenInNew,
+                    label = stringResource(R.string.open_with),
+                    onClick = onOpenWith,
+                )
+            }
 
             HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
