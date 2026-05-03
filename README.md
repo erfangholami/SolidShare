@@ -20,12 +20,33 @@ The goal is to make Solid accessible to regular people: a smooth, familiar mobil
      <img src="screenshots/profile.png" alt="Profile" width="200">
     &nbsp;
     <img src="screenshots/login_back.png" alt="Login after logout" width="200">
+    &nbsp;
+    <img src="screenshots/files_list.png" alt="Directory in List mode" width="200">
+    &nbsp;
+    <img src="screenshots/files_grid.png" alt="Directory in Grid mode" width="200">
+    &nbsp;
+    <img src="screenshots/add_resources.png" alt="Add a resource" width="200">
+    &nbsp;
+    <img src="screenshots/resource_actions.png" alt="Resource actions" width="200">
 </p>
 
 
 ## Features
 
-### Current (v0.1.0)
+### v0.2.0 - Current
+
+- **Pod file browser** — browse containers and resources in your Solid pod with list or grid layout
+- **File download & open** — download resources to your device and open them with any compatible app
+- **File upload** — upload files from your device storage directly to a pod container
+- **Camera capture & upload** — take a photo or video with your camera and upload it immediately to
+  your pod
+- **File deletion** — delete resources from your pod with a confirmation prompt
+- **Sorting** — sort resources by name, type, or date in the container view
+- **Background transfers** — uploads and downloads run as background workers with progress
+  notifications
+- **In-flight resource caching** — resources are cached as they load to improve responsiveness
+
+### v0.1.0
 
 - **Onboarding flow** — introduces new users to Solid and how the app works
 - **Login with multiple pod providers** — Inrupt, Solid Community, Data Pod, or any custom OIDC issuer URL
@@ -35,7 +56,6 @@ The goal is to make Solid accessible to regular people: a smooth, familiar mobil
 
 ### Planned
 
-- Browse, upload, edit, and delete files on Solid pods
 - Share private files via QR code or generated link
 - Sync Solid data modules (e.g. Contacts) with the Android ecosystem
 - Store and use travel tickets and passes from pods
@@ -61,16 +81,20 @@ presentation/  -->  domain/model/  -->  data/repo/  -->  data/local/
 
 ## Tech Stack
 
-| Component | Version |
-|---|---|
-| Kotlin | 2.3.20 |
-| Android Gradle Plugin | 9.1.0 |
-| Jetpack Compose BOM | 2026.03.01 |
-| Hilt | 2.59.2 |
-| Min SDK | 26 (Android 8.0) |
-| Target SDK | 35 |
-| Compile SDK | 37 |
-| JVM Toolchain | 17 |
+| Component              | Version          |
+|------------------------|------------------|
+| Kotlin                 | 2.3.21           |
+| Android Gradle Plugin  | 9.2.0            |
+| KSP                    | 2.3.5            |
+| Jetpack Compose BOM    | 2026.04.01       |
+| Hilt                   | 2.59.2           |
+| Navigation Compose     | 2.9.8            |
+| WorkManager            | 2.11.2           |
+| Android Solid Services | 0.4.0            |
+| Min SDK                | 26 (Android 8.0) |
+| Target SDK             | 35               |
+| Compile SDK            | 37               |
+| JVM Toolchain          | 17               |
 
 ## Getting Started
 
@@ -99,12 +123,12 @@ cd SolidShare
 
 Release builds require signing environment variables:
 
-| Variable | Description |
-|---|---|
-| `KEYSTORE_PATH` | Path to the `.jks` keystore file |
-| `KEYSTORE_PASSWORD` | Keystore password |
-| `KEY_ALIAS` | Key alias inside the keystore |
-| `KEY_PASSWORD` | Key password |
+| Variable            | Description update               |
+|---------------------|----------------------------------|
+| `KEYSTORE_PATH`     | Path to the `.jks` keystore file |
+| `KEYSTORE_PASSWORD` | Keystore password                |
+| `KEY_ALIAS`         | Key alias inside the keystore    |
+| `KEY_PASSWORD`      | Key password                     |
 
 ```bash
 ./gradlew assembleRelease
@@ -119,17 +143,23 @@ app/src/main/java/com/erfangholami/solidshare/
 ├── data/
 │   ├── local/          # DataStore & Authenticator implementations
 │   └── repo/           # Repository interfaces & implementations
+│       ├── auth/       # Auth repository (login, accounts)
+│       └── file/       # File repository (browse, upload, download, delete)
 ├── di/                 # Hilt dependency injection modules
 ├── domain/
-│   └── model/          # Domain models (PodServer, LoggedInUser, etc.)
+│   └── model/          # Domain models (PodServer, LoggedInUser, DownloadedFile, etc.)
+├── notification/       # NotificationHelper for transfer progress notifications
 ├── presentation/
+│   ├── container/      # Container (folder) browser screen & ViewModel
 │   ├── login/          # Login screen & ViewModel
-│   ├── main/           # Main screens (Home, Share, Add, Files, Profile)
+│   ├── main/           # Main screens (Files, Profile)
 │   ├── navigation/     # Navigation graph & route definitions
 │   ├── onboard/        # Onboarding flow
 │   ├── startup/        # Startup auth-check screen
 │   ├── theme/          # Material 3 theme, colors, typography
 │   └── MainActivity.kt
+├── util/               # DateUtils, MediaUtils helpers
+├── worker/             # DownloadWorker & UploadWorker (WorkManager)
 └── SolidShareApplication.kt
 ```
 
