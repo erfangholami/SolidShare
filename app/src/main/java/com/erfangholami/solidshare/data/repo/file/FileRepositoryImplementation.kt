@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
+import androidx.collection.LruCache
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.getResourceType
@@ -26,6 +27,8 @@ class FileRepositoryImplementation(
     private val context: Context,
     private val authenticator: Authenticator,
 ) : FileRepository {
+
+    private val localCache = LruCache<String, DownloadedFile>(20)
 
     override suspend fun getContainerContents(
         webId: String,
@@ -68,8 +71,10 @@ class FileRepositoryImplementation(
     }
 
     override suspend fun downloadFile(webId: String, fileUrl: String): DownloadedFile {
-        val profile = authenticator.getProfile(webId)
-        val resourceManager = SolidAccountResourceManager.getInstance(context, profile)
+        localCache[fileUrl]?.let {
+            return it
+        }
+        val resourceManager = getResourceManager(webId)
         val response =
             resourceManager.read(encodeUriString(fileUrl), SolidNonRDFResource::class.java)
         return when (response) {
@@ -87,7 +92,9 @@ class FileRepositoryImplementation(
                         r.getEntity().copyTo(output)
                     }
                 }
-                DownloadedFile(file = file, mimeType = mimeType)
+                val downloadedFile = DownloadedFile(file = file, mimeType = mimeType)
+                localCache.put(fileUrl, downloadedFile)
+                downloadedFile
             }
 
             is SolidNetworkResponse.Error ->

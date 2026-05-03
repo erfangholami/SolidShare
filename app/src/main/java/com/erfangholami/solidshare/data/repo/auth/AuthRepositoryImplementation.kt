@@ -4,7 +4,7 @@ import android.content.Intent
 import com.erfangholami.solidshare.data.local.auth.AuthLocalDataStore
 import com.erfangholami.solidshare.domain.model.PodServer
 import com.pondersource.shared.domain.profile.Profile
-import com.pondersource.solidandroidapi.Authenticator
+import com.pondersource.solidandroidapi.auth.Authenticator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import net.openid.appauth.AuthorizationException

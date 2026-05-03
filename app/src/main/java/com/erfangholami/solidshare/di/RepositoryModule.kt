@@ -9,7 +9,7 @@ import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepositoryImplementation
-import com.pondersource.solidandroidapi.Authenticator
+import com.pondersource.solidandroidapi.auth.Authenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

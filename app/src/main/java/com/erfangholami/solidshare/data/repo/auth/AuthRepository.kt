@@ -1,7 +1,7 @@
 package com.erfangholami.solidshare.data.repo.auth
 
 import com.erfangholami.solidshare.domain.model.PodServer
-import com.pondersource.solidandroidapi.Authenticator
+import com.pondersource.solidandroidapi.auth.Authenticator
 import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository: Authenticator {
