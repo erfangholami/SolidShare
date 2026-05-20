@@ -17,7 +17,6 @@ import com.erfangholami.solidshare.worker.UploadWorker
 import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -134,7 +133,7 @@ class ContainerViewModel @Inject constructor(
 
     fun onFileClick(item: ContainerItem) {
         if (item.isContainer || _isDownloading.value) return
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _isDownloading.value = true
             try {
                 val webId = _activeWebId.value ?: run {
@@ -142,7 +141,9 @@ class ContainerViewModel @Inject constructor(
                     return@launch
                 }
                 val downloaded = fileRepository.downloadFile(webId, item.identifier)
-                _fileOpenEvent.emit(FileOpenEvent.OpenFile(downloaded.file, downloaded.mimeType))
+                _fileOpenEvent.emit(
+                    FileOpenEvent.OpenFile(File(downloaded.path), downloaded.mimeType)
+                )
             } catch (e: Exception) {
                 _fileOpenEvent.emit(FileOpenEvent.Error(e.message ?: "Failed to open file"))
             } finally {
@@ -164,7 +165,7 @@ class ContainerViewModel @Inject constructor(
     fun onDownloadClick() {
         val item = _selectedItem.value ?: return
         dismissResourceActionsSheet()
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val webId = _activeWebId.value ?: return@launch
             val fileName = item.name
             val mimeType = item.mimeType ?: OCTET_STREAM
@@ -200,7 +201,7 @@ class ContainerViewModel @Inject constructor(
 
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
         dismissAddResourceSheet()
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val webId = _activeWebId.value ?: return@launch
             val containerUrl = resolvedContainerUrl ?: return@launch
             val request = OneTimeWorkRequestBuilder<UploadWorker>()
@@ -244,7 +245,7 @@ class ContainerViewModel @Inject constructor(
             _uiState.value = UiState.Loading
         }
 
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             try {
                 val webId = _activeWebId.value ?: run {
                     _uiState.value = UiState.Error("No active user")
@@ -270,7 +271,7 @@ class ContainerViewModel @Inject constructor(
     }
 
     fun createNewFolder(folderName: String) {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             _isCreatingFolder.value = true
             try {
                 val webId = _activeWebId.value ?: return@launch
@@ -328,7 +329,7 @@ class ContainerViewModel @Inject constructor(
     }
 
     fun deleteResource() {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch {
             val selectedItem = _selectedItem.value ?: return@launch
             _isDeletingResource.value = true
             dismissResourceActionsSheet()

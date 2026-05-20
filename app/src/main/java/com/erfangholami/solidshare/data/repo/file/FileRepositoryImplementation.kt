@@ -19,6 +19,8 @@ import com.pondersource.shared.domain.util.encodeUriString
 import com.pondersource.shared.domain.util.getContentLength
 import com.pondersource.solidandroidapi.auth.Authenticator
 import com.pondersource.solidandroidapi.resource.SolidAccountResourceManager
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.ByteArrayInputStream
 import java.io.File
 
@@ -32,12 +34,12 @@ class FileRepositoryImplementation(
 
     override suspend fun getContainerContents(
         webId: String,
-        containerUrl: String
-    ): List<ContainerItem> {
+        containerUrl: String,
+    ): List<ContainerItem> = withContext(Dispatchers.IO) {
         val resourceManager = getResourceManager(webId)
         val response =
             resourceManager.read(encodeUriString(containerUrl), SolidContainer::class.java)
-        return when (response) {
+        when (response) {
             is SolidNetworkResponse.Success -> response.data.getContained().map { ref ->
                 val identifier = ref.identifier
                 val types = ref.types
@@ -69,14 +71,15 @@ class FileRepositoryImplementation(
         }
     }
 
-    override suspend fun downloadFile(webId: String, fileUrl: String): DownloadedFile {
-        localCache[fileUrl]?.let {
-            return it
-        }
+    override suspend fun downloadFile(
+        webId: String,
+        fileUrl: String,
+    ): DownloadedFile = withContext(Dispatchers.IO) {
+        localCache[fileUrl]?.let { return@withContext it }
         val resourceManager = getResourceManager(webId)
         val response =
             resourceManager.read(encodeUriString(fileUrl), SolidNonRDFResource::class.java)
-        return when (response) {
+        when (response) {
             is SolidNetworkResponse.Success -> {
                 val resource = response.data
                 val rawContentType = resource.getContentType().substringBefore(';').trim()
@@ -91,7 +94,7 @@ class FileRepositoryImplementation(
                         r.getEntity().copyTo(output)
                     }
                 }
-                val downloadedFile = DownloadedFile(file = file, mimeType = mimeType)
+                val downloadedFile = DownloadedFile(path = file.absolutePath, mimeType = mimeType)
                 localCache.put(fileUrl, downloadedFile)
                 downloadedFile
             }
@@ -109,13 +112,13 @@ class FileRepositoryImplementation(
         fileName: String,
         mimeType: String,
         onProgress: (Int) -> Unit,
-    ): Uri {
+    ): Uri = withContext(Dispatchers.IO) {
         val resourceManager = getResourceManager(webId)
         onProgress(0)
         val response =
             resourceManager.read(encodeUriString(fileUrl), SolidNonRDFResource::class.java)
 
-        return when (response) {
+        when (response) {
             is SolidNetworkResponse.Success -> {
                 val resource = response.data
                 val contentLength = resource.getHeaders().getContentLength()
@@ -144,7 +147,6 @@ class FileRepositoryImplementation(
                     }
                 }
 
-                // Mark as complete in MediaStore (API 29+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val values = ContentValues().apply {
                         put(MediaStore.Downloads.IS_PENDING, 0)
@@ -186,7 +188,7 @@ class FileRepositoryImplementation(
         mimeType: String,
         content: ByteArray,
         onProgress: (Int) -> Unit,
-    ) {
+    ) = withContext(Dispatchers.IO) {
         onProgress(10)
         val resourceManager = getResourceManager(webId)
         onProgress(20)
@@ -208,7 +210,11 @@ class FileRepositoryImplementation(
         }
     }
 
-    override suspend fun createFolder(webId: String, containerUrl: String, folderName: String) {
+    override suspend fun createFolder(
+        webId: String,
+        containerUrl: String,
+        folderName: String,
+    ) = withContext(Dispatchers.IO) {
         val resourceManager = getResourceManager(webId)
         val folderUri = encodeUriString(containerUrl.trimEnd('/') + "/${folderName.trim()}/")
         val container = SolidContainer(folderUri)
@@ -221,7 +227,11 @@ class FileRepositoryImplementation(
         }
     }
 
-    override suspend fun deleteResource(webId: String, resourceUrl: String, isContainer: Boolean) {
+    override suspend fun deleteResource(
+        webId: String,
+        resourceUrl: String,
+        isContainer: Boolean,
+    ) = withContext(Dispatchers.IO) {
         val resourceManager = getResourceManager(webId)
         val resourceUri = encodeUriString(resourceUrl)
         when (val response = resourceManager.delete(resourceUri)) {

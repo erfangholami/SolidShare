@@ -2,7 +2,6 @@ package com.erfangholami.solidshare.presentation.login
 
 import android.content.Intent
 import androidx.annotation.IntegerRes
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
@@ -11,12 +10,29 @@ import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.presentation.base.BaseViewModel
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
 import javax.inject.Inject
+
+data class LoginUiState(
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+)
+
+sealed interface LoginEvent {
+    data class LaunchAuthorizationIntent(val intent: Intent) : LoginEvent
+    data object NavigateAfterLogin : LoginEvent
+}
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
@@ -31,83 +47,76 @@ class LoginViewModel @Inject constructor(
 
     val isAddingAccount: Boolean = savedStateHandle.toRoute<AuthNavItem.Login>().isAddingAccount
 
-    val podServers = authRepository.getListOfPodServers().map {
+    val podServers: List<UiPodServer> = authRepository.getListOfPodServers().map {
         UiPodServer(
             name = it.name,
             icon = R.drawable.ic_solid,
-            url = it.url
+            url = it.url,
         )
     }
 
-    val previouslyLoggedOutWebIds = authRepository.getListOfLoggedOutWebIDs()
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            emptyList()
+    val previouslyLoggedOutWebIds: StateFlow<List<String>> = authRepository.getListOfLoggedOutWebIDs()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    private val _uiState = MutableStateFlow(LoginUiState())
+    val uiState: StateFlow<LoginUiState> = _uiState.asStateFlow()
+
+    private val _events = Channel<LoginEvent>(Channel.BUFFERED)
+    val events: Flow<LoginEvent> = _events.receiveAsFlow()
+
+    fun loginWithWebId(webId: String) = launchLogin {
+        authRepository.createAuthenticationIntent(
+            webId = webId,
+            appName = APP_NAME,
+            redirectUri = REDIRECT_URI,
         )
-
-    val loginBrowserIntent = mutableStateOf<Intent?>(null)
-    val loginBrowserIntentErrorMessage = mutableStateOf<String?>(null)
-    val loginLoading = mutableStateOf(false)
-    val loginResult = mutableStateOf(false)
-
-    private fun launchLogin(block: suspend () -> Pair<Intent?, String?>) {
-        viewModelScope.launch {
-            loginLoading.value = true
-            try {
-                val intentRes = block()
-                loginBrowserIntentErrorMessage.value = intentRes.second
-                loginBrowserIntent.value = intentRes.first
-                if (intentRes.first == null) {
-                    loginLoading.value = false
-                }
-            } catch (e: Exception) {
-                loginBrowserIntentErrorMessage.value = e.message ?: "Login failed"
-                loginLoading.value = false
-            }
-        }
     }
 
-    fun loginWithWebId(webId: String) {
-        launchLogin {
-            authRepository.createAuthenticationIntent(webId = webId, appName = APP_NAME, redirectUri = REDIRECT_URI)
-        }
-    }
-
-    fun loginWithOidcIssuer(oidcIssuer: String) {
-        launchLogin {
-            authRepository.createAuthenticationIntent(oidcIssuer = oidcIssuer, appName = APP_NAME, redirectUri = REDIRECT_URI)
-        }
+    fun loginWithOidcIssuer(oidcIssuer: String) = launchLogin {
+        authRepository.createAuthenticationIntent(
+            oidcIssuer = oidcIssuer,
+            appName = APP_NAME,
+            redirectUri = REDIRECT_URI,
+        )
     }
 
     fun submitAuthorizationResponse(
         authorizationResponse: AuthorizationResponse?,
-        authorizationException: AuthorizationException?
+        authorizationException: AuthorizationException?,
     ) {
         viewModelScope.launch {
-            authRepository.submitAuthorizationResponse(
-                authorizationResponse,
-                authorizationException
-            )
-
-            loginLoading.value = false
-            loginBrowserIntent.value = null
-            if (isLoggedIn()) {
-                loginBrowserIntentErrorMessage.value = null
-                loginResult.value = true
+            authRepository.submitAuthorizationResponse(authorizationResponse, authorizationException)
+            if (authRepository.isUserAuthorized()) {
+                _uiState.update { it.copy(isLoading = false, errorMessage = null) }
+                _events.send(LoginEvent.NavigateAfterLogin)
             } else {
-                loginResult.value = false
-                if (authorizationException != null) {
-                    loginBrowserIntentErrorMessage.value = authorizationException.errorDescription
-                } else {
-                    loginBrowserIntentErrorMessage.value = "A problem during login occurred!"
-                }
+                val message = authorizationException?.errorDescription
+                    ?: "A problem during login occurred!"
+                _uiState.update { it.copy(isLoading = false, errorMessage = message) }
             }
         }
     }
 
-    fun isLoggedIn(): Boolean {
-        return authRepository.isUserAuthorized()
+    fun cancelLoading() {
+        _uiState.update { it.copy(isLoading = false) }
+    }
+
+    private fun launchLogin(block: suspend () -> Pair<Intent?, String?>) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            try {
+                val (intent, error) = block()
+                if (intent != null) {
+                    _events.send(LoginEvent.LaunchAuthorizationIntent(intent))
+                } else {
+                    _uiState.update { it.copy(isLoading = false, errorMessage = error) }
+                }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = e.message ?: "Login failed")
+                }
+            }
+        }
     }
 }
 

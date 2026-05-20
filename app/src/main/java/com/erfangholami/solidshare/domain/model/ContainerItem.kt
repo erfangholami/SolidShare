@@ -1,24 +1,5 @@
 package com.erfangholami.solidshare.domain.model
 
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.AudioFile
-import androidx.compose.material.icons.filled.Code
-import androidx.compose.material.icons.filled.Description
-import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.FolderZip
-import androidx.compose.material.icons.filled.Image
-import androidx.compose.material.icons.filled.PictureAsPdf
-import androidx.compose.material.icons.filled.Slideshow
-import androidx.compose.material.icons.filled.TableChart
-import androidx.compose.material.icons.filled.Videocam
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.ReadOnlyComposable
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import com.erfangholami.solidshare.presentation.theme.solidShareColors
-
 data class ContainerItem(
     val identifier: String,
     val isContainer: Boolean,
@@ -31,10 +12,10 @@ data class ContainerItem(
     val lastModified: Long?,
 ) {
     fun getItemSubtitle(): String {
-        if (this.isContainer) return "Folder"
+        if (isContainer) return "Folder"
         return when {
-            this.mimeType != null -> formatMimeType(this.mimeType)
-            this.extension != null -> "${this.extension.uppercase()} File"
+            mimeType != null -> formatMimeType(mimeType)
+            extension != null -> "${extension.uppercase()} File"
             else -> "File"
         }
     }
@@ -51,44 +32,7 @@ enum class ResourceType {
     DOCUMENT,
     ZIP,
     CODE,
-    OTHERS;
-
-    val icon: ImageVector
-        @Composable
-        @ReadOnlyComposable
-        get() {
-            return when (this) {
-                FOLDER -> Icons.Filled.Folder
-                IMAGE -> Icons.Filled.Image
-                VIDEO -> Icons.Filled.Videocam
-                AUDIO -> Icons.Filled.AudioFile
-                PDF -> Icons.Filled.PictureAsPdf
-                SPREADSHEET -> Icons.Filled.TableChart
-                PRESENTATION -> Icons.Filled.Slideshow
-                DOCUMENT -> Icons.Filled.Description
-                ZIP -> Icons.Filled.FolderZip
-                CODE -> Icons.Filled.Code
-                OTHERS -> Icons.AutoMirrored.Filled.InsertDriveFile
-            }
-        }
-    val tint: Color
-        @Composable
-        @ReadOnlyComposable
-        get() {
-            return when (this) {
-                FOLDER -> MaterialTheme.solidShareColors.folder
-                IMAGE -> MaterialTheme.solidShareColors.image
-                VIDEO -> MaterialTheme.solidShareColors.video
-                AUDIO -> MaterialTheme.solidShareColors.audio
-                PDF -> MaterialTheme.solidShareColors.pdf
-                SPREADSHEET -> MaterialTheme.solidShareColors.spreadsheet
-                PRESENTATION -> MaterialTheme.solidShareColors.presentation
-                DOCUMENT -> MaterialTheme.solidShareColors.doc
-                ZIP -> MaterialTheme.solidShareColors.archive
-                CODE -> MaterialTheme.solidShareColors.code
-                OTHERS -> MaterialTheme.solidShareColors.file
-            }
-        }
+    OTHERS,
 }
 
 fun getResourceType(isContainer: Boolean, mimeType: String?, extension: String?): ResourceType {

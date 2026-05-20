@@ -91,6 +91,7 @@ fun Login(
     }
 
     val previousWebIds by viewModel.previouslyLoggedOutWebIds.collectAsStateWithLifecycle()
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var customUrl by remember { mutableStateOf("") }
@@ -115,33 +116,26 @@ fun Login(
 
     }
 
-    LaunchedEffect(viewModel.loginBrowserIntent.value) {
-        viewModel.loginBrowserIntent.value?.let { intent ->
-            doAuthenticationInBrowser.launch(intent)
-            viewModel.loginBrowserIntent.value = null
-        }
-    }
+    LaunchedEffect(Unit) {
+        viewModel.events.collect { event ->
+            when (event) {
+                is LoginEvent.LaunchAuthorizationIntent ->
+                    doAuthenticationInBrowser.launch(event.intent)
 
-    LaunchedEffect(viewModel.loginResult.value) {
-        if (viewModel.loginResult.value) {
-            if (viewModel.isAddingAccount) {
-                navController.popBackStack()
-            } else {
-                navController.navigate(MainNavItem) {
-                    popUpTo(navController.graph.id) { inclusive = true }
+                LoginEvent.NavigateAfterLogin -> if (viewModel.isAddingAccount) {
+                    navController.popBackStack()
+                } else {
+                    navController.navigate(MainNavItem) {
+                        popUpTo(navController.graph.id) { inclusive = true }
+                    }
                 }
             }
         }
     }
 
-    LaunchedEffect(viewModel.loginBrowserIntentErrorMessage.value, customUrlError) {
-        val messageToShow = if (!customUrlError.isNullOrEmpty()) {
-            customUrlError
-        } else if (viewModel.loginBrowserIntentErrorMessage.value != null) {
-            viewModel.loginBrowserIntentErrorMessage.value ?: ""
-        } else null
-
-        if(!messageToShow.isNullOrEmpty()) {
+    LaunchedEffect(uiState.errorMessage, customUrlError) {
+        val messageToShow = customUrlError ?: uiState.errorMessage
+        if (!messageToShow.isNullOrEmpty()) {
             scope.launch {
                 snackbarHostState.showSnackbar(messageToShow)
             }
@@ -159,7 +153,7 @@ fun Login(
             )
         }
     ){  innerPaddings ->
-        if (viewModel.loginLoading.value) {
+        if (uiState.isLoading) {
             Box(
                 modifier = Modifier.fillMaxSize()
                     .padding(innerPaddings)
