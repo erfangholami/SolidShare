@@ -1,6 +1,7 @@
 package com.erfangholami.solidshare.di
 
 import android.content.Context
+import androidx.work.WorkManager
 import com.pondersource.solidandroidapi.auth.Authenticator
 import dagger.Module
 import dagger.Provides
@@ -16,9 +17,12 @@ class ApplicationModule {
     @Provides
     @Singleton
     fun provideAuthenticator(
-        @ApplicationContext context: Context
-    ): Authenticator {
-        return Authenticator.getInstance(context)
-    }
+        @ApplicationContext context: Context,
+    ): Authenticator = Authenticator.getInstance(context)
 
+    @Provides
+    @Singleton
+    fun provideWorkManager(
+        @ApplicationContext context: Context,
+    ): WorkManager = WorkManager.getInstance(context)
 }

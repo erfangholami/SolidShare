@@ -9,8 +9,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import net.openid.appauth.AuthorizationException
 import net.openid.appauth.AuthorizationResponse
+import javax.inject.Inject
 
-class AuthRepositoryImplementation(
+class AuthRepositoryImplementation @Inject constructor(
     private val authenticator: Authenticator,
     private val localAuthDataStore: AuthLocalDataStore,
 ) : AuthRepository {

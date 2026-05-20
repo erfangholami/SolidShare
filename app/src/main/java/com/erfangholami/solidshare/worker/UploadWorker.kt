@@ -46,23 +46,21 @@ class UploadWorker @AssistedInject constructor(
 
         return try {
             updateProgress(fileName, 10)
-            val content: ByteArray = applicationContext.contentResolver
+            applicationContext.contentResolver
                 .openInputStream(fileUriStr.toUri())
-                ?.use { it.readBytes() }
-                ?: return Result.failure(workDataOf("error" to "Cannot open file"))
-
-            updateProgress(fileName, 50)
-
-            fileRepository.uploadFile(
-                webId = webId,
-                containerUrl = containerUrl,
-                fileName = fileName,
-                mimeType = mimeType,
-                content = content,
-                onProgress = { pct ->
-                    updateProgress(fileName, 50 + pct / 2)
-                },
-            )
+                ?.use { stream ->
+                    updateProgress(fileName, 50)
+                    fileRepository.uploadFile(
+                        webId = webId,
+                        containerUrl = containerUrl,
+                        fileName = fileName,
+                        mimeType = mimeType,
+                        inputStream = stream,
+                        onProgress = { pct ->
+                            updateProgress(fileName, 50 + pct / 2)
+                        },
+                    )
+                } ?: return Result.failure(workDataOf("error" to "Cannot open file"))
 
             nm.notify(
                 NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE,

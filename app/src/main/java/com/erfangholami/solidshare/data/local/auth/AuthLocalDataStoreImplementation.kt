@@ -2,8 +2,9 @@ package com.erfangholami.solidshare.data.local.auth
 
 import androidx.datastore.core.DataStore
 import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
 
-class AuthLocalDataStoreImplementation(
+class AuthLocalDataStoreImplementation @Inject constructor(
     val dataStore: DataStore<List<String>>,
 ): AuthLocalDataStore {
 

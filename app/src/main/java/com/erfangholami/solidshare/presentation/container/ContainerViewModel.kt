@@ -1,7 +1,7 @@
 package com.erfangholami.solidshare.presentation.container
 
-import android.content.Context
 import android.net.Uri
+import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
@@ -16,7 +16,6 @@ import com.erfangholami.solidshare.worker.DownloadWorker
 import com.erfangholami.solidshare.worker.UploadWorker
 import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -31,11 +30,15 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ContainerViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
-    @param:ApplicationContext private val appContext: Context,
+    private val savedStateHandle: SavedStateHandle,
+    private val workManager: WorkManager,
     private val authRepository: AuthRepository,
     private val fileRepository: FileRepository,
 ) : BaseViewModel() {
+
+    companion object {
+        private const val KEY_PENDING_CAPTURE_URI = "pendingCaptureUri"
+    }
 
     sealed class UiState {
         object Loading : UiState()
@@ -53,8 +56,11 @@ class ContainerViewModel @Inject constructor(
     @Volatile
     private var resolvedContainerUrl: String? = null
 
-    @Volatile
-    var pendingCaptureUri: Uri? = null
+    var pendingCaptureUri: Uri?
+        get() = savedStateHandle.get<String>(KEY_PENDING_CAPTURE_URI)?.toUri()
+        set(value) {
+            savedStateHandle[KEY_PENDING_CAPTURE_URI] = value?.toString()
+        }
 
     private val _activeWebId = MutableStateFlow<String?>(null)
 
@@ -179,7 +185,7 @@ class ContainerViewModel @Inject constructor(
                     ),
                 )
                 .build()
-            WorkManager.getInstance(appContext).enqueue(request)
+            workManager.enqueue(request)
         }
     }
 
@@ -215,7 +221,6 @@ class ContainerViewModel @Inject constructor(
                     ),
                 )
                 .build()
-            val workManager = WorkManager.getInstance(appContext)
             workManager.enqueue(request)
 
             workManager.getWorkInfoByIdFlow(request.id).collect { info ->

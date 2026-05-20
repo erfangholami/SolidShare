@@ -3,6 +3,7 @@ package com.erfangholami.solidshare.data.repo.file
 import android.net.Uri
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
+import java.io.InputStream
 
 interface FileRepository {
     suspend fun getContainerContents(
@@ -28,7 +29,7 @@ interface FileRepository {
         containerUrl: String,
         fileName: String,
         mimeType: String,
-        content: ByteArray,
+        inputStream: InputStream,
         onProgress: (Int) -> Unit,
     )
 

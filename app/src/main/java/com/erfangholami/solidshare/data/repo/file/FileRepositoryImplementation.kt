@@ -19,14 +19,16 @@ import com.pondersource.shared.domain.util.encodeUriString
 import com.pondersource.shared.domain.util.getContentLength
 import com.pondersource.solidandroidapi.auth.Authenticator
 import com.pondersource.solidandroidapi.resource.SolidAccountResourceManager
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.io.ByteArrayInputStream
 import java.io.File
+import java.io.InputStream
+import javax.inject.Inject
 
 
-class FileRepositoryImplementation(
-    val context: Context,
+class FileRepositoryImplementation @Inject constructor(
+    @param:ApplicationContext private val context: Context,
     private val authenticator: Authenticator,
 ) : FileRepository {
 
@@ -186,7 +188,7 @@ class FileRepositoryImplementation(
         containerUrl: String,
         fileName: String,
         mimeType: String,
-        content: ByteArray,
+        inputStream: InputStream,
         onProgress: (Int) -> Unit,
     ) = withContext(Dispatchers.IO) {
         onProgress(10)
@@ -197,12 +199,15 @@ class FileRepositoryImplementation(
         val resource = SolidNonRDFResource(
             encodeUriString(fileUrl),
             mimeType,
-            ByteArrayInputStream(content),
+            inputStream,
         )
         onProgress(40)
 
         when (val response = resourceManager.create(resource)) {
-            is SolidNetworkResponse.Success -> onProgress(100)
+            is SolidNetworkResponse.Success -> {
+                localCache.remove(fileUrl)
+                onProgress(100)
+            }
             is SolidNetworkResponse.Error ->
                 throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
 
@@ -231,11 +236,11 @@ class FileRepositoryImplementation(
         webId: String,
         resourceUrl: String,
         isContainer: Boolean,
-    ) = withContext(Dispatchers.IO) {
+    ): Unit = withContext(Dispatchers.IO) {
         val resourceManager = getResourceManager(webId)
         val resourceUri = encodeUriString(resourceUrl)
         when (val response = resourceManager.delete(resourceUri)) {
-            is SolidNetworkResponse.Success -> Unit
+            is SolidNetworkResponse.Success -> localCache.remove(resourceUrl)
             is SolidNetworkResponse.Error ->
                 throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
 
