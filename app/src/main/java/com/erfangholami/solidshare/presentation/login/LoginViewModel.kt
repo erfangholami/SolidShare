@@ -3,11 +3,11 @@ package com.erfangholami.solidshare.presentation.login
 import android.content.Intent
 import androidx.annotation.IntegerRes
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
-import com.erfangholami.solidshare.presentation.base.BaseViewModel
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.channels.Channel
@@ -38,7 +38,7 @@ sealed interface LoginEvent {
 class LoginViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     savedStateHandle: SavedStateHandle,
-) : BaseViewModel() {
+) : ViewModel() {
 
     companion object {
         const val APP_NAME = "Solid Share"

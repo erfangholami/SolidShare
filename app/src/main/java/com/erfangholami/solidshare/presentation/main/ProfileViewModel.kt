@@ -1,9 +1,9 @@
 package com.erfangholami.solidshare.presentation.main
 
 import androidx.compose.runtime.mutableStateOf
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
-import com.erfangholami.solidshare.presentation.base.BaseViewModel
 import com.pondersource.shared.domain.profile.Profile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,7 +16,7 @@ import javax.inject.Inject
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
-) : BaseViewModel() {
+) : ViewModel() {
 
     val accounts: StateFlow<List<Profile>> = authRepository.loggedInProfilesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

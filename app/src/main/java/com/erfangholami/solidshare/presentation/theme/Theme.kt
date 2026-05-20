@@ -46,16 +46,7 @@ fun AppTheme(
             lightColorScheme
         }
     }
-    val customColorScheme = when {
-        isDarkTheme -> {
-            SolidShareColors()
-        }
-
-        else -> {
-            SolidShareColors()
-        }
-    }
-
+    val customColorScheme = SolidShareColors()
 
     val view = LocalView.current
     if (!view.isInEditMode) {

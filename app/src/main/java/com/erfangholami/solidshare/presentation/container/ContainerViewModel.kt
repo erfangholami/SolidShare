@@ -3,6 +3,7 @@ package com.erfangholami.solidshare.presentation.container
 import android.net.Uri
 import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
@@ -11,7 +12,6 @@ import androidx.work.workDataOf
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.domain.model.ContainerItem
-import com.erfangholami.solidshare.presentation.base.BaseViewModel
 import com.erfangholami.solidshare.worker.DownloadWorker
 import com.erfangholami.solidshare.worker.UploadWorker
 import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
@@ -34,7 +34,7 @@ class ContainerViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val authRepository: AuthRepository,
     private val fileRepository: FileRepository,
-) : BaseViewModel() {
+) : ViewModel() {
 
     companion object {
         private const val KEY_PENDING_CAPTURE_URI = "pendingCaptureUri"
@@ -347,7 +347,7 @@ class ContainerViewModel @Inject constructor(
                 )
                 load()
             } catch (e: Exception) {
-                _resourceDeletionError.emit(e.message ?: "Failed to create folder")
+                _resourceDeletionError.emit(e.message ?: "Failed to delete resource")
             } finally {
                 _isDeletingResource.value = false
             }

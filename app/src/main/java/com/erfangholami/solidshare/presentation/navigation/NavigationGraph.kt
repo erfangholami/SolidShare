@@ -16,7 +16,6 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.login.Login
 import com.erfangholami.solidshare.presentation.login.LoginViewModel
 import com.erfangholami.solidshare.presentation.main.MainPage
-import com.erfangholami.solidshare.presentation.main.MainViewModel
 import com.erfangholami.solidshare.presentation.onboard.Onboarding
 import com.erfangholami.solidshare.presentation.onboard.OnboardingViewModel
 import com.erfangholami.solidshare.presentation.startup.Startup
@@ -64,7 +63,7 @@ fun NavGraphBuilder.authGraph(navController: NavController) {
 
 fun NavGraphBuilder.mainGraph(navController: NavController) {
     composable<MainNavItem> {
-        MainPage(navController, hiltViewModel<MainViewModel>())
+        MainPage(navController)
     }
 }
 

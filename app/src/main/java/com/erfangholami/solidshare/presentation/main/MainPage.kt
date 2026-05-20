@@ -28,7 +28,6 @@ import com.erfangholami.solidshare.presentation.navigation.MainNavItem
 @Composable
 fun MainPage(
     parentNavController: NavController,
-    viewModel: MainViewModel
 ) {
 
     val nestedNavController = rememberNavController()
@@ -96,12 +95,6 @@ fun MainPage(
                 .fillMaxSize()
                 .padding(innerPaddings),
         ) {
-            /*composable<MainNavItem.Home> {
-                Home(parentNavController, hiltViewModel<HomeViewModel>())
-            }
-            composable<MainNavItem.Share> {
-                Share(parentNavController, hiltViewModel<ShareViewModel>())
-            }*/
             composable<MainNavItem.Directory> {
                 Files(parentNavController, hiltViewModel<FilesViewModel>())
             }
