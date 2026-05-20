@@ -8,20 +8,18 @@ import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import androidx.collection.LruCache
+import com.erfangholami.androidsolidservices.api.auth.Authenticator
+import com.erfangholami.androidsolidservices.api.resource.SolidAccountResourceManager
+import com.erfangholami.androidsolidservices.shared.domain.network.HTTPAcceptType.OCTET_STREAM
+import com.erfangholami.androidsolidservices.shared.domain.network.SolidNetworkResponse
+import com.erfangholami.androidsolidservices.shared.domain.resource.SolidContainer
+import com.erfangholami.androidsolidservices.shared.domain.resource.SolidNonRDFResource
+import com.erfangholami.androidsolidservices.shared.domain.util.encodeUriString
+import com.erfangholami.androidsolidservices.shared.domain.util.getContentLength
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.getResourceType
-import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
-import com.pondersource.shared.domain.network.SolidNetworkResponse
-import com.pondersource.shared.domain.resource.SolidContainer
-import com.pondersource.shared.domain.resource.SolidNonRDFResource
-import com.pondersource.shared.domain.util.encodeUriString
-import com.pondersource.shared.domain.util.getContentLength
-import com.pondersource.solidandroidapi.auth.Authenticator
-import com.pondersource.solidandroidapi.resource.SolidAccountResourceManager
 import dagger.hilt.android.qualifiers.ApplicationContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 import javax.inject.Inject
@@ -36,12 +34,12 @@ class FileRepositoryImplementation @Inject constructor(
 
     override suspend fun getContainerContents(
         webId: String,
-        containerUrl: String,
-    ): List<ContainerItem> = withContext(Dispatchers.IO) {
+        containerUrl: String
+    ): List<ContainerItem> {
         val resourceManager = getResourceManager(webId)
         val response =
             resourceManager.read(encodeUriString(containerUrl), SolidContainer::class.java)
-        when (response) {
+        return when (response) {
             is SolidNetworkResponse.Success -> response.data.getContained().map { ref ->
                 val identifier = ref.identifier
                 val types = ref.types
@@ -73,15 +71,14 @@ class FileRepositoryImplementation @Inject constructor(
         }
     }
 
-    override suspend fun downloadFile(
-        webId: String,
-        fileUrl: String,
-    ): DownloadedFile = withContext(Dispatchers.IO) {
-        localCache[fileUrl]?.let { return@withContext it }
+    override suspend fun downloadFile(webId: String, fileUrl: String): DownloadedFile {
+        localCache[fileUrl]?.let {
+            return it
+        }
         val resourceManager = getResourceManager(webId)
         val response =
             resourceManager.read(encodeUriString(fileUrl), SolidNonRDFResource::class.java)
-        when (response) {
+        return when (response) {
             is SolidNetworkResponse.Success -> {
                 val resource = response.data
                 val rawContentType = resource.getContentType().substringBefore(';').trim()
@@ -114,13 +111,13 @@ class FileRepositoryImplementation @Inject constructor(
         fileName: String,
         mimeType: String,
         onProgress: (Int) -> Unit,
-    ): Uri = withContext(Dispatchers.IO) {
+    ): Uri {
         val resourceManager = getResourceManager(webId)
         onProgress(0)
         val response =
             resourceManager.read(encodeUriString(fileUrl), SolidNonRDFResource::class.java)
 
-        when (response) {
+        return when (response) {
             is SolidNetworkResponse.Success -> {
                 val resource = response.data
                 val contentLength = resource.getHeaders().getContentLength()
@@ -149,6 +146,7 @@ class FileRepositoryImplementation @Inject constructor(
                     }
                 }
 
+                // Mark as complete in MediaStore (API 29+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     val values = ContentValues().apply {
                         put(MediaStore.Downloads.IS_PENDING, 0)
@@ -190,7 +188,7 @@ class FileRepositoryImplementation @Inject constructor(
         mimeType: String,
         inputStream: InputStream,
         onProgress: (Int) -> Unit,
-    ) = withContext(Dispatchers.IO) {
+    ) {
         onProgress(10)
         val resourceManager = getResourceManager(webId)
         onProgress(20)
@@ -215,11 +213,7 @@ class FileRepositoryImplementation @Inject constructor(
         }
     }
 
-    override suspend fun createFolder(
-        webId: String,
-        containerUrl: String,
-        folderName: String,
-    ) = withContext(Dispatchers.IO) {
+    override suspend fun createFolder(webId: String, containerUrl: String, folderName: String) {
         val resourceManager = getResourceManager(webId)
         val folderUri = encodeUriString(containerUrl.trimEnd('/') + "/${folderName.trim()}/")
         val container = SolidContainer(folderUri)
@@ -232,11 +226,7 @@ class FileRepositoryImplementation @Inject constructor(
         }
     }
 
-    override suspend fun deleteResource(
-        webId: String,
-        resourceUrl: String,
-        isContainer: Boolean,
-    ): Unit = withContext(Dispatchers.IO) {
+    override suspend fun deleteResource(webId: String, resourceUrl: String, isContainer: Boolean) {
         val resourceManager = getResourceManager(webId)
         val resourceUri = encodeUriString(resourceUrl)
         when (val response = resourceManager.delete(resourceUri)) {

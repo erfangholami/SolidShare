@@ -1,10 +1,10 @@
 package com.erfangholami.solidshare.data.repo.auth
 
 import android.content.Intent
+import com.erfangholami.androidsolidservices.api.auth.Authenticator
+import com.erfangholami.androidsolidservices.shared.domain.profile.Profile
 import com.erfangholami.solidshare.data.local.auth.AuthLocalDataStore
 import com.erfangholami.solidshare.domain.model.PodServer
-import com.pondersource.shared.domain.profile.Profile
-import com.pondersource.solidandroidapi.auth.Authenticator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import net.openid.appauth.AuthorizationException
@@ -17,6 +17,7 @@ class AuthRepositoryImplementation @Inject constructor(
 ) : AuthRepository {
 
     override val activeWebIdFlow: StateFlow<String?> = authenticator.activeWebIdFlow
+    override val activeProfileFlow: StateFlow<Profile?> = authenticator.activeProfileFlow
     override val loggedInProfilesFlow: StateFlow<List<Profile>> = authenticator.loggedInProfilesFlow
     override val isAuthorizedFlow: StateFlow<Boolean> = authenticator.isAuthorizedFlow
 
@@ -32,6 +33,8 @@ class AuthRepositoryImplementation @Inject constructor(
     override fun isUserAuthorized(): Boolean = authenticator.isUserAuthorized()
 
     override fun getProfile(webId: String): Profile = authenticator.getProfile(webId)
+
+    override suspend fun getActiveWebId(): String? = authenticator.getActiveWebId()
 
     override suspend fun createAuthenticationIntent(
         webId: String?,

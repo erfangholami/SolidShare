@@ -2,7 +2,7 @@ package com.erfangholami.solidshare.di
 
 import android.content.Context
 import androidx.work.WorkManager
-import com.pondersource.solidandroidapi.auth.Authenticator
+import com.erfangholami.androidsolidservices.api.auth.Authenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
