@@ -42,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.util.copyText
 import com.erfangholami.solidshare.presentation.util.generateQrBitmap
+import com.erfangholami.solidshare.presentation.util.rememberQrLogo
 import kotlinx.coroutines.launch
 
 @Composable
@@ -57,7 +58,8 @@ fun ShareLinkPanel(
     val shareLinkChooserTitle = stringResource(R.string.share_link_chooser_title)
     var useBare by rememberSaveable { mutableStateOf(false) }
     val payload = if (useBare) bareUrl else deepLink
-    val bitmap = remember(payload) { generateQrBitmap(payload, 720) }
+    val logo = rememberQrLogo()
+    val bitmap = remember(payload, logo) { generateQrBitmap(payload, 720, logo = logo) }
 
     Column(
         modifier = Modifier

@@ -47,6 +47,7 @@ import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.util.copyText
 import com.erfangholami.solidshare.presentation.util.generateQrBitmap
+import com.erfangholami.solidshare.presentation.util.rememberQrLogo
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -206,7 +207,8 @@ internal fun ShareResultContent(
 ) {
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
-    val bitmap = remember(deepLink) { generateQrBitmap(deepLink, 720) }
+    val logo = rememberQrLogo()
+    val bitmap = remember(deepLink, logo) { generateQrBitmap(deepLink, 720, logo = logo) }
 
     Column(
         modifier = Modifier

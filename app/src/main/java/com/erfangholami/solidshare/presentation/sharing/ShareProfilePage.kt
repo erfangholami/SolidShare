@@ -65,6 +65,8 @@ import com.erfangholami.solidshare.presentation.components.ProfileHeader
 import com.erfangholami.solidshare.presentation.navigation.ScanQrRoute
 import com.erfangholami.solidshare.presentation.util.generateQrBitmap
 import com.erfangholami.solidshare.presentation.util.generateQrWithCaptionBitmap
+import com.erfangholami.solidshare.presentation.util.loadQrLogo
+import com.erfangholami.solidshare.presentation.util.rememberQrLogo
 import kotlinx.coroutines.launch
 import java.io.OutputStream
 
@@ -181,7 +183,8 @@ private fun ShareProfileContent(
 
 @Composable
 private fun QrCard(content: String) {
-    val qrBitmap = remember(content) { generateQrBitmap(content, 720) }
+    val logo = rememberQrLogo()
+    val qrBitmap = remember(content, logo) { generateQrBitmap(content, 720, logo = logo) }
 
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -268,7 +271,12 @@ private fun copyToClipboard(context: Context, text: String) {
 }
 
 private fun saveQrToGallery(context: Context, content: String, displayName: String): Boolean {
-    val bitmap = generateQrWithCaptionBitmap(content = content, caption = content, qrSizePx = 1024)
+    val bitmap = generateQrWithCaptionBitmap(
+        content = content,
+        caption = content,
+        qrSizePx = 1024,
+        logo = loadQrLogo(context, R.drawable.logo),
+    )
     val fileName =
         "solidshare-${sanitizeForFileName(displayName)}-${System.currentTimeMillis()}.png"
     return saveImageToPictures(context, bitmap, fileName, subfolder = "SolidShare")
