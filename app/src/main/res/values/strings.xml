@@ -1,62 +1,85 @@
 <resources>
+
+    <!-- App -->
     <string name="app_name">Solid Share</string>
+
+    <!-- Common actions & labels -->
+    <string name="cancel">Cancel</string>
+    <string name="create">Create</string>
+    <string name="save">Save</string>
+    <string name="close">Close</string>
+    <string name="delete">Delete</string>
+    <string name="edit">Edit</string>
+    <string name="retry">Retry</string>
+    <string name="back">Back</string>
+    <string name="add">Add</string>
+    <string name="done">Done</string>
+    <string name="copy">Copy</string>
+    <string name="remove">Remove</string>
+    <string name="dismiss">Dismiss</string>
+    <string name="try_again">Try again</string>
+    <string name="actions">Actions</string>
+    <string name="manage">Manage</string>
+    <string name="refresh">Refresh</string>
+    <string name="more_options">More options</string>
+    <string name="paste_from_clipboard">Paste from clipboard</string>
+    <string name="qr_code_content_description">QR code</string>
+    <string name="url_label">URL</string>
+
+    <!-- Bottom navigation -->
     <string name="home">Home</string>
     <string name="share">Share</string>
-    <string name="add">Add</string>
     <string name="files">Files</string>
-    <string name="profile">Profile</string>
-    <string name="log_in">Log in</string>
+
+    <!-- Onboarding -->
     <string name="onboarding_slide1_title">About Solid</string>
     <string name="onboarding_slide1_description">Solid allows to have your own online storage, which you control. You store information once and decide who can access what.</string>
     <string name="onboarding_slide2_title">Solid File Wallet</string>
     <string name="onboarding_slide2_description">Allows you to access your Personal Online Data Stores (PODs) on Solid. You can view, upload, edit and shares your files on your Pods.</string>
     <string name="onboarding_slide3_title">Getting Started</string>
     <string name="onboarding_slide3_description">Register and log in with any Solid Pod provider. We\'ll show you a list to choose from or you can set up your own. It\'s open source!</string>
+
+    <!-- Login & accounts -->
+    <string name="log_in">Log in</string>
     <string name="continue_string">Continue</string>
-    <string name="dont_have_a_server">Don\'t have a server?</string>
-    <string name="what_is_a_pod_how_to_get">What is a Pod, and how do I get one?</string>
-    <string name="personal_server">Personal Server</string>
-    <string name="type_your_personal_server_here">Type your personal server here …</string>
-    <string name="choose_server">Choose Server</string>
-    <string name="select_your_server">Select your server</string>
-    <string name="add_account">Add account</string>
-    <string name="accounts">Accounts</string>
-    <string name="current_account">Current account</string>
-    <string name="account">Account</string>
-    <string name="switch_account">Switch account</string>
-    <string name="log_out">Log out</string>
-    <string name="active_account">Active account</string>
-    <string name="logout_active_account">Logout active account</string>
-    <string name="logout_all">Logout all</string>
-    <string name="or_enter_custom_server">Or enter your own server URL</string>
     <string name="login_title">Login</string>
     <string name="login_back_title">Welcome Back</string>
-    <string name="login_subtitle">Choose a provider or enter your pod server URL</string>
-    <string name="login_select_provider">Select a pod provider</string>
-    <string name="login_provider_inrupt">Inrupt</string>
-    <string name="login_provider_solidcommunity">Solid Community</string>
-    <string name="login_provider_datapod">Data Pod</string>
     <string name="login_or">OR</string>
     <string name="login_custom_issuer_label">Pod provider URL</string>
     <string name="login_custom_issuer_placeholder">https://your-pod-server.example</string>
-    <string name="login_custom_issuer_error">Please enter a valid URL</string>
-    <string name="retry">Retry</string>
+    <string name="choose_server">Choose Server</string>
+    <string name="select_your_server">Select your server</string>
+    <string name="welcome_back_subtitle">Choose a server to continue</string>
+    <string name="dont_have_a_server">Don\'t have a server?</string>
+    <string name="what_is_a_pod_how_to_get">What is a Pod, and how do I get one?</string>
+    <string name="i_dont_have_a_server">I don\'t have a server</string>
+    <string name="redirecting">Redirecting…</string>
+    <string name="connecting_to">Connecting to %1$s</string>
+    <string name="accounts">Accounts</string>
+    <string name="add_account">Add account</string>
+    <string name="active_account">Active account</string>
+    <string name="logout_active_account">Logout active account</string>
+    <string name="logout_all">Logout all</string>
+    <string name="login_url_invalid">URL is not valid</string>
+    <string name="login_url_not_https">URL must use HTTPS</string>
+    <string name="error_login_failed">Login failed</string>
+    <string name="error_login_problem">A problem during login occurred!</string>
+
+    <!-- Files & container -->
     <string name="this_folder_is_empty">This folder is empty</string>
     <string name="this_folder_is_empty_description">Files and folders you add here will appear when available</string>
-    <string name="more_options">More options</string>
     <string name="opening">Opening…</string>
     <string name="upload_file">Upload file</string>
-    <string name="new_folder">New folder</string>
     <string name="add_resource">Add Resource</string>
     <string name="take_photo">Take photo</string>
     <string name="record_video">Record video</string>
+    <string name="camera_permission_needed_capture">Camera permission is needed to take photos and videos</string>
     <string name="choose_from_gallery">Choose from gallery</string>
-    <string name="delete">Delete</string>
     <string name="open_with">Open with</string>
+    <string name="open_with_chooser">Open with…</string>
+    <string name="no_app_to_open">No app available to open this file type</string>
     <string name="download_to_device">Download to device</string>
     <string name="create_new_folder">Create new folder</string>
-    <string name="cancel">Cancel</string>
-    <string name="create">Create</string>
     <string name="folder_name">Folder name</string>
     <string name="folder_name_already_exists">A folder or file with this name already exists</string>
     <string name="folder_name_invalid_slash">Folder name cannot contain \"/\"</string>
@@ -69,4 +92,205 @@
     <string name="sort_size">Size</string>
     <string name="list_view">List view</string>
     <string name="grid_view">Grid view</string>
+
+    <!-- Resource details -->
+    <string name="info">Info</string>
+    <string name="details">Details</string>
+    <string name="details_name">Name</string>
+    <string name="details_type">Type</string>
+    <string name="details_size">Size</string>
+    <string name="details_modified">Modified</string>
+    <string name="details_location">Location</string>
+    <string name="details_access">Access</string>
+    <string name="details_url">URL</string>
+    <string name="shared_with">Shared with</string>
+    <string name="shared_with_loading">Checking who has access…</string>
+    <string name="shared_with_none">Not shared with anyone yet</string>
+
+    <!-- Manage sharing -->
+    <string name="manage_access">Manage access</string>
+    <string name="add_people">Add people</string>
+    <string name="manage_load_failed">Couldn\'t load sharing</string>
+    <string name="manage_no_access_title">No one else has access</string>
+    <string name="manage_no_access_message">Add people to give them access to this resource.</string>
+    <string name="revoke">Revoke</string>
+    <string name="revoke_access_title">Revoke access?</string>
+    <string name="revoke_access_message">%1$s will no longer have access to this resource.</string>
+    <string name="can_label">Can %1$s</string>
+
+    <!-- Share modes -->
+    <string name="share_mode_read">Read</string>
+    <string name="share_mode_append">Append</string>
+    <string name="share_mode_write">Read &amp; Write</string>
+
+    <!-- Receivers -->
+    <string name="receiver_label">Receiver</string>
+    <string name="receiver_anyone_with_link">Anyone with the link</string>
+    <string name="receiver_group_prefix">Group · %1$s</string>
+    <string name="receiver_kind_webid">Specific Solid user (WebID)</string>
+    <string name="receiver_kind_group">Group (vcard:Group URI)</string>
+    <string name="receiver_webid_label">Receiver WebID</string>
+    <string name="group_uri_label">Group URI</string>
+
+    <!-- Create share -->
+    <string name="share_resource_title">Share resource</string>
+    <string name="resource_url_label">Resource URL</string>
+    <string name="access_label">Access</string>
+    <string name="share_created_title">Share created</string>
+    <string name="share_summary">%1$s → %2$s</string>
+    <string name="resource_prefix">Resource: %1$s</string>
+    <string name="share_create_error_title">Couldn\'t create share</string>
+    <string name="share_create_failed">Failed to create share</string>
+    <string name="creating_share">Creating share…</string>
+
+    <!-- Share link panel -->
+    <string name="share_link_app_chip">SolidShare app</string>
+    <string name="share_link_browser_chip">Any browser</string>
+    <string name="share_link_chooser_title">Share link</string>
+
+    <!-- Share lists (given / received) -->
+    <string name="shared_by_me_tab">Shared by me · %1$d</string>
+    <string name="shared_with_me_tab">Shared with me · %1$d</string>
+    <string name="shared_with_me_title">Shared with me</string>
+    <string name="rebuild_share_index">Rebuild share index</string>
+    <string name="scan_or_paste">Scan or paste</string>
+    <string name="paste_link">Paste link</string>
+    <string name="close_menu">Close menu</string>
+    <string name="add_received_share_fab">Add a received share</string>
+    <string name="show_share_link">Show share link</string>
+    <string name="reshare">Reshare</string>
+    <string name="remove_from_list">Remove from list</string>
+    <string name="from_webid">from %1$s</string>
+    <string name="group_by_label">Group by</string>
+    <string name="group_by_sender">Sender</string>
+    <string name="group_by_time">Time</string>
+    <string name="nothing_shared_yet_title">Nothing shared yet</string>
+    <string name="nothing_shared_yet_subtitle">Share a file or folder from the Files section to start collaborating.</string>
+    <string name="nothing_shared_with_you_title">Nothing shared with you yet</string>
+    <string name="nothing_shared_with_you_subtitle">Tap the button to scan a share QR or paste a link.</string>
+    <string name="nothing_received_subtitle">Scan a QR code or paste a share link to add a resource.</string>
+    <string name="access_removed_title">Access removed</string>
+    <string name="lost_access_body">You no longer have access to \"%1$s\". It will be removed from your received list. Do you want to ask %2$s to share it again?</string>
+    <string name="access_verified">Access verified: %1$s</string>
+    <string name="no_access_to_resource">No access to that resource</string>
+
+    <!-- Scan received share -->
+    <string name="scan_received_title">Add a shared resource</string>
+    <string name="checking_access">Checking access…</string>
+    <string name="scan_share_qr_title">Point at a share QR code</string>
+    <string name="scan_share_qr_subtitle">or paste a link someone sent you</string>
+    <string name="paste_a_link">Paste a link</string>
+    <string name="paste_share_link_title">Paste share link</string>
+    <string name="paste_share_link_body">Paste a resource URL or a solidshare:// link.</string>
+    <string name="add_received_share_title">Add received share</string>
+    <string name="paste_share_url_label">Paste share URL or solidshare:// link</string>
+
+    <!-- No access -->
+    <string name="no_access_yet_title">No access yet</string>
+    <string name="no_access_body_with_owner">You don\'t have access to \"%1$s\" yet. Ask %2$s to share it with you?</string>
+    <string name="no_access_body_no_owner">You don\'t have access to \"%1$s\" yet, and we couldn\'t identify its owner to ask.</string>
+    <string name="ask_for_access">Ask for access</string>
+    <string name="request_access">Request access</string>
+
+    <!-- Profile -->
+    <string name="edit_profile">Edit profile</string>
+    <string name="share_digital_card">Share digital card</string>
+    <string name="appearance">Appearance</string>
+    <string name="about">About</string>
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+    <string name="about_app_version">Version %1$s</string>
+    <string name="about_app_description">Solid Share lets you take your data with you across the decentralized Solid web.</string>
+    <string name="profile_updated">Profile updated</string>
+    <string name="profile_update_failed">Couldn\'t update your profile: %1$s</string>
+    <string name="profile_field_read_only">Read-only</string>
+    <string name="profile_field_name">Name</string>
+    <string name="profile_field_given_name">Given name</string>
+    <string name="profile_field_family_name">Family name</string>
+    <string name="profile_field_role">Role</string>
+    <string name="profile_field_organization">Organization</string>
+    <string name="profile_field_email">Email</string>
+    <string name="profile_field_phone">Phone</string>
+
+    <!-- Share profile & QR -->
+    <string name="share_my_profile">Share my profile</string>
+    <string name="profile_link">Profile link</string>
+    <string name="share_profile_scan_hint">Scan to view this profile</string>
+    <string name="copy_link">Copy link</string>
+    <string name="download">Download</string>
+    <string name="link_copied">Link copied</string>
+    <string name="qr_saved_to_gallery">QR code saved to Pictures/SolidShare</string>
+    <string name="qr_save_failed">Couldn\'t save the QR code</string>
+    <string name="share_via">Share via</string>
+
+    <!-- Scan QR (WebID) -->
+    <string name="scan_qr">Scan QR code</string>
+    <string name="scan_qr_hint">Point your camera at a Solid WebID QR code</string>
+    <string name="flash_on">Turn flash on</string>
+    <string name="flash_off">Turn flash off</string>
+    <string name="pick_image">Pick image with QR code</string>
+    <string name="camera_permission_needed">Camera permission is needed to scan QR codes</string>
+    <string name="grant_permission">Grant permission</string>
+    <string name="qr_not_a_webid">That QR code isn\'t a WebID URL</string>
+    <string name="qr_not_found_in_image">No QR code found in the selected image</string>
+
+    <!-- Public profile -->
+    <string name="scanned_profile">Scanned profile</string>
+    <string name="loading_profile">Loading profile…</string>
+    <string name="profile_load_failed">Couldn\'t load the profile</string>
+
+    <!-- Notifications -->
+    <string name="notifications">Notifications</string>
+    <string name="notifications_empty_title">You\'re all caught up</string>
+    <string name="notifications_empty_subtitle">Updates about your shares and access requests will appear here.</string>
+    <string name="notifications_offer_title">%1$s shared a resource with you</string>
+    <string name="notifications_revoked_title">%1$s stopped sharing a resource</string>
+    <string name="notifications_rejected_title">%1$s declined your access request</string>
+    <string name="notifications_accepted_title">%1$s accepted your request</string>
+    <string name="notifications_request_title">%1$s requested access</string>
+    <string name="notifications_request_pending">Pending</string>
+    <string name="notifications_request_granted">Granted</string>
+    <string name="notifications_time_unknown">Time unknown</string>
+    <string name="notifications_dismiss">Dismiss</string>
+    <string name="notifications_accept">Accept</string>
+    <string name="notifications_reject">Reject</string>
+    <string name="notifications_reject_title">Reject request</string>
+    <string name="notifications_reject_reason_hint">Reason (optional)</string>
+    <string name="notifications_reject_reason_prompt">Optionally send %1$s a reason.</string>
+    <string name="notifications_summary_quoted">\"%1$s\"</string>
+
+    <!-- Sharing notices -->
+    <string name="added_to_shares">Added to your shares</string>
+    <string name="access_request_sent">Access request sent</string>
+    <string name="access_request_sent_and_removed">Access request sent and removed from your list.</string>
+    <string name="removed_from_your_list">Removed from your list.</string>
+    <string name="notice_index_rebuilt">Share index rebuilt.</string>
+    <string name="access_revoked">Access revoked</string>
+    <string name="notif_granted_access">Granted %1$s access</string>
+    <string name="notif_request_rejected">Request rejected</string>
+
+    <!-- Errors -->
+    <string name="not_signed_in">Not signed in</string>
+    <string name="error_no_active_user">No active user</string>
+    <string name="error_no_storage">No storage found</string>
+    <string name="error_unknown">Unknown error</string>
+    <string name="error_open_file">Failed to open file</string>
+    <string name="error_create_folder">Failed to create folder</string>
+    <string name="error_delete_resource">Failed to delete resource</string>
+    <string name="error_revoke_access">Couldn\'t revoke access</string>
+    <string name="couldnt_open_item">Couldn\'t open this item.</string>
+    <string name="error_access_denied_with_owner">You don\'t have access to this resource. You can request access from %1$s.</string>
+    <string name="error_access_denied_no_owner">You don\'t have access to this resource. You can request access from the owner.</string>
+    <string name="error_stale_acl">This share was changed somewhere else. Please try again.</string>
+    <string name="error_access_indeterminate">Couldn\'t verify access right now. Please try again.</string>
+    <string name="error_incomplete_scan">Couldn\'t read your whole pod just now, so the share list wasn\'t rebuilt. Please try again.</string>
+    <string name="error_no_inbox">The recipient can\'t receive share notifications (no inbox advertised).</string>
+    <string name="error_inbox_unauthorized">Not authorized to notify the recipient\'s inbox.</string>
+    <string name="error_inbox_forbidden">The recipient\'s inbox refused the notification.</string>
+    <string name="error_notification_delivery">Couldn\'t deliver the notification to the recipient.</string>
+    <string name="error_impersonation">That notification failed an authenticity check and was ignored.</string>
+    <string name="error_unsupported_auth">This server\'s access-control system isn\'t supported yet.</string>
+    <string name="error_something_went_wrong">Something went wrong.</string>
+
 </resources>
