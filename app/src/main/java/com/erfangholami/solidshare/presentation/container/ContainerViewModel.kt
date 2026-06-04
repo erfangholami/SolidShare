@@ -1,6 +1,7 @@
 package com.erfangholami.solidshare.presentation.container
 
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -9,13 +10,18 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
+import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.domain.model.ResourceAccess
+import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
 import com.erfangholami.solidshare.worker.DownloadWorker
 import com.erfangholami.solidshare.worker.UploadWorker
-import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
+import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -24,12 +30,15 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
 class ContainerViewModel @Inject constructor(
+    private val stringProvider: StringProvider,
     private val savedStateHandle: SavedStateHandle,
     private val workManager: WorkManager,
     private val authRepository: AuthRepository,
@@ -42,6 +51,8 @@ class ContainerViewModel @Inject constructor(
 
     sealed class UiState {
         object Loading : UiState()
+
+        @Immutable
         data class Success(val items: List<ContainerItem>) : UiState()
         data class Error(val message: String) : UiState()
     }
@@ -51,7 +62,28 @@ class ContainerViewModel @Inject constructor(
         data class Error(val message: String) : FileOpenEvent()
     }
 
+    data class ScreenState(
+        val isRefreshing: Boolean = false,
+        val isDownloading: Boolean = false,
+        val isCreatingFolder: Boolean = false,
+        val isDeletingResource: Boolean = false,
+        val showResourceActionsSheet: Boolean = false,
+        val showAddResourceSheet: Boolean = false,
+        val isFabExpanded: Boolean = false,
+        val selectedItem: ContainerItem? = null,
+        val containerAccess: ResourceAccess = ResourceAccess.FULL,
+        val sortField: SortField = SortField.NAME,
+        val sortDirection: SortDirection = SortDirection.ASCENDING,
+        val viewMode: ViewMode = ViewMode.LIST,
+    )
+
     private val containerUrl: String? = savedStateHandle.get<String>("containerUrl")
+
+    private val shared: Boolean = savedStateHandle.get<Boolean>("shared") ?: false
+
+    val isShared: Boolean get() = shared
+
+    val sharedOwnerWebId: String? = savedStateHandle.get<String>("ownerWebId")
 
     @Volatile
     private var resolvedContainerUrl: String? = null
@@ -67,69 +99,37 @@ class ContainerViewModel @Inject constructor(
     private val _uiState = MutableStateFlow<UiState>(UiState.Loading)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
 
-    private val _isRefreshing = MutableStateFlow(false)
-    val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
-
-    private val _isDownloading = MutableStateFlow(false)
-    val isDownloading: StateFlow<Boolean> = _isDownloading.asStateFlow()
+    private val _screenState = MutableStateFlow(
+        ScreenState(containerAccess = if (shared) ResourceAccess.READ_ONLY else ResourceAccess.FULL)
+    )
+    val screenState: StateFlow<ScreenState> = _screenState.asStateFlow()
 
     private val _fileOpenEvent = MutableSharedFlow<FileOpenEvent>()
     val fileOpenEvent: SharedFlow<FileOpenEvent> = _fileOpenEvent.asSharedFlow()
 
-    private val _selectedItem = MutableStateFlow<ContainerItem?>(null)
-    val selectedItem: StateFlow<ContainerItem?> = _selectedItem.asStateFlow()
-
-    private val _showResourceActionsSheet = MutableStateFlow(false)
-    val showResourceActionsSheet: StateFlow<Boolean> = _showResourceActionsSheet.asStateFlow()
-
-    private val _isFabExpanded = MutableStateFlow(false)
-    val isFabExpanded: StateFlow<Boolean> = _isFabExpanded.asStateFlow()
-
-    private val _showAddResourceSheet = MutableStateFlow(false)
-    val showAddResourceSheet: StateFlow<Boolean> = _showAddResourceSheet.asStateFlow()
-
-    private val _isCreatingFolder = MutableStateFlow(false)
-    val isCreatingFolder: StateFlow<Boolean> = _isCreatingFolder.asStateFlow()
-
     private val _folderCreationError = MutableSharedFlow<String>()
     val folderCreationError: SharedFlow<String> = _folderCreationError.asSharedFlow()
-
-    private val _isDeletingResource = MutableStateFlow(false)
-    val isDeletingResource: StateFlow<Boolean> = _isDeletingResource.asStateFlow()
 
     private val _resourceDeletionError = MutableSharedFlow<String>()
     val resourceDeletion: SharedFlow<String> = _resourceDeletionError.asSharedFlow()
 
     private var rawItems: List<ContainerItem> = emptyList()
 
-    private val _sortField = MutableStateFlow(SortField.NAME)
-    val sortField: StateFlow<SortField> = _sortField.asStateFlow()
-
-    private val _sortDirection = MutableStateFlow(SortDirection.ASCENDING)
-    val sortDirection: StateFlow<SortDirection> = _sortDirection.asStateFlow()
-
-    private val _viewMode = MutableStateFlow(ViewMode.LIST)
-    val viewMode: StateFlow<ViewMode> = _viewMode.asStateFlow()
+    private var loadJob: Job? = null
 
     init {
         viewModelScope.launch {
             authRepository.activeWebIdFlow
                 .filterNotNull()
                 .distinctUntilChanged()
-                .collect {
-                    _activeWebId.value = it
+                .collect { webId ->
+                    val previous = _activeWebId.value
+                    _activeWebId.value = webId
+                    when {
+                        containerUrl == null -> load(reset = previous != null && previous != webId)
+                        previous == null -> load()
+                    }
                 }
-        }
-
-        viewModelScope.launch {
-            if (containerUrl == null) {
-                authRepository.activeWebIdFlow
-                    .filterNotNull()
-                    .distinctUntilChanged()
-                    .collect { load() }
-            } else {
-                load()
-            }
         }
     }
 
@@ -138,12 +138,12 @@ class ContainerViewModel @Inject constructor(
     }
 
     fun onFileClick(item: ContainerItem) {
-        if (item.isContainer || _isDownloading.value) return
+        if (item.isContainer || _screenState.value.isDownloading) return
         viewModelScope.launch {
-            _isDownloading.value = true
+            _screenState.update { it.copy(isDownloading = true) }
             try {
                 val webId = _activeWebId.value ?: run {
-                    _fileOpenEvent.emit(FileOpenEvent.Error("No active user"))
+                    _fileOpenEvent.emit(FileOpenEvent.Error(stringProvider.getString(R.string.error_no_active_user)))
                     return@launch
                 }
                 val downloaded = fileRepository.downloadFile(webId, item.identifier)
@@ -151,30 +151,29 @@ class ContainerViewModel @Inject constructor(
                     FileOpenEvent.OpenFile(File(downloaded.path), downloaded.mimeType)
                 )
             } catch (e: Exception) {
-                _fileOpenEvent.emit(FileOpenEvent.Error(e.message ?: "Failed to open file"))
+                _fileOpenEvent.emit(FileOpenEvent.Error(e.message ?: stringProvider.getString(R.string.error_open_file)))
             } finally {
-                _isDownloading.value = false
+                _screenState.update { it.copy(isDownloading = false) }
             }
         }
     }
 
     fun onMoreOptionsClick(item: ContainerItem) {
         dismissAddResourceSheet()
-        _selectedItem.value = item
-        _showResourceActionsSheet.value = true
+        _screenState.update { it.copy(selectedItem = item, showResourceActionsSheet = true) }
     }
 
     fun dismissResourceActionsSheet() {
-        _showResourceActionsSheet.value = false
+        _screenState.update { it.copy(showResourceActionsSheet = false) }
     }
 
     fun onDownloadClick() {
-        val item = _selectedItem.value ?: return
+        val item = _screenState.value.selectedItem ?: return
         dismissResourceActionsSheet()
         viewModelScope.launch {
             val webId = _activeWebId.value ?: return@launch
             val fileName = item.name
-            val mimeType = item.mimeType ?: OCTET_STREAM
+            val mimeType = item.mimeType ?: MIME_TYPE_OCTET_STREAM
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
                 .setInputData(
                     workDataOf(
@@ -190,19 +189,22 @@ class ContainerViewModel @Inject constructor(
     }
 
     fun onOpenWithClick() {
-        val item = _selectedItem.value ?: return
+        val item = _screenState.value.selectedItem ?: return
         dismissResourceActionsSheet()
         onFileClick(item)
     }
 
     fun toggleFab() {
-        _isFabExpanded.value = !_isFabExpanded.value
-        _showAddResourceSheet.value = !_showAddResourceSheet.value
+        _screenState.update {
+            it.copy(
+                isFabExpanded = !it.isFabExpanded,
+                showAddResourceSheet = !it.showAddResourceSheet,
+            )
+        }
     }
 
     fun dismissAddResourceSheet() {
-        _isFabExpanded.value = false
-        _showAddResourceSheet.value = false
+        _screenState.update { it.copy(isFabExpanded = false, showAddResourceSheet = false) }
     }
 
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
@@ -240,53 +242,67 @@ class ContainerViewModel @Inject constructor(
         pendingCaptureUri = null
     }
 
-    private fun load() {
-        if (_isRefreshing.value) return
+    private fun load(reset: Boolean = false) {
+        loadJob?.cancel()
 
-        val alreadyHasContent = _uiState.value is UiState.Success
-        if (alreadyHasContent) {
-            _isRefreshing.value = true
-        } else {
+        if (reset) {
+            resolvedContainerUrl = null
+            rawItems = emptyList()
+            _screenState.update { it.copy(isRefreshing = false) }
             _uiState.value = UiState.Loading
+        } else {
+            val alreadyHasContent = _uiState.value is UiState.Success
+            if (alreadyHasContent) {
+                _screenState.update { it.copy(isRefreshing = true) }
+            } else {
+                _uiState.value = UiState.Loading
+            }
         }
 
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             try {
                 val webId = _activeWebId.value ?: run {
-                    _uiState.value = UiState.Error("No active user")
+                    _uiState.value = UiState.Error(stringProvider.getString(R.string.error_no_active_user))
                     return@launch
                 }
                 val url = containerUrl ?: run {
-                    val profile = authRepository.getProfile(webId)
-                    profile.webId?.getStorages()?.firstOrNull()?.toString() ?: run {
-                        _uiState.value = UiState.Error("No storage found")
+                    authRepository.getStorages(webId).firstOrNull() ?: run {
+                        _uiState.value = UiState.Error(stringProvider.getString(R.string.error_no_storage))
                         return@launch
                     }
                 }
                 resolvedContainerUrl = url
-                val items = fileRepository.getContainerContents(webId, url)
+                if (shared) {
+                    val access = runCatching { fileRepository.probeAccess(webId, url) }
+                        .getOrDefault(ResourceAccess.READ_ONLY)
+                    _screenState.update { it.copy(containerAccess = access) }
+                }
+                val items =
+                    fileRepository.getContainerContents(webId, url, includeItemAccess = shared)
                 rawItems = items
                 applySort()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: "Unknown error")
+                _uiState.value = UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
             } finally {
-                _isRefreshing.value = false
+                if (isActive) _screenState.update { it.copy(isRefreshing = false) }
             }
         }
     }
 
     fun createNewFolder(folderName: String) {
         viewModelScope.launch {
-            _isCreatingFolder.value = true
+            _screenState.update { it.copy(isCreatingFolder = true) }
             try {
                 val webId = _activeWebId.value ?: return@launch
                 val containerUrl = resolvedContainerUrl ?: return@launch
                 fileRepository.createFolder(webId, containerUrl, folderName)
                 load()
             } catch (e: Exception) {
-                _folderCreationError.emit(e.message ?: "Failed to create folder")
+                _folderCreationError.emit(e.message ?: stringProvider.getString(R.string.error_create_folder))
             } finally {
-                _isCreatingFolder.value = false
+                _screenState.update { it.copy(isCreatingFolder = false) }
             }
         }
     }
@@ -304,18 +320,23 @@ class ContainerViewModel @Inject constructor(
     }
 
     fun setSortField(field: SortField) {
-        if (_sortField.value == field) {
-            _sortDirection.value = if (_sortDirection.value == SortDirection.ASCENDING)
-                SortDirection.DESCENDING else SortDirection.ASCENDING
-        } else {
-            _sortField.value = field
-            _sortDirection.value = SortDirection.ASCENDING
+        _screenState.update { current ->
+            if (current.sortField == field) {
+                current.copy(
+                    sortDirection = if (current.sortDirection == SortDirection.ASCENDING)
+                        SortDirection.DESCENDING else SortDirection.ASCENDING,
+                )
+            } else {
+                current.copy(sortField = field, sortDirection = SortDirection.ASCENDING)
+            }
         }
         applySort()
     }
 
     fun toggleViewMode() {
-        _viewMode.value = if (_viewMode.value == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST
+        _screenState.update {
+            it.copy(viewMode = if (it.viewMode == ViewMode.LIST) ViewMode.GRID else ViewMode.LIST)
+        }
     }
 
     private fun applySort() {
@@ -323,33 +344,34 @@ class ContainerViewModel @Inject constructor(
     }
 
     private fun sortedItems(items: List<ContainerItem>): List<ContainerItem> {
-        val fieldComparator: Comparator<ContainerItem> = when (_sortField.value) {
+        val state = _screenState.value
+        val fieldComparator: Comparator<ContainerItem> = when (state.sortField) {
             SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
             SortField.LAST_MODIFIED -> compareBy(nullsLast(naturalOrder())) { it.lastModified }
             SortField.SIZE -> compareBy(nullsLast(naturalOrder())) { it.sizeBytes }
         }
-        val directed = if (_sortDirection.value == SortDirection.DESCENDING)
+        val directed = if (state.sortDirection == SortDirection.DESCENDING)
             fieldComparator.reversed() else fieldComparator
         return items.sortedWith(compareByDescending<ContainerItem> { it.isContainer }.then(directed))
     }
 
     fun deleteResource() {
         viewModelScope.launch {
-            val selectedItem = _selectedItem.value ?: return@launch
-            _isDeletingResource.value = true
+            val selectedItem = _screenState.value.selectedItem ?: return@launch
+            _screenState.update { it.copy(isDeletingResource = true) }
             dismissResourceActionsSheet()
             try {
                 val webId = _activeWebId.value ?: return@launch
                 fileRepository.deleteResource(
                     webId,
                     selectedItem.identifier,
-                    selectedItem.isContainer
+                    selectedItem.isContainer,
                 )
                 load()
             } catch (e: Exception) {
-                _resourceDeletionError.emit(e.message ?: "Failed to delete resource")
+                _resourceDeletionError.emit(e.message ?: stringProvider.getString(R.string.error_delete_resource))
             } finally {
-                _isDeletingResource.value = false
+                _screenState.update { it.copy(isDeletingResource = false) }
             }
         }
     }

@@ -3,25 +3,21 @@ package com.erfangholami.solidshare.presentation.container
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -29,33 +25,16 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ViewList
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.GridView
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.SwapVert
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -68,22 +47,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.presentation.isScrollingUp
+import com.erfangholami.solidshare.presentation.sharing.ShareLinkPanel
+import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.util.MIME_TYPE_IMAGE
 import com.erfangholami.solidshare.util.MIME_TYPE_VIDEO
 import com.erfangholami.solidshare.util.createMediaName
 import com.erfangholami.solidshare.util.createMediaUri
 import com.erfangholami.solidshare.util.createTakenImageName
 import com.erfangholami.solidshare.util.createTakenVideoName
-import com.erfangholami.solidshare.util.getPikedFileName
+import com.erfangholami.solidshare.util.getPickedFileName
 import com.erfangholami.solidshare.util.getVisualMediaType
 import kotlinx.coroutines.launch
 
@@ -92,28 +71,36 @@ import kotlinx.coroutines.launch
 fun Container(
     modifier: Modifier,
     viewModel: ContainerViewModel,
+    shareViewModel: com.erfangholami.solidshare.presentation.main.ShareViewModel,
     onContainerClick: (String) -> Unit,
+    onResourceInfo: (ContainerItem) -> Unit,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
-    val isDownloading by viewModel.isDownloading.collectAsStateWithLifecycle()
-    val isCreatingFolder by viewModel.isCreatingFolder.collectAsStateWithLifecycle()
-    val isDeletingResource by viewModel.isDeletingResource.collectAsStateWithLifecycle()
-    val showResourceActionsSheet by viewModel.showResourceActionsSheet.collectAsStateWithLifecycle()
-    val selectedItem by viewModel.selectedItem.collectAsStateWithLifecycle()
-    val isFabExpanded by viewModel.isFabExpanded.collectAsStateWithLifecycle()
-    val showMediaSheet by viewModel.showAddResourceSheet.collectAsStateWithLifecycle()
-    val sortField by viewModel.sortField.collectAsStateWithLifecycle()
-    val sortDirection by viewModel.sortDirection.collectAsStateWithLifecycle()
-    val viewMode by viewModel.viewMode.collectAsStateWithLifecycle()
+    val screen by viewModel.screenState.collectAsStateWithLifecycle()
+    val isRefreshing = screen.isRefreshing
+    val isDownloading = screen.isDownloading
+    val isCreatingFolder = screen.isCreatingFolder
+    val isDeletingResource = screen.isDeletingResource
+    val showResourceActionsSheet = screen.showResourceActionsSheet
+    val selectedItem = screen.selectedItem
+    val containerAccess = screen.containerAccess
+    val isFabExpanded = screen.isFabExpanded
+    val showMediaSheet = screen.showAddResourceSheet
+    val sortField = screen.sortField
+    val sortDirection = screen.sortDirection
+    val viewMode = screen.viewMode
 
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val cameraPermissionMessage = stringResource(R.string.camera_permission_needed_capture)
+    val openWithChooser = stringResource(R.string.open_with_chooser)
+    val noAppMsg = stringResource(R.string.no_app_to_open)
 
     var showCreateNewFolderDialog by rememberSaveable { mutableStateOf(false) }
     var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
-    var pendingCameraAction by rememberSaveable { mutableStateOf<CameraAction?>(null) }
+    var shareItemUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var reshareLinkItem by rememberSaveable { mutableStateOf<String?>(null) }
 
     val containerListState = rememberLazyListState()
     val containerGridState = rememberLazyGridState()
@@ -144,27 +131,31 @@ fun Container(
         )
     }
 
+    var pendingCameraCapture by remember { mutableStateOf<(() -> Unit)?>(null) }
     val cameraPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
+        val capture = pendingCameraCapture
+        pendingCameraCapture = null
         if (granted) {
-            when (pendingCameraAction) {
-                CameraAction.PHOTO -> {
-                    val uri = createMediaUri(context, isVideo = false)
-                    viewModel.pendingCaptureUri = uri
-                    takePhotoLauncher.launch(uri)
-                }
-
-                CameraAction.VIDEO -> {
-                    val uri = createMediaUri(context, isVideo = true)
-                    viewModel.pendingCaptureUri = uri
-                    recordVideoLauncher.launch(uri)
-                }
-
-                else -> {}
+            capture?.invoke()
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar(
+                    cameraPermissionMessage,
+                )
             }
         }
-        pendingCameraAction = null
+    }
+    val withCameraPermission: (() -> Unit) -> Unit = { capture ->
+        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
+            == PackageManager.PERMISSION_GRANTED
+        ) {
+            capture()
+        } else {
+            pendingCameraCapture = capture
+            cameraPermLauncher.launch(Manifest.permission.CAMERA)
+        }
     }
 
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -183,7 +174,7 @@ fun Container(
     ) { uri ->
         if (uri != null) {
             val mimeType = getVisualMediaType(context, uri)
-            val name = getPikedFileName(context, uri)
+            val name = getPickedFileName(context, uri)
             viewModel.startUpload(uri, name, mimeType)
         }
     }
@@ -217,10 +208,10 @@ fun Container(
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     try {
-                        context.startActivity(Intent.createChooser(intent, "Open with..."))
+                        context.startActivity(Intent.createChooser(intent, openWithChooser))
                     } catch (_: ActivityNotFoundException) {
                         scope.launch {
-                            snackbarHostState.showSnackbar("No app available to open this file type")
+                            snackbarHostState.showSnackbar(noAppMsg)
                         }
                     }
                 }
@@ -398,7 +389,7 @@ fun Container(
         }
 
         ContainerFab(
-            isVisible = isFabVisible,
+            isVisible = isFabVisible && containerAccess.canAddTo,
             isExpanded = isFabExpanded,
             onToggle = { viewModel.toggleFab() },
             modifier = Modifier
@@ -419,13 +410,26 @@ fun Container(
             FileActionsBottomSheet(
                 item = selectedItem!!,
                 onDismiss = { viewModel.dismissResourceActionsSheet() },
-                onShare = {},
+                onInfo = {
+                    val current = selectedItem
+                    viewModel.dismissResourceActionsSheet()
+                    if (current != null) onResourceInfo(current)
+                },
+                onShare = {
+                    val uri = selectedItem?.identifier
+                    viewModel.dismissResourceActionsSheet()
+                    if (uri != null) {
+                        if (viewModel.isShared) reshareLinkItem = uri else shareItemUri = uri
+                    }
+                },
                 onDownload = { viewModel.onDownloadClick() },
                 onOpenWith = { viewModel.onOpenWithClick() },
                 onDelete = {
                     viewModel.dismissResourceActionsSheet()
                     showDeleteResourceDialog = true
-                }
+                },
+                showShare = selectedItem?.access?.canShareOnward == true,
+                showDelete = containerAccess.canModify,
             )
         }
 
@@ -438,13 +442,19 @@ fun Container(
                 },
                 onTakePhoto = {
                     viewModel.dismissAddResourceSheet()
-                    pendingCameraAction = CameraAction.PHOTO
-                    cameraPermLauncher.launch(Manifest.permission.CAMERA)
+                    withCameraPermission {
+                        val uri = createMediaUri(context, isVideo = false)
+                        viewModel.pendingCaptureUri = uri
+                        takePhotoLauncher.launch(uri)
+                    }
                 },
                 onRecordVideo = {
                     viewModel.dismissAddResourceSheet()
-                    pendingCameraAction = CameraAction.VIDEO
-                    cameraPermLauncher.launch(Manifest.permission.CAMERA)
+                    withCameraPermission {
+                        val uri = createMediaUri(context, isVideo = true)
+                        viewModel.pendingCaptureUri = uri
+                        recordVideoLauncher.launch(uri)
+                    }
                 },
                 onChooseFromGallery = {
                     viewModel.dismissAddResourceSheet()
@@ -478,277 +488,30 @@ fun Container(
             )
         }
     }
-}
 
-@Composable
-private fun ContainerSortBar(
-    sortField: SortField,
-    sortDirection: SortDirection,
-    viewMode: ViewMode,
-    onSortFieldClick: (SortField) -> Unit,
-    onViewModeToggle: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    var dropdownExpanded by remember { mutableStateOf(false) }
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 4.dp, end = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box {
-            TextButton(onClick = { dropdownExpanded = true }) {
-                Icon(
-                    imageVector = Icons.Filled.SwapVert,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = stringResource(sortField.labelRes()),
-                    style = MaterialTheme.typography.labelLarge,
-                )
-                Icon(
-                    imageVector = if (sortDirection == SortDirection.ASCENDING)
-                        Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .padding(start = 2.dp)
-                        .size(14.dp),
-                )
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            DropdownMenu(
-                expanded = dropdownExpanded,
-                onDismissRequest = { dropdownExpanded = false },
-            ) {
-                SortField.entries.forEach { field ->
-                    val isSelected = field == sortField
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = stringResource(field.labelRes()),
-                                color = if (isSelected) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.onSurface,
-                            )
-                        },
-                        leadingIcon = if (isSelected) {
-                            {
-                                Icon(
-                                    imageVector = if (sortDirection == SortDirection.ASCENDING)
-                                        Icons.Filled.ArrowUpward else Icons.Filled.ArrowDownward,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            }
-                        } else null,
-                        onClick = {
-                            dropdownExpanded = false
-                            onSortFieldClick(field)
-                        },
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.weight(1f))
-
-        IconButton(onClick = onViewModeToggle) {
-            Icon(
-                imageVector = if (viewMode == ViewMode.LIST) Icons.Filled.GridView else Icons.AutoMirrored.Filled.ViewList,
-                contentDescription = stringResource(
-                    if (viewMode == ViewMode.LIST) R.string.grid_view else R.string.list_view
-                ),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+    shareItemUri?.let { uri ->
+        com.erfangholami.solidshare.presentation.sharing.CreateShareSheet(
+            initialResourceUri = uri,
+            onDismiss = { shareItemUri = null },
+            submit = { resourceUri, mode, receiver ->
+                shareViewModel.createShareSuspend(resourceUri, mode, receiver)
+            },
+            deepLinkFor = shareViewModel::deepLinkFor,
+        )
     }
-}
 
-@Composable
-private fun ContainerItemRow(
-    item: ContainerItem,
-    onClick: () -> Unit,
-    onMoreOptions: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(48.dp)
-                .background(item.resourceType.tint.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
-            contentAlignment = Alignment.Center,
+    reshareLinkItem?.let { uri ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { reshareLinkItem = null },
+            sheetState = sheetState,
         ) {
-            Icon(
-                imageVector = item.resourceType.icon,
-                contentDescription = null,
-                modifier = Modifier.size(26.dp),
-                tint = item.resourceType.tint,
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.name,
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = item.getItemSubtitle(),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-            )
-        }
-        IconButton(onClick = onMoreOptions) {
-            Icon(
-                imageVector = Icons.Filled.MoreVert,
-                contentDescription = stringResource(R.string.more_options),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            ShareLinkPanel(
+                title = displayNameForUri(uri),
+                deepLink = shareViewModel.reshareLinkFor(uri, viewModel.sharedOwnerWebId),
+                bareUrl = shareViewModel.bareUrlFor(uri),
+                onClose = { reshareLinkItem = null },
             )
         }
     }
 }
-
-@Composable
-private fun ContainerItemCard(
-    item: ContainerItem,
-    onClick: () -> Unit,
-    onMoreOptions: () -> Unit,
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-    ) {
-        Column {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(96.dp)
-                    .background(item.resourceType.tint.copy(alpha = 0.12f)),
-            ) {
-                Icon(
-                    imageVector = item.resourceType.icon,
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(48.dp)
-                        .align(Alignment.Center),
-                    tint = item.resourceType.tint,
-                )
-                IconButton(
-                    onClick = onMoreOptions,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .size(36.dp),
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.MoreVert,
-                        contentDescription = stringResource(R.string.more_options),
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Column(
-                modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
-            ) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = item.getItemSubtitle(),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.FolderOpen,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.this_folder_is_empty),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.this_folder_is_empty_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-        )
-    }
-}
-
-@Composable
-private fun ErrorState(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Warning,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = MaterialTheme.colorScheme.error,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onRetry) {
-            Text(stringResource(R.string.retry))
-        }
-    }
-}
-
-private enum class CameraAction { PHOTO, VIDEO }

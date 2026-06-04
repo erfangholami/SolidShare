@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,10 +37,13 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 fun FileActionsBottomSheet(
     item: ContainerItem,
     onDismiss: () -> Unit,
+    onInfo: () -> Unit,
     onShare: () -> Unit,
     onDownload: () -> Unit,
     onOpenWith: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    showShare: Boolean = true,
+    showDelete: Boolean = true,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismiss,
@@ -59,11 +63,18 @@ fun FileActionsBottomSheet(
             Spacer(Modifier.height(8.dp))
 
             ActionRow(
-                icon = Icons.Filled.Share,
-                label = stringResource(R.string.share),
-                enabled = false,
-                onClick = onShare,
+                icon = Icons.Outlined.Info,
+                label = stringResource(R.string.info),
+                onClick = onInfo,
             )
+
+            if (showShare) {
+                ActionRow(
+                    icon = Icons.Filled.Share,
+                    label = stringResource(R.string.share),
+                    onClick = onShare,
+                )
+            }
 
             if (!item.isContainer) {
                 ActionRow(
@@ -79,14 +90,16 @@ fun FileActionsBottomSheet(
                 )
             }
 
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            if (showDelete) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 
-            ActionRow(
-                icon = Icons.Filled.Delete,
-                label = stringResource(R.string.delete),
-                tint = MaterialTheme.colorScheme.error,
-                onClick = onDelete,
-            )
+                ActionRow(
+                    icon = Icons.Filled.Delete,
+                    label = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.error,
+                    onClick = onDelete,
+                )
+            }
         }
     }
 }
