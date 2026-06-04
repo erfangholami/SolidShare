@@ -8,17 +8,25 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.core.app.NotificationCompat
+import com.erfangholami.solidshare.presentation.MainActivity
 
 object NotificationHelper {
 
     private const val NOTIFICATION_CHANNEL_ID = "channel_file_transfer"
     private const val NOTIFICATION_CHANNEL_NAME = "File Transfers"
 
+    private const val CHANNEL_SHARING_REQUESTS = "channel_sharing_requests"
+    private const val CHANNEL_SHARING_ACTIVITY = "channel_sharing_activity"
+
     const val NOTIFICATION_ID_DOWNLOAD_PROGRESS = 1001
     const val NOTIFICATION_ID_UPLOAD_PROGRESS = 1002
 
     const val NOTIFICATION_ID_DOWNLOAD_COMPLETE = 1003
     const val NOTIFICATION_ID_UPLOAD_COMPLETE = 1004
+
+    const val NOTIFICATION_ID_SHARING = 2001
+
+    private const val SHARING_CONTENT_REQUEST_CODE = 2100
 
     fun createChannels(context: Context) {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -31,6 +39,53 @@ object NotificationHelper {
             setShowBadge(false)
         }
         manager.createNotificationChannel(channel)
+
+        val requestsChannel = NotificationChannel(
+            CHANNEL_SHARING_REQUESTS,
+            "Share requests",
+            NotificationManager.IMPORTANCE_HIGH,
+        ).apply {
+            description = "Someone is asking to access your data"
+        }
+        manager.createNotificationChannel(requestsChannel)
+
+        val activityChannel = NotificationChannel(
+            CHANNEL_SHARING_ACTIVITY,
+            "Sharing activity",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "Updates about resources shared with you"
+        }
+        manager.createNotificationChannel(activityChannel)
+    }
+
+    fun buildSharingNotification(
+        context: Context,
+        title: String,
+        text: String,
+        highPriority: Boolean,
+    ): Notification {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            putExtra(MainActivity.EXTRA_OPEN_NOTIFICATIONS, true)
+        }
+        val pending = PendingIntent.getActivity(
+            context,
+            SHARING_CONTENT_REQUEST_CODE,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val channel = if (highPriority) CHANNEL_SHARING_REQUESTS else CHANNEL_SHARING_ACTIVITY
+        return NotificationCompat.Builder(context, channel)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setAutoCancel(true)
+            .setContentIntent(pending)
+            .setPriority(
+                if (highPriority) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT,
+            )
+            .build()
     }
 
     fun buildProgressNotification(

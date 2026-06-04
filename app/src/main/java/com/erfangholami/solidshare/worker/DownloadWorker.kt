@@ -9,9 +9,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.ForegroundInfo
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import com.erfangholami.androidsolidservices.shared.http.HTTPAcceptType.OCTET_STREAM
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
-import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 
