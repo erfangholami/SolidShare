@@ -1,8 +1,12 @@
 package com.erfangholami.solidshare.presentation.main
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -14,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -31,13 +36,13 @@ fun MainPage(
 ) {
 
     val nestedNavController = rememberNavController()
+    val shareViewModel = hiltViewModel<ShareViewModel>()
 
     val onBackClicked: () -> Unit = {
         if (nestedNavController.graph.findStartDestination().id == nestedNavController.currentDestination?.id) {
             if (parentNavController.previousBackStackEntry != null) {
                 parentNavController.popBackStack()
             } else {
-                //Exit the app
             }
         } else {
             nestedNavController.popBackStack()
@@ -46,10 +51,8 @@ fun MainPage(
 
     val bottomItems = remember {
         listOf(
-            /*MainNavItem.MainNavBottomItem.HomeItem,
-            MainNavItem.MainNavBottomItem.ShareItem,*/
             MainNavItem.MainNavBottomItem.DirectoryItem,
-            MainNavItem.MainNavBottomItem.ProfileItem,
+            MainNavItem.MainNavBottomItem.ShareItem,
         )
     }
 
@@ -72,7 +75,10 @@ fun MainPage(
         modifier = Modifier
             .fillMaxSize(),
         bottomBar = {
-            NavigationBar {
+            val bottomInset = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+            NavigationBar(
+                modifier = Modifier.height(64.dp + bottomInset),
+            ) {
                 val navBackStackEntry by nestedNavController.currentBackStackEntryAsState()
                 val currentDestination = navBackStackEntry?.destination
                 bottomItems.forEach { screen ->
@@ -92,14 +98,14 @@ fun MainPage(
             navController = nestedNavController,
             startDestination = MainNavItem.Directory,
             modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPaddings),
+                .padding(innerPaddings)
+                .fillMaxSize(),
         ) {
             composable<MainNavItem.Directory> {
-                Files(parentNavController, hiltViewModel<FilesViewModel>())
+                Files(parentNavController, hiltViewModel<FilesViewModel>(), shareViewModel)
             }
-            composable<MainNavItem.Profile> {
-                Profile(parentNavController, hiltViewModel<ProfileViewModel>())
+            composable<MainNavItem.Share> {
+                Share(parentNavController, shareViewModel)
             }
         }
     }
