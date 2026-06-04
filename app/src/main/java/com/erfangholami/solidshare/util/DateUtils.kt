@@ -6,6 +6,6 @@ import java.util.Locale
 
 private const val MEDIA_NAME_TIMESTAMP_FORMAT = "yyyyMMdd_HHmmss"
 
-fun getDateFormated(): String {
+fun getDateFormatted(): String {
     return SimpleDateFormat(MEDIA_NAME_TIMESTAMP_FORMAT, Locale.getDefault()).format(Date())
 }

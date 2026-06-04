@@ -6,10 +6,10 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
-import com.pondersource.shared.domain.network.HTTPAcceptType.OCTET_STREAM
 
 const val MIME_TYPE_VIDEO = "video/mp4"
 const val MIME_TYPE_IMAGE = "image/jpeg"
+const val MIME_TYPE_OCTET_STREAM = "application/octet-stream"
 
 fun createMediaUri(context: Context, isVideo: Boolean): Uri {
     return if (isVideo) {
@@ -30,22 +30,22 @@ fun createMediaUri(context: Context, isVideo: Boolean): Uri {
 }
 
 fun createTakenVideoName(): String {
-    val timestamp = getDateFormated()
+    val timestamp = getDateFormatted()
     return "video_$timestamp.mp4"
 }
 
 fun createTakenImageName(): String {
-    val timestamp = getDateFormated()
+    val timestamp = getDateFormatted()
     return "photo_$timestamp.jpg"
 }
 
 fun createMediaName(extension: String?): String {
-    val timestamp = getDateFormated()
+    val timestamp = getDateFormatted()
     return if (!extension.isNullOrEmpty()) "media_$timestamp.$extension" else "media_$timestamp"
 }
 
-fun getPikedFileName(context: Context, uri: Uri): String {
-    val timestamp = getDateFormated()
+fun getPickedFileName(context: Context, uri: Uri): String {
+    val timestamp = getDateFormatted()
     return context.contentResolver
         .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
         ?.use { c -> if (c.moveToFirst()) c.getString(0) else null }
@@ -57,5 +57,5 @@ fun getPikedFileName(context: Context, uri: Uri): String {
 }
 
 fun getVisualMediaType(context: Context, uri: Uri): String {
-    return context.contentResolver.getType(uri) ?: OCTET_STREAM
+    return context.contentResolver.getType(uri) ?: MIME_TYPE_OCTET_STREAM
 }
