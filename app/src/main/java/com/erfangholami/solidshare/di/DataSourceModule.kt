@@ -11,15 +11,15 @@ import dagger.hilt.components.SingletonComponent
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class DataSourceModule {
+interface DataSourceModule {
 
     @Binds
-    abstract fun bindSettingsLocalDataStore(
+    fun bindSettingsLocalDataStore(
         implementation: SettingsLocalDataStoreImplementation,
     ): SettingsLocalDataStore
 
     @Binds
-    abstract fun bindAuthLocalDataStore(
+    fun bindAuthLocalDataStore(
         implementation: AuthLocalDataStoreImplementation,
     ): AuthLocalDataStore
 }

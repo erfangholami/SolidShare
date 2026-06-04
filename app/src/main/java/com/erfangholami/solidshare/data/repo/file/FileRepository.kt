@@ -3,18 +3,25 @@ package com.erfangholami.solidshare.data.repo.file
 import android.net.Uri
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
+import com.erfangholami.solidshare.domain.model.ResourceAccess
 import java.io.InputStream
 
 interface FileRepository {
     suspend fun getContainerContents(
         webId: String,
-        containerUrl: String
+        containerUrl: String,
+        includeItemAccess: Boolean = false,
     ): List<ContainerItem>
 
     suspend fun downloadFile(
         webId: String,
         fileUrl: String
     ): DownloadedFile
+
+    suspend fun probeAccess(
+        webId: String,
+        resourceUri: String,
+    ): ResourceAccess
 
     suspend fun downloadToDevice(
         webId: String,

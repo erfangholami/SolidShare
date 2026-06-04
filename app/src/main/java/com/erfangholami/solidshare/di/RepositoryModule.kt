@@ -4,8 +4,14 @@ import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.auth.AuthRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepositoryImplementation
+import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
+import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepositoryImplementation
+import com.erfangholami.solidshare.data.repo.profile.PublicProfileRepository
+import com.erfangholami.solidshare.data.repo.profile.PublicProfileRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepositoryImplementation
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepositoryImplementation
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -14,23 +20,41 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-abstract class RepositoryModule {
+interface RepositoryModule {
 
     @Binds
     @Singleton
-    abstract fun bindAuthRepository(
+    fun bindAuthRepository(
         implementation: AuthRepositoryImplementation,
     ): AuthRepository
 
     @Binds
     @Singleton
-    abstract fun bindSettingsRepository(
+    fun bindSettingsRepository(
         implementation: SettingsRepositoryImplementation,
     ): SettingsRepository
 
     @Binds
     @Singleton
-    abstract fun bindFileRepository(
+    fun bindFileRepository(
         implementation: FileRepositoryImplementation,
     ): FileRepository
+
+    @Binds
+    @Singleton
+    fun bindSharingRepository(
+        implementation: SharingRepositoryImplementation,
+    ): SharingRepository
+
+    @Binds
+    @Singleton
+    fun bindNotificationsRepository(
+        implementation: NotificationsRepositoryImplementation,
+    ): NotificationsRepository
+
+    @Binds
+    @Singleton
+    fun bindPublicProfileRepository(
+        implementation: PublicProfileRepositoryImplementation,
+    ): PublicProfileRepository
 }

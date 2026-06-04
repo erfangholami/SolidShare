@@ -2,7 +2,6 @@ package com.erfangholami.solidshare.di
 
 import android.content.Context
 import androidx.work.WorkManager
-import com.erfangholami.androidsolidservices.api.auth.Authenticator
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -12,13 +11,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-class ApplicationModule {
-
-    @Provides
-    @Singleton
-    fun provideAuthenticator(
-        @ApplicationContext context: Context,
-    ): Authenticator = Authenticator.getInstance(context)
+object ApplicationModule {
 
     @Provides
     @Singleton

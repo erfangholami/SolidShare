@@ -22,12 +22,10 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-class LocalModule {
+object LocalModule {
 
-    companion object {
-        private const val PREFERENCES_NAME = "com.erfangholami.solidshare.preferences"
-        private const val LOGGED_OUT_WEBID_NAME = "loggedoutwebids.json"
-    }
+    private const val PREFERENCES_NAME = "com.erfangholami.solidshare.preferences"
+    private const val LOGGED_OUT_WEBID_NAME = "loggedoutwebids.json"
 
     private val Context.preferencesDataStore: DataStore<Preferences> by preferencesDataStore(
         PREFERENCES_NAME

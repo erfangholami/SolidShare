@@ -1,5 +1,16 @@
 package com.erfangholami.solidshare.domain.model
 
+import kotlinx.serialization.Serializable
+import java.net.URLDecoder
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.ln
+import kotlin.math.pow
+
+@Serializable
 data class ContainerItem(
     val identifier: String,
     val isContainer: Boolean,
@@ -10,14 +21,53 @@ data class ContainerItem(
     val resourceTypes: List<String>,
     val sizeBytes: Long?,
     val lastModified: Long?,
+    val etag: String?,
+    val access: ResourceAccess = ResourceAccess.FULL,
 ) {
     fun getItemSubtitle(): String {
         if (isContainer) return "Folder"
-        return when {
+        val type = when {
             mimeType != null -> formatMimeType(mimeType)
             extension != null -> "${extension.uppercase()} File"
             else -> "File"
         }
+        val size = sizeBytes?.let(::formatFileSize)
+        val date = lastModified?.let(::formatLastModified)
+        return listOfNotNull(type, size, date).joinToString(" · ")
+    }
+
+    fun typeLabel(): String = when {
+        isContainer -> "Folder"
+        mimeType != null -> formatMimeType(mimeType)
+        extension != null -> "${extension.uppercase()} File"
+        else -> "File"
+    }
+
+    fun shortTypeLabel(): String = when (resourceType) {
+        ResourceType.FOLDER -> "Folder"
+        ResourceType.IMAGE -> "Image"
+        ResourceType.VIDEO -> "Video"
+        ResourceType.AUDIO -> "Audio"
+        ResourceType.PDF -> "PDF"
+        ResourceType.SPREADSHEET -> "Sheet"
+        ResourceType.PRESENTATION -> "Slides"
+        ResourceType.DOCUMENT -> "Doc"
+        ResourceType.ZIP -> "Archive"
+        ResourceType.CODE -> "Code"
+        ResourceType.OTHERS -> "File"
+    }
+
+    fun sizeLabel(): String? = sizeBytes?.let(::formatFileSize)
+
+    fun modifiedLabel(): String? = lastModified?.let(::formatFullTimestamp)
+
+    fun parentContainerName(): String? {
+        val withoutLast = identifier.trimEnd('/').substringBeforeLast('/', "")
+        if (withoutLast.isBlank()) return null
+        val tail = withoutLast.substringAfterLast('/')
+        val decoded =
+            runCatching { URLDecoder.decode(tail, Charsets.UTF_8.name()) }.getOrDefault(tail)
+        return decoded.ifBlank { null }
     }
 }
 
@@ -65,6 +115,28 @@ fun getResourceType(isContainer: Boolean, mimeType: String?, extension: String?)
         else -> ResourceType.OTHERS
     }
 }
+
+private fun formatFileSize(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val units = arrayOf("KB", "MB", "GB", "TB")
+    val exp = (ln(bytes.toDouble()) / ln(1024.0)).toInt().coerceIn(1, units.size)
+    val value = bytes / 1024.0.pow(exp.toDouble())
+    return String.format(Locale.getDefault(), "%.1f %s", value, units[exp - 1])
+}
+
+private val sameYearFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+private val withYearFormatter = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
+private val fullTimestampFormatter =
+    DateTimeFormatter.ofPattern("MMM d, yyyy, HH:mm", Locale.getDefault())
+
+private fun formatLastModified(epochMillis: Long): String {
+    val date = Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+    val formatter = if (date.year == LocalDate.now().year) sameYearFormatter else withYearFormatter
+    return date.format(formatter)
+}
+
+private fun formatFullTimestamp(epochMillis: Long): String =
+    Instant.ofEpochMilli(epochMillis).atZone(ZoneId.systemDefault()).format(fullTimestampFormatter)
 
 private fun formatMimeType(mime: String): String = when {
     mime.startsWith("image/") -> "${mime.substringAfter("image/").uppercase().take(8)} Image"
