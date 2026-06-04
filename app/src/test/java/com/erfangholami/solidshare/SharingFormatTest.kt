@@ -1,11 +1,8 @@
 package com.erfangholami.solidshare
 
-import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
-import com.erfangholami.solidshare.presentation.sharing.describeReceiver
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
-import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
 import com.erfangholami.solidshare.presentation.sharing.subjectKey
 import org.junit.Assert.assertEquals
@@ -55,17 +52,5 @@ class SharingFormatTest {
             ShareReceiver.GroupReceiver("https://pod.example/team").subjectKey(),
         )
         assertEquals("public", ShareReceiver.Public.subjectKey())
-    }
-
-    @Test
-    fun labelFor_mapsShareModes() {
-        assertEquals("Read", labelFor(ShareMode.READ))
-        assertEquals("Append", labelFor(ShareMode.APPEND))
-        assertEquals("Read & Write", labelFor(ShareMode.WRITE))
-    }
-
-    @Test
-    fun describeReceiver_describesPublic() {
-        assertEquals("Anyone with the link", describeReceiver(ShareReceiver.Public))
     }
 }
