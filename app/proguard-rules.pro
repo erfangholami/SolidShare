@@ -19,8 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
--keep class com.pondersource.solidandroidapi.** { *; }
--keep class com.pondersource.shared.** { *; }
+-keep class com.erfangholami.androidsolidservices.** { *; }
 
 -keep class io.jsonwebtoken.impl.** { *; }
 -keep class io.jsonwebtoken.jackson.** { *; }
