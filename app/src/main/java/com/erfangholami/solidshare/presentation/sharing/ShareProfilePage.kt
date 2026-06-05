@@ -148,7 +148,7 @@ private fun ShareProfileContent(
 
         Spacer(Modifier.height(20.dp))
 
-        QrCard(content = profile.profileDocumentUrl)
+        QrCard(content = profile.webId)
 
         Spacer(Modifier.height(8.dp))
 
@@ -161,14 +161,14 @@ private fun ShareProfileContent(
         Spacer(Modifier.weight(1f))
 
         ActionRow(
-            onShare = { sharePlainText(context, profile.profileDocumentUrl) },
+            onShare = { sharePlainText(context, profile.webId) },
             onCopy = {
-                copyToClipboard(context, profile.profileDocumentUrl)
+                copyToClipboard(context, profile.webId)
                 onMessage(context.getString(R.string.link_copied))
             },
             onDownload = {
                 val saved =
-                    saveQrToGallery(context, profile.profileDocumentUrl, profile.displayName)
+                    saveQrToGallery(context, profile.webId, profile.displayName)
                 onMessage(
                     context.getString(
                         if (saved) R.string.qr_saved_to_gallery else R.string.qr_save_failed,
