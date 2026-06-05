@@ -54,7 +54,7 @@ class NotificationPollingWorker @AssistedInject constructor(
             .filter { it.second.isAfter(threshold) }
         if (fresh.isEmpty()) return
 
-        fresh.forEach { (item, _) -> notify(item) }
+        fresh.forEach { (item, _) -> if (item.kind.isAlertable()) notify(item) }
         settingsRepository.setNotificationsLastNotified(webId, fresh.maxOf { it.second }.toString())
     }
 
@@ -75,12 +75,17 @@ class NotificationPollingWorker @AssistedInject constructor(
         )
     }
 
+    private fun NotificationKind.isAlertable(): Boolean =
+        this != NotificationKind.DECISION_GRANTED && this != NotificationKind.DECISION_REJECTED
+
     private fun titleResFor(kind: NotificationKind): Int = when (kind) {
         NotificationKind.ACCESS_OFFER -> R.string.notifications_offer_title
         NotificationKind.ACCESS_REVOKED -> R.string.notifications_revoked_title
         NotificationKind.REQUEST_REJECTED -> R.string.notifications_rejected_title
         NotificationKind.REQUEST_ACCEPTED -> R.string.notifications_accepted_title
         NotificationKind.ACCESS_REQUEST -> R.string.notifications_request_title
+        NotificationKind.DECISION_GRANTED -> R.string.notifications_decision_granted_title
+        NotificationKind.DECISION_REJECTED -> R.string.notifications_decision_rejected_title
     }
 
     private fun parseInstant(iso: String?): Instant? =

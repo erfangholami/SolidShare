@@ -29,21 +29,31 @@ class NotificationsRepositoryImplementation @Inject constructor(
         return (notifications + requests).sortedWith(FEED_ORDER)
     }
 
-    private fun ShareNotification.toFeedItem(): NotificationItem = NotificationItem(
-        id = notificationUri,
-        kind = when (type) {
+    private fun ShareNotification.toFeedItem(): NotificationItem {
+        val notificationKind = when (type) {
             ShareNotificationType.OFFER -> NotificationKind.ACCESS_OFFER
             ShareNotificationType.ACCEPTED -> NotificationKind.REQUEST_ACCEPTED
             ShareNotificationType.UNDO -> NotificationKind.ACCESS_REVOKED
             ShareNotificationType.REJECT -> NotificationKind.REQUEST_REJECTED
-        },
-        counterpartWebId = ownerWebId,
-        resourceUri = resourceUri,
-        mode = mode,
-        summary = summary,
-        publishedAt = publishedAt,
-        requestUri = null,
-    )
+            ShareNotificationType.DECISION_GRANTED -> NotificationKind.DECISION_GRANTED
+            ShareNotificationType.DECISION_REJECTED -> NotificationKind.DECISION_REJECTED
+        }
+        val counterpart = when (type) {
+            ShareNotificationType.DECISION_GRANTED,
+            ShareNotificationType.DECISION_REJECTED -> targetWebId ?: ownerWebId
+            else -> ownerWebId
+        }
+        return NotificationItem(
+            id = notificationUri,
+            kind = notificationKind,
+            counterpartWebId = counterpart,
+            resourceUri = resourceUri,
+            mode = mode,
+            summary = summary,
+            publishedAt = publishedAt,
+            requestUri = null,
+        )
+    }
 
     private fun ShareRequest.toFeedItem(): NotificationItem = NotificationItem(
         id = requestUri,

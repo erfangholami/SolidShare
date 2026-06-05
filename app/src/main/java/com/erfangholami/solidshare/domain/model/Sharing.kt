@@ -77,6 +77,8 @@ enum class ShareNotificationType {
     UNDO,
     REJECT,
     ACCEPTED,
+    DECISION_GRANTED,
+    DECISION_REJECTED,
 }
 
 data class ShareNotification(
@@ -87,4 +89,5 @@ data class ShareNotification(
     val mode: ShareMode?,
     val summary: String?,
     val publishedAt: String?,
+    val targetWebId: String? = null,
 )

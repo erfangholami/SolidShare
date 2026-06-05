@@ -249,6 +249,8 @@
     <string name="notifications_rejected_title">%1$s declined your access request</string>
     <string name="notifications_accepted_title">%1$s accepted your request</string>
     <string name="notifications_request_title">%1$s requested access</string>
+    <string name="notifications_decision_granted_title">You approved sharing with %1$s</string>
+    <string name="notifications_decision_rejected_title">You declined sharing with %1$s</string>
     <string name="notifications_request_pending">Pending</string>
     <string name="notifications_request_granted">Granted</string>
     <string name="notifications_time_unknown">Time unknown</string>

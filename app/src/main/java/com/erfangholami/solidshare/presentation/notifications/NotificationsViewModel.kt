@@ -133,6 +133,7 @@ class NotificationsViewModel @Inject constructor(
                         request.requestedMode.name.lowercase(),
                     ),
                 )
+                load(webId, isRefresh = true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -153,6 +154,7 @@ class NotificationsViewModel @Inject constructor(
                 removeFromInboxAndState(webId, item.id)
                 _uiState.value =
                     _uiState.value.copy(infoMessage = stringProvider.getString(R.string.notif_request_rejected))
+                load(webId, isRefresh = true)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

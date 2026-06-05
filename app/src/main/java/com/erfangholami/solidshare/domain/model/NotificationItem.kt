@@ -6,6 +6,8 @@ enum class NotificationKind {
     REQUEST_REJECTED,
     REQUEST_ACCEPTED,
     ACCESS_REQUEST,
+    DECISION_GRANTED,
+    DECISION_REJECTED,
 }
 
 data class NotificationItem(

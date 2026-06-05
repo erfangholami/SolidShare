@@ -115,6 +115,8 @@ fun LibShareNotificationType.toDomain(): ShareNotificationType = when (this) {
     LibShareNotificationType.UNDO -> ShareNotificationType.UNDO
     LibShareNotificationType.REJECT -> ShareNotificationType.REJECT
     LibShareNotificationType.ACCEPTED -> ShareNotificationType.ACCEPTED
+    LibShareNotificationType.DECISION_GRANTED -> ShareNotificationType.DECISION_GRANTED
+    LibShareNotificationType.DECISION_REJECTED -> ShareNotificationType.DECISION_REJECTED
 }
 
 fun LibShareNotification.toDomain(): ShareNotification = ShareNotification(
@@ -125,4 +127,5 @@ fun LibShareNotification.toDomain(): ShareNotification = ShareNotification(
     mode = mode?.toDomain(),
     summary = summary,
     publishedAt = publishedAt,
+    targetWebId = targetWebId,
 )

@@ -337,6 +337,15 @@ private fun titleFor(item: NotificationItem): String {
         )
 
         NotificationKind.ACCESS_REQUEST -> stringResource(R.string.notifications_request_title, who)
+        NotificationKind.DECISION_GRANTED -> stringResource(
+            R.string.notifications_decision_granted_title,
+            who,
+        )
+
+        NotificationKind.DECISION_REJECTED -> stringResource(
+            R.string.notifications_decision_rejected_title,
+            who,
+        )
     }
 }
 
