@@ -7,7 +7,9 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.ResourceAccessException
+import com.erfangholami.solidshare.data.repo.notifications.NotificationsBadgeStore
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
+import com.erfangholami.solidshare.data.repo.sharing.ReceivedSharesSignal
 import com.erfangholami.solidshare.data.repo.sharing.SharingError
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.data.repo.sharing.toSharingError
@@ -47,6 +49,8 @@ class ShareViewModel @Inject constructor(
     private val sharingRepository: SharingRepository,
     private val notificationsRepository: NotificationsRepository,
     private val fileRepository: FileRepository,
+    private val badgeStore: NotificationsBadgeStore,
+    private val receivedSharesSignal: ReceivedSharesSignal,
 ) : ViewModel() {
 
     data class UiError(
@@ -133,9 +137,13 @@ class ShareViewModel @Inject constructor(
                     load()
                 }
         }
+        viewModelScope.launch {
+            receivedSharesSignal.changed.collect { reloadReceivedSilently() }
+        }
     }
 
     fun load() {
+        badgeStore.refresh()
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
@@ -159,6 +167,7 @@ class ShareViewModel @Inject constructor(
     }
 
     fun refresh() {
+        badgeStore.refresh()
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
@@ -179,6 +188,18 @@ class ShareViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(isRefreshing = false)
                 fail(e, retry = ::refresh)
             }
+        }
+    }
+
+    private fun reloadReceivedSilently() {
+        viewModelScope.launch {
+            val webId = authRepository.getActiveWebId() ?: return@launch
+            val received = runCatching {
+                sharingRepository.getStoredReceivedShares(webId)
+            }.getOrNull() ?: return@launch
+            if (lastWebId != webId) return@launch
+            _uiState.value = _uiState.value.copy(received = received)
+            refreshReshareable(webId, received)
         }
     }
 

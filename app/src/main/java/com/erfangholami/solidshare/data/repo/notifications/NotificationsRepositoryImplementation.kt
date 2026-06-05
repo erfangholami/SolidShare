@@ -2,6 +2,7 @@ package com.erfangholami.solidshare.data.repo.notifications
 
 import com.erfangholami.androidsolidservices.api.notifications.NotificationsManager
 import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
+import com.erfangholami.solidshare.data.repo.sharing.ReceivedSharesSignal
 import com.erfangholami.solidshare.data.repo.sharing.toDomain
 import com.erfangholami.solidshare.data.repo.sharing.toLib
 import com.erfangholami.solidshare.domain.model.NotificationItem
@@ -15,6 +16,7 @@ import javax.inject.Inject
 
 class NotificationsRepositoryImplementation @Inject constructor(
     private val notificationsManager: NotificationsManager,
+    private val receivedSharesSignal: ReceivedSharesSignal,
 ) : NotificationsRepository {
 
     override suspend fun listNotifications(webId: String): List<ShareNotification> =
@@ -26,6 +28,7 @@ class NotificationsRepositoryImplementation @Inject constructor(
     override suspend fun listFeed(webId: String): List<NotificationItem> {
         val notifications = listNotifications(webId).map { it.toFeedItem() }
         val requests = listRequests(webId).map { it.toFeedItem() }
+        receivedSharesSignal.notifyChanged()
         return (notifications + requests).sortedWith(FEED_ORDER)
     }
 
