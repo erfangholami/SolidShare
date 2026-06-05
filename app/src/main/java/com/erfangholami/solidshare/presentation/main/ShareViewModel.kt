@@ -111,6 +111,9 @@ class ShareViewModel @Inject constructor(
     private val _noAccessShare = MutableStateFlow<NoAccessTarget?>(null)
     val noAccessShare: StateFlow<NoAccessTarget?> = _noAccessShare.asStateFlow()
 
+    private val _ownedResource = MutableStateFlow<String?>(null)
+    val ownedResource: StateFlow<String?> = _ownedResource.asStateFlow()
+
     private var pendingRetry: (suspend () -> Unit)? = null
 
     val activeProfile: StateFlow<PublicProfile?> = authRepository.activeProfileFlow
@@ -251,6 +254,10 @@ class ShareViewModel @Inject constructor(
             val webId = authRepository.getActiveWebId() ?: return@launch
             val parsed = sharingRepository.parseDeepLink(rawUrl)
             val resourceUri = parsed?.resourceUri ?: rawUrl
+            if (authRepository.ownsResource(webId, resourceUri)) {
+                _ownedResource.value = resourceUri
+                return@launch
+            }
             try {
                 val received =
                     sharingRepository.addReceivedShare(webId, resourceUri, parsed?.ownerWebId)
@@ -279,6 +286,10 @@ class ShareViewModel @Inject constructor(
 
     fun dismissNoAccessShare() {
         _noAccessShare.value = null
+    }
+
+    fun dismissOwnedResource() {
+        _ownedResource.value = null
     }
 
     fun removeReceivedShare(share: ReceivedShare) {

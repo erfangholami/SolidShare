@@ -205,6 +205,9 @@
     <string name="ask_for_access">Ask for access</string>
     <string name="request_access">Request access</string>
 
+    <string name="you_are_owner_title">You own this</string>
+    <string name="you_are_owner_body">You\'re the owner of \"%1$s\", so there\'s no need to add it to your received shares.</string>
+    <string name="got_it">Got it</string>
     <!-- Profile -->
     <string name="edit_profile">Edit profile</string>
     <string name="share_digital_card">Share digital card</string>

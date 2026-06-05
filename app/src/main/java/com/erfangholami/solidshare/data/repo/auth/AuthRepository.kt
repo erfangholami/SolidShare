@@ -18,6 +18,7 @@ interface AuthRepository {
 
     fun isUserAuthorized(): Boolean
     fun getStorages(webId: String): List<String>
+    fun ownsResource(webId: String, resourceUri: String): Boolean
 
     suspend fun getActiveWebId(): String?
 

@@ -107,6 +107,7 @@ fun Share(
     val isOpening by viewModel.isOpening.collectAsStateWithLifecycle()
     val lostAccessShare by viewModel.lostAccessShare.collectAsStateWithLifecycle()
     val noAccessShare by viewModel.noAccessShare.collectAsStateWithLifecycle()
+    val ownedResource by viewModel.ownedResource.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
     val openWithChooser = stringResource(R.string.open_with_chooser)
@@ -393,6 +394,13 @@ fun Share(
             ownerWebId = target.ownerWebId,
             onRequestAccess = { viewModel.confirmRequestAccessForNoAccess() },
             onDismiss = { viewModel.dismissNoAccessShare() },
+        )
+    }
+
+    ownedResource?.let { uri ->
+        OwnerDialog(
+            resourceName = displayNameForUri(uri),
+            onDismiss = { viewModel.dismissOwnedResource() },
         )
     }
 
@@ -694,6 +702,21 @@ private fun NoAccessDialog(
             ) { Text(stringResource(R.string.ask_for_access)) }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) } },
+    )
+}
+
+@Composable
+private fun OwnerDialog(
+    resourceName: String,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.you_are_owner_title)) },
+        text = { Text(stringResource(R.string.you_are_owner_body, resourceName)) },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.got_it)) }
+        },
     )
 }
 

@@ -43,6 +43,12 @@ class AuthRepositoryImplementation @Inject constructor(
     override fun getStorages(webId: String): List<String> =
         authenticator.getProfile(webId).webId?.getStorages()?.map { it.toString() } ?: emptyList()
 
+    override fun ownsResource(webId: String, resourceUri: String): Boolean =
+        getStorages(webId).any { storage ->
+            val root = storage.trimEnd('/')
+            resourceUri == root || resourceUri.startsWith("$root/")
+        }
+
     override suspend fun getActiveWebId(): String? = authenticator.getActiveWebId()
 
     override suspend fun createAuthenticationIntent(

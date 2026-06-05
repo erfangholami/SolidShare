@@ -32,6 +32,7 @@ class MainViewModel @Inject constructor(
         val parsed = sharingRepository.parseDeepLink(data.toString()) ?: return
         viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
+            if (authRepository.ownsResource(webId, parsed.resourceUri)) return@launch
             runCatching {
                 sharingRepository.addReceivedShare(webId, parsed.resourceUri, parsed.ownerWebId)
             }
