@@ -13,6 +13,7 @@ import com.erfangholami.solidshare.domain.model.NotificationItem
 import com.erfangholami.solidshare.domain.model.NotificationKind
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareRequest
+import com.erfangholami.solidshare.presentation.sharing.shareModeLabelRes
 import com.erfangholami.solidshare.presentation.sharing.toSharingErrorMessage
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -130,7 +131,7 @@ class NotificationsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     infoMessage = stringProvider.getString(
                         R.string.notif_granted_access,
-                        request.requestedMode.name.lowercase(),
+                        stringProvider.getString(shareModeLabelRes(request.requestedMode)),
                     ),
                 )
                 load(webId, isRefresh = true)

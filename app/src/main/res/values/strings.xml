@@ -119,9 +119,9 @@
     <string name="can_label">Can %1$s</string>
 
     <!-- Share modes -->
-    <string name="share_mode_read">Read</string>
-    <string name="share_mode_append">Append</string>
-    <string name="share_mode_write">Read &amp; Write</string>
+    <string name="share_mode_read">View</string>
+    <string name="share_mode_append">Add</string>
+    <string name="share_mode_write">Edit</string>
 
     <!-- Receivers -->
     <string name="receiver_label">Receiver</string>

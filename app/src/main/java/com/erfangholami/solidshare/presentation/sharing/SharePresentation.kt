@@ -1,6 +1,12 @@
 package com.erfangholami.solidshare.presentation.sharing
 
+import androidx.annotation.StringRes
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.NoteAdd
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ResourceType
@@ -34,12 +40,21 @@ internal fun resourceTypeForUri(resourceUri: String): ResourceType {
     )
 }
 
-@Composable
-internal fun labelFor(mode: ShareMode): String = when (mode) {
-    ShareMode.READ -> stringResource(R.string.share_mode_read)
-    ShareMode.APPEND -> stringResource(R.string.share_mode_append)
-    ShareMode.WRITE -> stringResource(R.string.share_mode_write)
+@StringRes
+internal fun shareModeLabelRes(mode: ShareMode): Int = when (mode) {
+    ShareMode.READ -> R.string.share_mode_read
+    ShareMode.APPEND -> R.string.share_mode_append
+    ShareMode.WRITE -> R.string.share_mode_write
 }
+
+internal fun iconFor(mode: ShareMode): ImageVector = when (mode) {
+    ShareMode.READ -> Icons.Outlined.Visibility
+    ShareMode.APPEND -> Icons.AutoMirrored.Outlined.NoteAdd
+    ShareMode.WRITE -> Icons.Outlined.Edit
+}
+
+@Composable
+internal fun labelFor(mode: ShareMode): String = stringResource(shareModeLabelRes(mode))
 
 @Composable
 internal fun describeReceiver(receiver: ShareReceiver): String = when (receiver) {

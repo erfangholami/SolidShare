@@ -77,6 +77,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.AccountSwitcherCircle
 import com.erfangholami.solidshare.presentation.container.icon
@@ -89,7 +90,9 @@ import com.erfangholami.solidshare.presentation.notifications.TopBarNotification
 import com.erfangholami.solidshare.presentation.sharing.AddReceivedShareDialog
 import com.erfangholami.solidshare.presentation.sharing.ShareLinkPanel
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
+import com.erfangholami.solidshare.presentation.sharing.iconFor
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
+import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
 
@@ -467,17 +470,25 @@ internal fun ResourceTile(resourceUri: String) {
 }
 
 @Composable
-internal fun ModeChip(label: String) {
+internal fun ModeChip(mode: ShareMode) {
     AssistChip(
         onClick = {},
         enabled = false,
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        label = { Text(labelFor(mode), style = MaterialTheme.typography.labelSmall) },
+        leadingIcon = {
+            Icon(
+                imageVector = iconFor(mode),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        },
         colors = AssistChipDefaults.assistChipColors(
             disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             disabledLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            disabledLeadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
         border = null,
-        modifier = Modifier.height(24.dp),
+        modifier = Modifier.height(28.dp),
     )
 }
 

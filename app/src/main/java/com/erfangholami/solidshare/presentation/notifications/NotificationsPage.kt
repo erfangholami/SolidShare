@@ -60,6 +60,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -70,6 +71,7 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.NotificationItem
 import com.erfangholami.solidshare.domain.model.NotificationKind
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
+import com.erfangholami.solidshare.presentation.sharing.iconFor
 import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
 import com.erfangholami.solidshare.presentation.util.initialFor
@@ -242,7 +244,9 @@ private fun NotificationRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        item.mode?.let { mode -> MetaChip(label = labelFor(mode)) }
+                        item.mode?.let { mode ->
+                            MetaChip(label = labelFor(mode), icon = iconFor(mode))
+                        }
                         if (item.kind == NotificationKind.ACCESS_REQUEST) {
                             MetaChip(
                                 label = if (alreadyGranted) {
@@ -408,17 +412,27 @@ private fun CounterpartAvatar(webId: String) {
 }
 
 @Composable
-private fun MetaChip(label: String) {
+private fun MetaChip(label: String, icon: ImageVector? = null) {
     AssistChip(
         onClick = {},
         enabled = false,
         label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        leadingIcon = icon?.let { vector ->
+            {
+                Icon(
+                    imageVector = vector,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        },
         colors = AssistChipDefaults.assistChipColors(
             disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             disabledLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            disabledLeadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ),
         border = null,
-        modifier = Modifier.height(26.dp),
+        modifier = Modifier.height(if (icon != null) 28.dp else 26.dp),
     )
 }
 

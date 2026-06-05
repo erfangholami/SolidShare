@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -135,11 +136,8 @@ private fun ShareFormContent(
         Column(modifier = Modifier.selectableGroup()) {
             ShareMode.entries.forEach { option ->
                 OptionRow(
-                    label = when (option) {
-                        ShareMode.READ -> stringResource(R.string.share_mode_read)
-                        ShareMode.APPEND -> stringResource(R.string.share_mode_append)
-                        ShareMode.WRITE -> stringResource(R.string.share_mode_write)
-                    },
+                    label = labelFor(option),
+                    icon = iconFor(option),
                     selected = option == mode,
                     onClick = { mode = option },
                 )
@@ -221,7 +219,7 @@ internal fun ShareResultContent(
         Text(
             text = stringResource(
                 R.string.share_summary,
-                share.mode.name.lowercase(),
+                labelFor(share.mode),
                 describeReceiver(share.receiver),
             ),
             style = MaterialTheme.typography.bodyMedium,
@@ -315,7 +313,12 @@ internal fun ErrorContent(
 }
 
 @Composable
-private fun OptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
+private fun OptionRow(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+    icon: ImageVector? = null,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -324,6 +327,15 @@ private fun OptionRow(label: String, selected: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         RadioButton(selected = selected, onClick = onClick)
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.size(8.dp))
+        }
         Text(label, style = MaterialTheme.typography.bodyMedium)
     }
 }
