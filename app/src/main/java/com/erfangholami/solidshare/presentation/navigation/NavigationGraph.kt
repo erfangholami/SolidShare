@@ -31,8 +31,6 @@ import com.erfangholami.solidshare.presentation.login.LoginViewModel
 import com.erfangholami.solidshare.presentation.main.EditProfile
 import com.erfangholami.solidshare.presentation.main.EditProfileViewModel
 import com.erfangholami.solidshare.presentation.main.MainPage
-import com.erfangholami.solidshare.presentation.main.Profile
-import com.erfangholami.solidshare.presentation.main.ProfileViewModel
 import com.erfangholami.solidshare.presentation.notifications.NotificationsPage
 import com.erfangholami.solidshare.presentation.notifications.NotificationsViewModel
 import com.erfangholami.solidshare.presentation.onboard.Onboarding
@@ -165,16 +163,6 @@ fun NavGraphBuilder.sharedContainerGraph(navController: NavController) {
 }
 
 fun NavGraphBuilder.profileSubGraph(navController: NavController) {
-    composable<ProfileRoute>(
-        enterTransition = {
-            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
-        },
-        popExitTransition = {
-            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
-        },
-    ) {
-        Profile(navController, hiltViewModel<ProfileViewModel>())
-    }
     composable<EditProfileRoute> {
         EditProfile(navController, hiltViewModel<EditProfileViewModel>())
     }
@@ -261,9 +249,6 @@ data class ManageSharingRoute(
 )
 
 @Serializable
-object ProfileRoute
-
-@Serializable
 object NotificationsRoute
 
 @Serializable
@@ -310,6 +295,13 @@ object MainNavItem {
             R.drawable.ic_folder,
             Directory
         )
+
+        @Serializable
+        object ProfileItem : MainNavBottomItem<Profile>(
+            R.string.profile,
+            R.drawable.ic_person,
+            Profile
+        )
     }
 
     @Serializable
@@ -320,6 +312,9 @@ object MainNavItem {
 
     @Serializable
     object Directory
+
+    @Serializable
+    object Profile
 
 }
 

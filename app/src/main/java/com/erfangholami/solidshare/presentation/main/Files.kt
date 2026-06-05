@@ -32,7 +32,6 @@ import com.erfangholami.solidshare.presentation.container.ContainerViewModel
 import com.erfangholami.solidshare.presentation.navigation.ContainerNested
 import com.erfangholami.solidshare.presentation.navigation.ContainerRoot
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
-import com.erfangholami.solidshare.presentation.navigation.ProfileRoute
 import com.erfangholami.solidshare.presentation.navigation.ResourceDetailsRoute
 import com.erfangholami.solidshare.presentation.notifications.TopBarNotificationBell
 
@@ -42,6 +41,7 @@ fun Files(
     navController: NavController,
     viewModel: FilesViewModel,
     shareViewModel: ShareViewModel,
+    onOpenProfile: () -> Unit,
 ) {
     val containerNavController = rememberNavController()
     val activeWebId by viewModel.activeWebIdFlow.collectAsStateWithLifecycle()
@@ -73,7 +73,7 @@ fun Files(
                     )
                     AccountSwitcherCircle(
                         activeProfile = activeProfile,
-                        onClick = { navController.navigate(ProfileRoute) },
+                        onClick = onOpenProfile,
                         modifier = Modifier.padding(end = 8.dp),
                     )
                 },

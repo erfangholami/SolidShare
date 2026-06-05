@@ -45,8 +45,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -75,7 +73,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.compose.currentBackStackEntryAsState
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
@@ -83,7 +80,6 @@ import com.erfangholami.solidshare.presentation.components.AccountSwitcherCircle
 import com.erfangholami.solidshare.presentation.container.icon
 import com.erfangholami.solidshare.presentation.container.tint
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
-import com.erfangholami.solidshare.presentation.navigation.ProfileRoute
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.notifications.TopBarNotificationBell
@@ -101,6 +97,7 @@ import com.erfangholami.solidshare.presentation.sharing.shortenWebId
 fun Share(
     navController: NavController,
     viewModel: ShareViewModel,
+    onOpenProfile: () -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val activeProfile by viewModel.activeProfile.collectAsStateWithLifecycle()
@@ -115,18 +112,6 @@ fun Share(
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.load()
-    }
-
-    val snackbarHostState = remember { SnackbarHostState() }
-    val currentBackStackEntry by navController.currentBackStackEntryAsState()
-    LaunchedEffect(currentBackStackEntry) {
-        val handle = currentBackStackEntry?.savedStateHandle ?: return@LaunchedEffect
-        handle.getStateFlow<String?>("received_share_msg", null).collect { msg ->
-            if (msg != null) {
-                snackbarHostState.showSnackbar(msg)
-                handle["received_share_msg"] = null
-            }
-        }
     }
 
     LaunchedEffect(Unit) {
@@ -231,7 +216,7 @@ fun Share(
                     )
                     AccountSwitcherCircle(
                         activeProfile = activeProfile,
-                        onClick = { navController.navigate(ProfileRoute) },
+                        onClick = onOpenProfile,
                         modifier = Modifier.padding(end = 8.dp),
                     )
                 },
@@ -258,7 +243,6 @@ fun Share(
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(
             modifier = Modifier

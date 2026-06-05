@@ -24,12 +24,12 @@
     <string name="more_options">More options</string>
     <string name="paste_from_clipboard">Paste from clipboard</string>
     <string name="qr_code_content_description">QR code</string>
-    <string name="url_label">URL</string>
 
     <!-- Bottom navigation -->
     <string name="home">Home</string>
     <string name="share">Share</string>
     <string name="files">Files</string>
+    <string name="profile">Profile</string>
 
     <!-- Onboarding -->
     <string name="onboarding_slide1_title">About Solid</string>
