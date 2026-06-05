@@ -164,6 +164,19 @@
     <string name="group_by_label">Group by</string>
     <string name="group_by_sender">Sender</string>
     <string name="group_by_time">Time</string>
+    <string name="shared_relative">Shared %1$s</string>
+    <string name="added_relative">Added %1$s</string>
+    <string name="shared_last_relative">Last shared %1$s</string>
+    <plurals name="recipient_count">
+        <item quantity="one">%1$d recipient</item>
+        <item quantity="other">%1$d recipients</item>
+    </plurals>
+    <string name="time_bucket_today">Today</string>
+    <string name="time_bucket_yesterday">Yesterday</string>
+    <string name="time_bucket_this_week">Earlier this week</string>
+    <string name="time_bucket_this_month">Earlier this month</string>
+    <string name="time_bucket_earlier">Earlier</string>
+    <string name="time_bucket_no_date">No date</string>
     <string name="nothing_shared_yet_title">Nothing shared yet</string>
     <string name="nothing_shared_yet_subtitle">Share a file or folder from the Files section to start collaborating.</string>
     <string name="nothing_shared_with_you_title">Nothing shared with you yet</string>

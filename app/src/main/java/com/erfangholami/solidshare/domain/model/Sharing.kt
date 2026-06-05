@@ -16,12 +16,14 @@ data class GivenShare(
     val receiver: ShareReceiver,
     val mode: ShareMode,
     val resourceUri: String,
+    val createdAt: String? = null,
 )
 
 data class ReceivedShare(
     val ownerWebId: String,
     val mode: ShareMode,
     val resourceUri: String,
+    val addedAt: String? = null,
 )
 
 data class ShareRequest(

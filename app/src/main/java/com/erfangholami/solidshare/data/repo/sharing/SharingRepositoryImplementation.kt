@@ -28,8 +28,30 @@ class SharingRepositoryImplementation @Inject constructor(
     override suspend fun getGivenSharesForResource(
         webId: String,
         resourceUri: String,
-    ): List<GivenShare> =
-        sharingManager.getGivenSharesForResource(webId, resourceUri).unwrap().map { it.toDomain() }
+    ): List<GivenShare> {
+        val aclShares = sharingManager.getGivenSharesForResource(webId, resourceUri)
+            .unwrap().map { it.toDomain() }
+        val createdByKey = runCatching { sharingManager.getStoredGivenShares(webId).unwrap() }
+            .getOrDefault(emptyList())
+            .map { it.toDomain() }
+            .mapNotNull { stored ->
+                stored.createdAt?.let { receiverResourceKey(stored.receiver, stored.resourceUri) to it }
+            }
+            .toMap()
+        return aclShares.map { share ->
+            createdByKey[receiverResourceKey(share.receiver, share.resourceUri)]
+                ?.let { share.copy(createdAt = it) } ?: share
+        }
+    }
+
+    private fun receiverResourceKey(receiver: ShareReceiver, resourceUri: String): String {
+        val subject = when (receiver) {
+            is ShareReceiver.WebIdReceiver -> receiver.webId
+            is ShareReceiver.GroupReceiver -> receiver.groupUri
+            ShareReceiver.Public -> "public"
+        }
+        return "$subject|$resourceUri"
+    }
 
     override suspend fun createShare(
         webId: String,

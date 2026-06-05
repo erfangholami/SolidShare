@@ -52,10 +52,10 @@ fun ShareReceiver.toLib(): LibShareReceiver = when (this) {
 }
 
 fun LibGivenShare.toDomain(): GivenShare =
-    GivenShare(receiver.toDomain(), mode.toDomain(), resourceUri)
+    GivenShare(receiver.toDomain(), mode.toDomain(), resourceUri, createdAt)
 
 fun LibReceivedShare.toDomain(): ReceivedShare =
-    ReceivedShare(ownerWebId, mode.toDomain(), resourceUri)
+    ReceivedShare(ownerWebId, mode.toDomain(), resourceUri, addedAt)
 
 fun LibShareRequest.toDomain(): ShareRequest = ShareRequest(
     requestUri = requestUri,

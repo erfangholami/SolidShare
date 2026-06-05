@@ -71,6 +71,30 @@ class SharingMappersTest {
     }
 
     @Test
+    fun givenShare_mapsCreatedAt() {
+        val domain = LibGivenShare(
+            LibShareReceiver.WebIdReceiver("https://bob.example/card#me"),
+            LibShareMode.READ,
+            "https://pod.example/doc",
+            createdAt = "2026-06-04T12:00:00Z",
+        ).toDomain()
+
+        assertEquals("2026-06-04T12:00:00Z", domain.createdAt)
+    }
+
+    @Test
+    fun receivedShare_mapsAddedAt() {
+        val domain = LibReceivedShare(
+            "https://owner.example/card#me",
+            LibShareMode.READ,
+            "https://pod.example/x",
+            addedAt = "2026-06-04T08:30:00Z",
+        ).toDomain()
+
+        assertEquals("2026-06-04T08:30:00Z", domain.addedAt)
+    }
+
+    @Test
     fun toSharingError_mapsAccessDeniedWithFields() {
         val error = SharingException
             .AccessDenied("https://pod.example/secret", "https://owner.example/card#me")

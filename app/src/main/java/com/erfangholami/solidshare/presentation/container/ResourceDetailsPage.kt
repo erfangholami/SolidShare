@@ -54,6 +54,8 @@ import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
+import com.erfangholami.solidshare.util.epochMillisOrNull
+import com.erfangholami.solidshare.util.formatRelativeTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -224,13 +226,23 @@ private fun SharedWithCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 } else {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        AvatarStack(shares = state.shares)
-                        Spacer(Modifier.width(12.dp))
-                        Text(
-                            text = sharedSummary(state.shares),
-                            style = MaterialTheme.typography.bodyMedium,
-                        )
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            AvatarStack(shares = state.shares)
+                            Spacer(Modifier.width(12.dp))
+                            Text(
+                                text = sharedSummary(state.shares),
+                                style = MaterialTheme.typography.bodyMedium,
+                            )
+                        }
+                        formatRelativeTime(latestCreatedAt(state.shares))?.let { relative ->
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                text = stringResource(R.string.shared_last_relative, relative),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
                 }
         }
@@ -326,6 +338,9 @@ private fun accessLabel(access: ResourceAccess): String = when {
     access.canAppend -> "Read & append"
     else -> "Read only"
 }
+
+private fun latestCreatedAt(shares: List<GivenShare>): String? =
+    shares.mapNotNull { it.createdAt }.maxByOrNull { epochMillisOrNull(it) ?: Long.MIN_VALUE }
 
 private fun sharedSummary(shares: List<GivenShare>): String {
     val hasPublic = shares.any { it.receiver is ShareReceiver.Public }

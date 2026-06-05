@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,8 +42,8 @@ import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ReceivedShare
 import com.erfangholami.solidshare.presentation.sharing.describeReceiver
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
-import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
+import com.erfangholami.solidshare.util.formatRelativeTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -61,16 +62,25 @@ internal fun GivenList(
         )
         return
     }
+    val groups = remember(shares) { shares.groupBy { it.resourceUri }.toList() }
     LazyColumn(modifier = Modifier.fillMaxSize()) {
-        items(
-            shares,
-            key = { "${describeKey(it.receiver)}|${it.resourceUri}|${it.mode}" },
-        ) { share ->
-            GivenRow(
-                share = share,
-                onRevoke = { onRevoke(share) },
-                onShowQr = { onShowQr(share) },
-            )
+        groups.forEach { (resourceUri, recipients) ->
+            item(key = "res|$resourceUri") {
+                GivenResourceHeader(
+                    resourceUri = resourceUri,
+                    recipientCount = recipients.size,
+                )
+            }
+            items(
+                recipients,
+                key = { "rcpt|$resourceUri|${describeKey(it.receiver)}|${it.mode}" },
+            ) { share ->
+                GivenRecipientRow(
+                    share = share,
+                    onRevoke = { onRevoke(share) },
+                    onShowQr = { onShowQr(share) },
+                )
+            }
         }
     }
 }
@@ -107,39 +117,73 @@ internal fun ReceivedList(
 }
 
 @Composable
-private fun GivenRow(
-    share: GivenShare,
-    onRevoke: () -> Unit,
-    onShowQr: () -> Unit,
-) {
-    var menuOpen by remember { mutableStateOf(false) }
+private fun GivenResourceHeader(resourceUri: String, recipientCount: Int) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onShowQr)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ResourceTile(resourceUri = share.resourceUri)
+        ResourceTile(resourceUri = resourceUri)
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = displayNameForUri(share.resourceUri),
+                text = displayNameForUri(resourceUri),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.size(2.dp))
             Text(
-                text = describeReceiver(share.receiver),
+                text = pluralStringResource(
+                    R.plurals.recipient_count,
+                    recipientCount,
+                    recipientCount,
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@Composable
+private fun GivenRecipientRow(
+    share: GivenShare,
+    onRevoke: () -> Unit,
+    onShowQr: () -> Unit,
+) {
+    var menuOpen by remember { mutableStateOf(false) }
+    val sharedAt = formatRelativeTime(share.createdAt)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onShowQr)
+            .padding(start = 72.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = describeReceiver(share.receiver),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Spacer(Modifier.size(6.dp))
-            ModeChip(label = labelFor(share.mode))
+            Spacer(Modifier.size(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ModeChip(mode = share.mode)
+                if (sharedAt != null) {
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(R.string.shared_relative, sharedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         Box {
             IconButton(onClick = { menuOpen = true }) {
@@ -182,6 +226,7 @@ private fun ReceivedRow(
     onReshare: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
+    val addedAt = formatRelativeTime(share.addedAt)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -208,7 +253,19 @@ private fun ReceivedRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Spacer(Modifier.size(6.dp))
-            ModeChip(label = labelFor(share.mode))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ModeChip(mode = share.mode)
+                if (addedAt != null) {
+                    Spacer(Modifier.size(8.dp))
+                    Text(
+                        text = stringResource(R.string.added_relative, addedAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         Box {
             IconButton(onClick = { menuOpen = true }) {
