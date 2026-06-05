@@ -62,7 +62,7 @@ import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
-import com.erfangholami.solidshare.presentation.navigation.ScanQrRoute
+import com.erfangholami.solidshare.presentation.navigation.ScanRoute
 import com.erfangholami.solidshare.presentation.util.generateQrBitmap
 import com.erfangholami.solidshare.presentation.util.generateQrWithCaptionBitmap
 import com.erfangholami.solidshare.presentation.util.loadQrLogo
@@ -99,7 +99,7 @@ fun ShareProfilePage(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { navController.navigate(ScanQrRoute) }) {
+                    IconButton(onClick = { navController.navigate(ScanRoute) }) {
                         Icon(
                             Icons.Outlined.QrCodeScanner,
                             contentDescription = stringResource(R.string.scan_qr),

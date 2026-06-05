@@ -187,14 +187,10 @@
     <string name="access_verified">Access verified: %1$s</string>
     <string name="no_access_to_resource">No access to that resource</string>
 
-    <!-- Scan received share -->
-    <string name="scan_received_title">Add a shared resource</string>
+    <!-- Scan & receive share -->
     <string name="checking_access">Checking access…</string>
-    <string name="scan_share_qr_title">Point at a share QR code</string>
-    <string name="scan_share_qr_subtitle">or paste a link someone sent you</string>
-    <string name="paste_a_link">Paste a link</string>
-    <string name="paste_share_link_title">Paste share link</string>
-    <string name="paste_share_link_body">Paste a resource URL or a solidshare:// link.</string>
+    <string name="scan_paste_hint">Paste a share link or WebID</string>
+    <string name="open_share">Open share</string>
     <string name="add_received_share_title">Add received share</string>
     <string name="paste_share_url_label">Paste share URL or solidshare:// link</string>
 
@@ -205,9 +201,15 @@
     <string name="ask_for_access">Ask for access</string>
     <string name="request_access">Request access</string>
 
+    <!-- Confirm access -->
+    <string name="confirm_access_title">Confirm access</string>
+    <string name="you_have_access">You have access</string>
+    <string name="add_to_my_shares">Add to my shares</string>
+    <string name="not_now">Not now</string>
     <string name="you_are_owner_title">You own this</string>
     <string name="you_are_owner_body">You\'re the owner of \"%1$s\", so there\'s no need to add it to your received shares.</string>
     <string name="got_it">Got it</string>
+
     <!-- Profile -->
     <string name="edit_profile">Edit profile</string>
     <string name="share_digital_card">Share digital card</string>
@@ -240,16 +242,18 @@
     <string name="qr_save_failed">Couldn\'t save the QR code</string>
     <string name="share_via">Share via</string>
 
-    <!-- Scan QR (WebID) -->
+    <!-- Scan QR -->
     <string name="scan_qr">Scan QR code</string>
-    <string name="scan_qr_hint">Point your camera at a Solid WebID QR code</string>
+    <string name="scan_universal_subtitle">Point your camera at a SolidShare QR code or paste a link below</string>
+    <string name="scan_not_recognized">That QR code isn\'t a SolidShare share or profile</string>
     <string name="flash_on">Turn flash on</string>
     <string name="flash_off">Turn flash off</string>
     <string name="pick_image">Pick image with QR code</string>
     <string name="camera_permission_needed">Camera permission is needed to scan QR codes</string>
     <string name="grant_permission">Grant permission</string>
-    <string name="qr_not_a_webid">That QR code isn\'t a WebID URL</string>
-    <string name="qr_not_found_in_image">No QR code found in the selected image</string>
+    <string name="camera_permission_title">Camera access needed</string>
+    <string name="camera_permission_rationale">Solid Share uses the camera to scan QR codes. Camera access is turned off, so open Settings and enable the Camera permission for Solid Share.</string>
+    <string name="open_settings">Open settings</string>
 
     <!-- Public profile -->
     <string name="scanned_profile">Scanned profile</string>

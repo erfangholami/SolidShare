@@ -1,7 +1,6 @@
 package com.erfangholami.solidshare.presentation.sharing
 
 import android.content.Context
-import android.net.Uri
 import android.util.Size
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
@@ -84,23 +83,4 @@ private fun processImageProxy(
             if (!raw.isNullOrBlank()) onScan(raw)
         }
         .addOnCompleteListener { proxy.close() }
-}
-
-internal fun processImageUri(
-    context: Context,
-    uri: Uri,
-    scanner: BarcodeScanner,
-    onResult: (String?) -> Unit,
-) {
-    try {
-        val input = InputImage.fromFilePath(context, uri)
-        scanner.process(input)
-            .addOnSuccessListener { barcodes ->
-                val raw = barcodes.firstNotNullOfOrNull { it.rawValue }
-                onResult(raw)
-            }
-            .addOnFailureListener { onResult(null) }
-    } catch (_: Exception) {
-        onResult(null)
-    }
 }

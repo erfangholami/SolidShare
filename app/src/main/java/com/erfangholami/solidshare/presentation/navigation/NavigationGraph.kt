@@ -41,8 +41,8 @@ import com.erfangholami.solidshare.presentation.sharing.ManageSharingPage
 import com.erfangholami.solidshare.presentation.sharing.ManageSharingViewModel
 import com.erfangholami.solidshare.presentation.sharing.PublicProfilePage
 import com.erfangholami.solidshare.presentation.sharing.PublicProfileViewModel
-import com.erfangholami.solidshare.presentation.sharing.ScanQrPage
-import com.erfangholami.solidshare.presentation.sharing.ScanReceivedSharePage
+import com.erfangholami.solidshare.presentation.sharing.ConfirmAccessPage
+import com.erfangholami.solidshare.presentation.sharing.ScanPage
 import com.erfangholami.solidshare.presentation.sharing.ShareProfilePage
 import com.erfangholami.solidshare.presentation.sharing.ShareProfileViewModel
 import com.erfangholami.solidshare.presentation.startup.Startup
@@ -181,11 +181,11 @@ fun NavGraphBuilder.profileSubGraph(navController: NavController) {
     composable<ShareProfileRoute> {
         ShareProfilePage(navController, hiltViewModel<ShareProfileViewModel>())
     }
-    composable<ScanQrRoute> {
-        ScanQrPage(navController)
+    composable<ScanRoute> {
+        ScanPage(navController)
     }
-    composable<ScanReceivedShareRoute> {
-        ScanReceivedSharePage(navController)
+    composable<ConfirmAccessRoute> {
+        ConfirmAccessPage(navController)
     }
     composable<PublicProfileRoute> {
         PublicProfilePage(navController, hiltViewModel<PublicProfileViewModel>())
@@ -240,10 +240,13 @@ object EditProfileRoute
 object ShareProfileRoute
 
 @Serializable
-object ScanQrRoute
+object ScanRoute
 
 @Serializable
-object ScanReceivedShareRoute
+data class ConfirmAccessRoute(
+    val resourceUri: String,
+    val ownerWebId: String? = null,
+)
 
 @Serializable
 data class PublicProfileRoute(val webId: String)

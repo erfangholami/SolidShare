@@ -84,7 +84,7 @@ import com.erfangholami.solidshare.presentation.container.icon
 import com.erfangholami.solidshare.presentation.container.tint
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
 import com.erfangholami.solidshare.presentation.navigation.ProfileRoute
-import com.erfangholami.solidshare.presentation.navigation.ScanReceivedShareRoute
+import com.erfangholami.solidshare.presentation.navigation.ScanRoute
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.notifications.TopBarNotificationBell
 import com.erfangholami.solidshare.presentation.sharing.AddReceivedShareDialog
@@ -249,7 +249,7 @@ fun Share(
                     onToggle = { fabExpanded = !fabExpanded },
                     onScan = {
                         fabExpanded = false
-                        navController.navigate(ScanReceivedShareRoute)
+                        navController.navigate(ScanRoute)
                     },
                     onPaste = {
                         fabExpanded = false
