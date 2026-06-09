@@ -6,6 +6,7 @@ import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.ReceivedShare
 import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.domain.model.ShareNotification
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.domain.model.ShareRequest
 
@@ -56,6 +57,11 @@ interface SharingRepository {
         resourceUri: String,
         ownerWebId: String,
     )
+
+    suspend fun syncReceivedSharesFromNotifications(
+        webId: String,
+        notifications: List<ShareNotification>,
+    ): List<ReceivedShare>
 
     suspend fun getAccessGrants(webId: String): List<AccessGrant>
 

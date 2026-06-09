@@ -8,6 +8,7 @@ import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.ReceivedShare
 import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.domain.model.ShareNotification
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.domain.model.ShareRequest
 import javax.inject.Inject
@@ -101,6 +102,13 @@ class SharingRepositoryImplementation @Inject constructor(
     ) {
         sharingManager.removeReceivedShare(webId, resourceUri, ownerWebId).unwrap()
     }
+
+    override suspend fun syncReceivedSharesFromNotifications(
+        webId: String,
+        notifications: List<ShareNotification>,
+    ): List<ReceivedShare> =
+        sharingManager.syncReceivedShares(webId, notifications.map { it.toLib() })
+            .unwrap().map { it.toDomain() }
 
     override suspend fun getAccessGrants(webId: String): List<AccessGrant> =
         sharingManager.getAccessGrants(webId).unwrap().map { it.toDomain() }
