@@ -116,6 +116,8 @@
     <string name="revoke">Revoke</string>
     <string name="revoke_access_title">Revoke access?</string>
     <string name="revoke_access_message">%1$s will no longer have access to this resource.</string>
+    <string name="remove_access">Remove access</string>
+    <string name="change_access">Change access</string>
     <string name="can_label">Can %1$s</string>
 
     <!-- Share modes -->
@@ -265,6 +267,7 @@
     <string name="notifications_empty_title">You\'re all caught up</string>
     <string name="notifications_empty_subtitle">Updates about your shares and access requests will appear here.</string>
     <string name="notifications_offer_title">%1$s shared a resource with you</string>
+    <string name="notifications_updated_title">%1$s updated your access</string>
     <string name="notifications_revoked_title">%1$s stopped sharing a resource</string>
     <string name="notifications_rejected_title">%1$s declined your access request</string>
     <string name="notifications_accepted_title">%1$s accepted your request</string>
@@ -289,6 +292,7 @@
     <string name="removed_from_your_list">Removed from your list.</string>
     <string name="notice_index_rebuilt">Share index rebuilt.</string>
     <string name="access_revoked">Access revoked</string>
+    <string name="access_updated">Access updated</string>
     <string name="notif_granted_access">Granted %1$s access</string>
     <string name="notif_request_rejected">Request rejected</string>
 
@@ -301,6 +305,7 @@
     <string name="error_create_folder">Failed to create folder</string>
     <string name="error_delete_resource">Failed to delete resource</string>
     <string name="error_revoke_access">Couldn\'t revoke access</string>
+    <string name="error_update_access">Couldn\'t update access</string>
     <string name="couldnt_open_item">Couldn\'t open this item.</string>
     <string name="error_access_denied_with_owner">You don\'t have access to this resource. You can request access from %1$s.</string>
     <string name="error_access_denied_no_owner">You don\'t have access to this resource. You can request access from the owner.</string>

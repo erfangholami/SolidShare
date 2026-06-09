@@ -35,6 +35,7 @@ interface SharingRepository {
         resourceUri: String,
         mode: ShareMode,
         receiver: ShareReceiver,
+        notifyReceiver: Boolean = true,
     ): GivenShare
 
     suspend fun revokeShare(

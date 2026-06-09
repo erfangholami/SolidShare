@@ -18,12 +18,18 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Public
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -55,6 +61,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.GivenShare
+import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.util.formatRelativeTime
@@ -160,7 +167,13 @@ fun ManageSharingPage(
                                 ShareRow(
                                     share = share,
                                     canManage = viewModel.canManage,
-                                    onRevoke = { shareToRevoke = share },
+                                    onChangeMode = { newMode ->
+                                        viewModel.changeMode(
+                                            share,
+                                            newMode
+                                        )
+                                    },
+                                    onRemove = { shareToRevoke = share },
                                 )
                                 HorizontalDivider(
                                     modifier = Modifier.padding(start = 72.dp),
@@ -220,7 +233,8 @@ fun ManageSharingPage(
 private fun ShareRow(
     share: GivenShare,
     canManage: Boolean,
-    onRevoke: () -> Unit,
+    onChangeMode: (ShareMode) -> Unit,
+    onRemove: () -> Unit,
 ) {
     Row(
         modifier = Modifier
@@ -238,20 +252,6 @@ private fun ShareRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = iconFor(share.mode),
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = stringResource(R.string.can_label, labelFor(share.mode)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
             formatRelativeTime(share.createdAt)?.let { relative ->
                 Text(
                     text = stringResource(R.string.shared_relative, relative),
@@ -260,14 +260,108 @@ private fun ShareRow(
                 )
             }
         }
+        Spacer(Modifier.width(8.dp))
         if (canManage) {
-            TextButton(onClick = onRevoke) {
-                Text(
-                    stringResource(R.string.revoke),
-                    color = MaterialTheme.colorScheme.error,
+            ModeDropdown(
+                currentMode = share.mode,
+                onSelect = onChangeMode,
+                onRemove = onRemove,
+            )
+        } else {
+            ModeLabel(share.mode)
+        }
+    }
+}
+
+@Composable
+private fun ModeDropdown(
+    currentMode: ShareMode,
+    onSelect: (ShareMode) -> Unit,
+    onRemove: () -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        AssistChip(
+            onClick = { expanded = true },
+            label = { Text(stringResource(R.string.can_label, labelFor(currentMode))) },
+            leadingIcon = {
+                Icon(
+                    imageVector = iconFor(currentMode),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            },
+            trailingIcon = {
+                Icon(
+                    imageVector = Icons.Filled.ArrowDropDown,
+                    contentDescription = stringResource(R.string.change_access),
+                    modifier = Modifier.size(18.dp),
+                )
+            },
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            ShareMode.entries.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(labelFor(option)) },
+                    onClick = {
+                        expanded = false
+                        onSelect(option)
+                    },
+                    leadingIcon = {
+                        Icon(imageVector = iconFor(option), contentDescription = null)
+                    },
+                    trailingIcon = if (option == currentMode) {
+                        {
+                            Icon(
+                                imageVector = Icons.Filled.Check,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    } else {
+                        null
+                    },
                 )
             }
+            HorizontalDivider()
+            DropdownMenuItem(
+                text = {
+                    Text(
+                        text = stringResource(R.string.remove_access),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                },
+                onClick = {
+                    expanded = false
+                    onRemove()
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Delete,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.error,
+                    )
+                },
+            )
         }
+    }
+}
+
+@Composable
+private fun ModeLabel(mode: ShareMode) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            imageVector = iconFor(mode),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = stringResource(R.string.can_label, labelFor(mode)),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

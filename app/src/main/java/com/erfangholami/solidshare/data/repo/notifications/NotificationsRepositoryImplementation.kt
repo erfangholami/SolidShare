@@ -41,6 +41,7 @@ class NotificationsRepositoryImplementation @Inject constructor(
     private fun ShareNotification.toFeedItem(): NotificationItem {
         val notificationKind = when (type) {
             ShareNotificationType.OFFER -> NotificationKind.ACCESS_OFFER
+            ShareNotificationType.UPDATED -> NotificationKind.ACCESS_UPDATED
             ShareNotificationType.ACCEPTED -> NotificationKind.REQUEST_ACCEPTED
             ShareNotificationType.UNDO -> NotificationKind.ACCESS_REVOKED
             ShareNotificationType.REJECT -> NotificationKind.REQUEST_REJECTED

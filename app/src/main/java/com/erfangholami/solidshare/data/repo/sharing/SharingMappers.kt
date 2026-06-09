@@ -112,6 +112,7 @@ fun LibAccessGrant.toDomain(): AccessGrant = AccessGrant(
 
 fun LibShareNotificationType.toDomain(): ShareNotificationType = when (this) {
     LibShareNotificationType.OFFER -> ShareNotificationType.OFFER
+    LibShareNotificationType.UPDATED -> ShareNotificationType.UPDATED
     LibShareNotificationType.UNDO -> ShareNotificationType.UNDO
     LibShareNotificationType.REJECT -> ShareNotificationType.REJECT
     LibShareNotificationType.ACCEPTED -> ShareNotificationType.ACCEPTED
@@ -132,6 +133,7 @@ fun LibShareNotification.toDomain(): ShareNotification = ShareNotification(
 
 fun ShareNotificationType.toLib(): LibShareNotificationType = when (this) {
     ShareNotificationType.OFFER -> LibShareNotificationType.OFFER
+    ShareNotificationType.UPDATED -> LibShareNotificationType.UPDATED
     ShareNotificationType.UNDO -> LibShareNotificationType.UNDO
     ShareNotificationType.REJECT -> LibShareNotificationType.REJECT
     ShareNotificationType.ACCEPTED -> LibShareNotificationType.ACCEPTED

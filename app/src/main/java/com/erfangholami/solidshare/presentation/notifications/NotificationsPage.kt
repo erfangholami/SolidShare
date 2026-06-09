@@ -329,6 +329,7 @@ private fun titleFor(item: NotificationItem): String {
     val who = shortenWebId(item.counterpartWebId)
     return when (item.kind) {
         NotificationKind.ACCESS_OFFER -> stringResource(R.string.notifications_offer_title, who)
+        NotificationKind.ACCESS_UPDATED -> stringResource(R.string.notifications_updated_title, who)
         NotificationKind.ACCESS_REVOKED -> stringResource(R.string.notifications_revoked_title, who)
         NotificationKind.REQUEST_REJECTED -> stringResource(
             R.string.notifications_rejected_title,

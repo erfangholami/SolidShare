@@ -2,6 +2,7 @@ package com.erfangholami.solidshare.domain.model
 
 enum class NotificationKind {
     ACCESS_OFFER,
+    ACCESS_UPDATED,
     ACCESS_REVOKED,
     REQUEST_REJECTED,
     REQUEST_ACCEPTED,

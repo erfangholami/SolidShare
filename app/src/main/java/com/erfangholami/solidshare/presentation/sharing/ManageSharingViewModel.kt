@@ -85,6 +85,20 @@ class ManageSharingViewModel @Inject constructor(
         }
     }
 
+    fun changeMode(share: GivenShare, mode: ShareMode) {
+        if (share.mode == mode) return
+        viewModelScope.launch {
+            try {
+                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                sharingRepository.updateShare(webId, resourceUri, mode, share.receiver)
+                _messages.emit(stringProvider.getString(R.string.access_updated))
+                load()
+            } catch (e: Exception) {
+                _messages.emit(e.message ?: stringProvider.getString(R.string.error_update_access))
+            }
+        }
+    }
+
     suspend fun createShareSuspend(
         resourceUri: String,
         mode: ShareMode,

@@ -70,8 +70,15 @@ class SharingRepositoryImplementation @Inject constructor(
         resourceUri: String,
         mode: ShareMode,
         receiver: ShareReceiver,
+        notifyReceiver: Boolean,
     ): GivenShare =
-        sharingManager.updateShare(webId, resourceUri, mode.toLib(), receiver.toLib())
+        sharingManager.updateShare(
+            webId,
+            resourceUri,
+            mode.toLib(),
+            receiver.toLib(),
+            notifyReceiver
+        )
             .unwrap().toDomain()
 
     override suspend fun revokeShare(

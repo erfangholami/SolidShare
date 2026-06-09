@@ -76,6 +76,7 @@ data class AccessGrant(
 
 enum class ShareNotificationType {
     OFFER,
+    UPDATED,
     UNDO,
     REJECT,
     ACCEPTED,

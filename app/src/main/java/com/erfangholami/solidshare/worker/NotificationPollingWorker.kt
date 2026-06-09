@@ -80,6 +80,7 @@ class NotificationPollingWorker @AssistedInject constructor(
 
     private fun titleResFor(kind: NotificationKind): Int = when (kind) {
         NotificationKind.ACCESS_OFFER -> R.string.notifications_offer_title
+        NotificationKind.ACCESS_UPDATED -> R.string.notifications_updated_title
         NotificationKind.ACCESS_REVOKED -> R.string.notifications_revoked_title
         NotificationKind.REQUEST_REJECTED -> R.string.notifications_rejected_title
         NotificationKind.REQUEST_ACCEPTED -> R.string.notifications_accepted_title
