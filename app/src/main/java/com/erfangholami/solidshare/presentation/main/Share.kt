@@ -22,12 +22,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Autorenew
-import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.QrCodeScanner
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
@@ -36,9 +33,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -75,19 +70,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ShareMode
-import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.AccountSwitcherCircle
-import com.erfangholami.solidshare.presentation.container.icon
-import com.erfangholami.solidshare.presentation.container.tint
+import com.erfangholami.solidshare.presentation.container.ResourceTypeIcon
+import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
-import com.erfangholami.solidshare.presentation.navigation.ScanRoute
+import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.notifications.TopBarNotificationBell
-import com.erfangholami.solidshare.presentation.sharing.AddReceivedShareDialog
 import com.erfangholami.solidshare.presentation.sharing.ShareLinkPanel
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.iconFor
-import com.erfangholami.solidshare.presentation.sharing.isContainerUri
 import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
@@ -146,8 +138,6 @@ fun Share(
     }
 
     var selectedTab by rememberSaveable { mutableStateOf(0) }
-    var showAddReceived by rememberSaveable { mutableStateOf(false) }
-    var fabExpanded by remember { mutableStateOf(false) }
     var qrSharePayload by remember { mutableStateOf<QrPayload?>(null) }
     var overflowOpen by remember { mutableStateOf(false) }
 
@@ -227,22 +217,6 @@ fun Share(
             )
         },
         contentWindowInsets = WindowInsets(0),
-        floatingActionButton = {
-            if (selectedTab == 1) {
-                AddReceivedFab(
-                    expanded = fabExpanded,
-                    onToggle = { fabExpanded = !fabExpanded },
-                    onScan = {
-                        fabExpanded = false
-                        navController.navigate(ScanRoute)
-                    },
-                    onPaste = {
-                        fabExpanded = false
-                        showAddReceived = true
-                    },
-                )
-            }
-        },
     ) { padding ->
         Box(
             modifier = Modifier
@@ -311,12 +285,16 @@ fun Share(
                     } else when (selectedTab) {
                         0 -> GivenList(
                             shares = state.given,
-                            onRevoke = { viewModel.revokeShare(it) },
-                            onShowQr = { share ->
+                            onShowQr = { resourceUri ->
                                 qrSharePayload = QrPayload(
-                                    title = displayNameForUri(share.resourceUri),
-                                    deepLink = viewModel.deepLinkFor(share.resourceUri),
-                                    bareUrl = viewModel.bareUrlFor(share.resourceUri),
+                                    title = displayNameForUri(resourceUri),
+                                    deepLink = viewModel.deepLinkFor(resourceUri),
+                                    bareUrl = viewModel.bareUrlFor(resourceUri),
+                                )
+                            },
+                            onManage = { resourceUri ->
+                                navController.navigate(
+                                    ManageSharingRoute(resourceUri = resourceUri, canManage = true),
                                 )
                             },
                         )
@@ -327,6 +305,9 @@ fun Share(
                             onOpen = { viewModel.openReceivedShare(it) },
                             onRemove = { viewModel.removeReceivedShare(it) },
                             onReshare = { viewModel.reshareReceivedShare(it) },
+                            onOpenOwner = {
+                                navController.navigate(PublicProfileRoute(it.ownerWebId))
+                            },
                         )
                     }
                 }
@@ -359,16 +340,6 @@ fun Share(
             ownerWebId = share.ownerWebId,
             onRequestAccess = { viewModel.confirmRequestAccessForLostShare() },
             onDismiss = { viewModel.dismissLostAccessShare() },
-        )
-    }
-
-    if (showAddReceived) {
-        AddReceivedShareDialog(
-            onDismiss = { showAddReceived = false },
-            onSubmit = { url ->
-                showAddReceived = false
-                viewModel.addReceivedShareFromUrl(url)
-            },
         )
     }
 
@@ -440,25 +411,7 @@ private fun LostAccessDialog(
 
 @Composable
 internal fun ResourceTile(resourceUri: String) {
-    val type = resourceTypeForUri(resourceUri)
-    val container = isContainerUri(resourceUri)
-    Box(
-        modifier = Modifier
-            .size(44.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (container) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = type.icon,
-            contentDescription = null,
-            tint = type.tint,
-            modifier = Modifier.size(24.dp),
-        )
-    }
+    ResourceTypeIcon(type = resourceTypeForUri(resourceUri), size = 44.dp)
 }
 
 @Composable
@@ -474,6 +427,7 @@ internal fun ModeChip(mode: ShareMode) {
                 modifier = Modifier.size(16.dp),
             )
         },
+        shape = CircleShape,
         colors = AssistChipDefaults.assistChipColors(
             disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
             disabledLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
@@ -614,46 +568,6 @@ internal fun EmptyState(
 }
 
 @Composable
-private fun AddReceivedFab(
-    expanded: Boolean,
-    onToggle: () -> Unit,
-    onScan: () -> Unit,
-    onPaste: () -> Unit,
-) {
-    Column(horizontalAlignment = Alignment.End) {
-        AnimatedVisibility(
-            visible = expanded,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically(),
-        ) {
-            Column(horizontalAlignment = Alignment.End) {
-                ExtendedFloatingActionButton(
-                    onClick = onScan,
-                    icon = { Icon(Icons.Outlined.QrCodeScanner, null) },
-                    text = { Text(stringResource(R.string.scan_qr)) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                )
-                Spacer(Modifier.height(12.dp))
-                ExtendedFloatingActionButton(
-                    onClick = onPaste,
-                    icon = { Icon(Icons.Outlined.ContentPaste, null) },
-                    text = { Text(stringResource(R.string.paste_link)) },
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                )
-                Spacer(Modifier.height(12.dp))
-            }
-        }
-        FloatingActionButton(onClick = onToggle) {
-            Icon(
-                imageVector = if (expanded) Icons.Filled.Close else Icons.Filled.Add,
-                contentDescription = if (expanded) stringResource(R.string.close_menu)
-                else stringResource(R.string.add_received_share_fab),
-            )
-        }
-    }
-}
-
-@Composable
 private fun NoAccessDialog(
     resourceName: String,
     ownerWebId: String?,
@@ -702,10 +616,4 @@ private fun OwnerDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.got_it)) }
         },
     )
-}
-
-internal fun describeKey(receiver: ShareReceiver): String = when (receiver) {
-    is ShareReceiver.WebIdReceiver -> "web|${receiver.webId}"
-    is ShareReceiver.GroupReceiver -> "grp|${receiver.groupUri}"
-    is ShareReceiver.Public -> "public"
 }

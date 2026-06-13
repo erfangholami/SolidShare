@@ -2,7 +2,6 @@ package com.erfangholami.solidshare.presentation.container
 
 import android.net.Uri
 import androidx.compose.runtime.Immutable
-import androidx.core.net.toUri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -13,8 +12,10 @@ import androidx.work.workDataOf
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceAccess
+import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
 import com.erfangholami.solidshare.worker.DownloadWorker
 import com.erfangholami.solidshare.worker.UploadWorker
@@ -43,11 +44,8 @@ class ContainerViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val authRepository: AuthRepository,
     private val fileRepository: FileRepository,
+    private val sharingRepository: SharingRepository,
 ) : ViewModel() {
-
-    companion object {
-        private const val KEY_PENDING_CAPTURE_URI = "pendingCaptureUri"
-    }
 
     sealed class UiState {
         object Loading : UiState()
@@ -67,12 +65,11 @@ class ContainerViewModel @Inject constructor(
         val isDownloading: Boolean = false,
         val isCreatingFolder: Boolean = false,
         val isDeletingResource: Boolean = false,
+        val isDuplicating: Boolean = false,
         val showResourceActionsSheet: Boolean = false,
-        val showAddResourceSheet: Boolean = false,
-        val isFabExpanded: Boolean = false,
         val selectedItem: ContainerItem? = null,
         val containerAccess: ResourceAccess = ResourceAccess.FULL,
-        val sortField: SortField = SortField.NAME,
+        val sortField: SortField = SortField.DEFAULT,
         val sortDirection: SortDirection = SortDirection.ASCENDING,
         val viewMode: ViewMode = ViewMode.LIST,
     )
@@ -85,14 +82,12 @@ class ContainerViewModel @Inject constructor(
 
     val sharedOwnerWebId: String? = savedStateHandle.get<String>("ownerWebId")
 
+    val title: String? = containerUrl?.let { displayNameForUri(it) }
+
+    val sharerWebId: String? = sharedOwnerWebId
+
     @Volatile
     private var resolvedContainerUrl: String? = null
-
-    var pendingCaptureUri: Uri?
-        get() = savedStateHandle.get<String>(KEY_PENDING_CAPTURE_URI)?.toUri()
-        set(value) {
-            savedStateHandle[KEY_PENDING_CAPTURE_URI] = value?.toString()
-        }
 
     private val _activeWebId = MutableStateFlow<String?>(null)
 
@@ -113,9 +108,14 @@ class ContainerViewModel @Inject constructor(
     private val _resourceDeletionError = MutableSharedFlow<String>()
     val resourceDeletion: SharedFlow<String> = _resourceDeletionError.asSharedFlow()
 
+    private val _duplicateMessage = MutableSharedFlow<String>()
+    val duplicateMessage: SharedFlow<String> = _duplicateMessage.asSharedFlow()
+
     private var rawItems: List<ContainerItem> = emptyList()
 
     private var loadJob: Job? = null
+
+    private var statsJob: Job? = null
 
     init {
         viewModelScope.launch {
@@ -159,7 +159,6 @@ class ContainerViewModel @Inject constructor(
     }
 
     fun onMoreOptionsClick(item: ContainerItem) {
-        dismissAddResourceSheet()
         _screenState.update { it.copy(selectedItem = item, showResourceActionsSheet = true) }
     }
 
@@ -194,21 +193,7 @@ class ContainerViewModel @Inject constructor(
         onFileClick(item)
     }
 
-    fun toggleFab() {
-        _screenState.update {
-            it.copy(
-                isFabExpanded = !it.isFabExpanded,
-                showAddResourceSheet = !it.showAddResourceSheet,
-            )
-        }
-    }
-
-    fun dismissAddResourceSheet() {
-        _screenState.update { it.copy(isFabExpanded = false, showAddResourceSheet = false) }
-    }
-
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
-        dismissAddResourceSheet()
         viewModelScope.launch {
             val webId = _activeWebId.value ?: return@launch
             val containerUrl = resolvedContainerUrl ?: return@launch
@@ -233,17 +218,9 @@ class ContainerViewModel @Inject constructor(
         }
     }
 
-    fun onCaptureComplete(success: Boolean, uri: Uri?, mimeType: String, fileName: String) {
-        if (!success || uri == null) {
-            pendingCaptureUri = null
-            return
-        }
-        startUpload(uri, fileName, mimeType)
-        pendingCaptureUri = null
-    }
-
     private fun load(reset: Boolean = false) {
         loadJob?.cancel()
+        statsJob?.cancel()
 
         if (reset) {
             resolvedContainerUrl = null
@@ -281,12 +258,38 @@ class ContainerViewModel @Inject constructor(
                     fileRepository.getContainerContents(webId, url, includeItemAccess = shared)
                 rawItems = items
                 applySort()
+                computeFolderStats(webId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
             } finally {
                 if (isActive) _screenState.update { it.copy(isRefreshing = false) }
+            }
+        }
+    }
+
+    private fun computeFolderStats(webId: String) {
+        val containers = rawItems.filter { it.isContainer }
+        if (containers.isEmpty()) return
+        statsJob = viewModelScope.launch {
+            containers.forEach { container ->
+                launch {
+                    val stats = runCatching {
+                        fileRepository.computeContainerStats(webId, container.identifier)
+                    }.getOrNull() ?: return@launch
+                    rawItems = rawItems.map { item ->
+                        if (item.identifier == container.identifier) {
+                            item.copy(
+                                sizeBytes = stats.totalSize,
+                                lastModified = stats.newestModified ?: item.lastModified,
+                            )
+                        } else {
+                            item
+                        }
+                    }
+                    applySort()
+                }
             }
         }
     }
@@ -346,13 +349,18 @@ class ContainerViewModel @Inject constructor(
     private fun sortedItems(items: List<ContainerItem>): List<ContainerItem> {
         val state = _screenState.value
         val fieldComparator: Comparator<ContainerItem> = when (state.sortField) {
+            SortField.DEFAULT,
             SortField.NAME -> compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
             SortField.LAST_MODIFIED -> compareBy(nullsLast(naturalOrder())) { it.lastModified }
             SortField.SIZE -> compareBy(nullsLast(naturalOrder())) { it.sizeBytes }
         }
         val directed = if (state.sortDirection == SortDirection.DESCENDING)
             fieldComparator.reversed() else fieldComparator
-        return items.sortedWith(compareByDescending<ContainerItem> { it.isContainer }.then(directed))
+        return if (state.sortField == SortField.DEFAULT) {
+            items.sortedWith(compareByDescending<ContainerItem> { it.isContainer }.then(directed))
+        } else {
+            items.sortedWith(directed)
+        }
     }
 
     fun deleteResource() {
@@ -372,6 +380,29 @@ class ContainerViewModel @Inject constructor(
                 _resourceDeletionError.emit(e.message ?: stringProvider.getString(R.string.error_delete_resource))
             } finally {
                 _screenState.update { it.copy(isDeletingResource = false) }
+            }
+        }
+    }
+
+    fun duplicateResource() {
+        val item = _screenState.value.selectedItem ?: return
+        dismissResourceActionsSheet()
+        viewModelScope.launch {
+            _screenState.update { it.copy(isDuplicating = true) }
+            try {
+                val webId = _activeWebId.value ?: return@launch
+                val created = fileRepository.duplicateResource(webId, item)
+                created.forEach { uri ->
+                    runCatching { sharingRepository.makePrivate(webId, uri) }
+                }
+                load()
+                _duplicateMessage.emit(stringProvider.getString(R.string.resource_duplicated))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                _duplicateMessage.emit(e.message ?: stringProvider.getString(R.string.error_duplicate))
+            } finally {
+                _screenState.update { it.copy(isDuplicating = false) }
             }
         }
     }

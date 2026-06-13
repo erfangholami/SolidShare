@@ -23,15 +23,20 @@ data class ContainerItem(
     val lastModified: Long?,
     val etag: String?,
     val access: ResourceAccess = ResourceAccess.FULL,
+    val createdTime: Long? = null,
 ) {
     fun getItemSubtitle(): String {
-        if (isContainer) return "Folder"
+        if (isContainer) {
+            val size = sizeLabel()
+            val date = lastModified?.let(::formatLastModified)
+            return listOfNotNull("Folder", size, date).joinToString(" · ")
+        }
         val type = when {
             mimeType != null -> formatMimeType(mimeType)
             extension != null -> "${extension.uppercase()} File"
             else -> "File"
         }
-        val size = sizeBytes?.let(::formatFileSize)
+        val size = sizeLabel()
         val date = lastModified?.let(::formatLastModified)
         return listOfNotNull(type, size, date).joinToString(" · ")
     }
@@ -57,9 +62,11 @@ data class ContainerItem(
         ResourceType.OTHERS -> "File"
     }
 
-    fun sizeLabel(): String? = sizeBytes?.let(::formatFileSize)
+    fun sizeLabel(): String? = sizeBytes?.takeIf { it > 0 }?.let(::formatFileSize)
 
     fun modifiedLabel(): String? = lastModified?.let(::formatFullTimestamp)
+
+    fun createdLabel(): String? = createdTime?.let(::formatFullTimestamp)
 
     fun parentContainerName(): String? {
         val withoutLast = identifier.trimEnd('/').substringBeforeLast('/', "")
@@ -88,10 +95,28 @@ enum class ResourceType {
 fun getResourceType(isContainer: Boolean, mimeType: String?, extension: String?): ResourceType {
     if (isContainer) return ResourceType.FOLDER
     return when {
-        mimeType?.startsWith("image/") == true -> ResourceType.IMAGE
-        mimeType?.startsWith("video/") == true -> ResourceType.VIDEO
-        mimeType?.startsWith("audio/") == true -> ResourceType.AUDIO
-        mimeType == "application/pdf" -> ResourceType.PDF
+        mimeType?.startsWith("image/") == true ||
+                extension?.let {
+                    it == "jpg" || it == "jpeg" || it == "png" || it == "gif" || it == "webp" ||
+                            it == "bmp" || it == "heic" || it == "heif" || it == "svg" ||
+                            it == "tif" || it == "tiff" || it == "avif" || it == "ico"
+                } == true -> ResourceType.IMAGE
+
+        mimeType?.startsWith("video/") == true ||
+                extension?.let {
+                    it == "mp4" || it == "mov" || it == "avi" || it == "mkv" || it == "webm" ||
+                            it == "m4v" || it == "3gp" || it == "mpeg" || it == "mpg" ||
+                            it == "wmv" || it == "flv"
+                } == true -> ResourceType.VIDEO
+
+        mimeType?.startsWith("audio/") == true ||
+                extension?.let {
+                    it == "mp3" || it == "wav" || it == "ogg" || it == "m4a" || it == "aac" ||
+                            it == "flac" || it == "opus" || it == "wma" || it == "aiff" ||
+                            it == "mid" || it == "midi"
+                } == true -> ResourceType.AUDIO
+
+        mimeType == "application/pdf" || extension == "pdf" -> ResourceType.PDF
         mimeType?.contains("spreadsheet") == true || mimeType?.contains("excel") == true ||
                 extension?.let { it == "xls" || it == "xlsx" || it == "csv" || it == "ods" } == true -> ResourceType.SPREADSHEET
 

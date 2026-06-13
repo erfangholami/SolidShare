@@ -87,11 +87,14 @@
     <string name="deleting_resource">Deleting resource…</string>
     <string name="delete_resource">Delete resource</string>
     <string name="deleting_resource_description">\"%1$s\" will be permanently deleted. This action cannot be undone.</string>
+    <string name="sort_default">Default</string>
     <string name="sort_name">Name</string>
     <string name="sort_last_modified">Last modified</string>
     <string name="sort_size">Size</string>
     <string name="list_view">List view</string>
     <string name="grid_view">Grid view</string>
+    <string name="sort_by">Sort</string>
+    <string name="scroll_to_top">Scroll to top</string>
 
     <!-- Resource details -->
     <string name="info">Info</string>
@@ -99,6 +102,7 @@
     <string name="details_name">Name</string>
     <string name="details_type">Type</string>
     <string name="details_size">Size</string>
+    <string name="details_created">Created</string>
     <string name="details_modified">Modified</string>
     <string name="details_location">Location</string>
     <string name="details_access">Access</string>
@@ -106,6 +110,7 @@
     <string name="shared_with">Shared with</string>
     <string name="shared_with_loading">Checking who has access…</string>
     <string name="shared_with_none">Not shared with anyone yet</string>
+    <string name="shared_with_overflow">+%1$d</string>
 
     <!-- Manage sharing -->
     <string name="manage_access">Manage access</string>
@@ -156,9 +161,6 @@
     <string name="shared_with_me_title">Shared with me</string>
     <string name="rebuild_share_index">Rebuild share index</string>
     <string name="scan_or_paste">Scan or paste</string>
-    <string name="paste_link">Paste link</string>
-    <string name="close_menu">Close menu</string>
-    <string name="add_received_share_fab">Add a received share</string>
     <string name="show_share_link">Show share link</string>
     <string name="reshare">Reshare</string>
     <string name="remove_from_list">Remove from list</string>
@@ -168,11 +170,6 @@
     <string name="group_by_time">Time</string>
     <string name="shared_relative">Shared %1$s</string>
     <string name="added_relative">Added %1$s</string>
-    <string name="shared_last_relative">Last shared %1$s</string>
-    <plurals name="recipient_count">
-        <item quantity="one">%1$d recipient</item>
-        <item quantity="other">%1$d recipients</item>
-    </plurals>
     <string name="time_bucket_today">Today</string>
     <string name="time_bucket_yesterday">Yesterday</string>
     <string name="time_bucket_this_week">Earlier this week</string>
@@ -193,8 +190,6 @@
     <string name="checking_access">Checking access…</string>
     <string name="scan_paste_hint">Paste a share link or WebID</string>
     <string name="open_share">Open share</string>
-    <string name="add_received_share_title">Add received share</string>
-    <string name="paste_share_url_label">Paste share URL or solidshare:// link</string>
 
     <!-- No access -->
     <string name="no_access_yet_title">No access yet</string>
@@ -240,6 +235,12 @@
     <string name="copy_link">Copy link</string>
     <string name="download">Download</string>
     <string name="link_copied">Link copied</string>
+    <string name="duplicate">Duplicate</string>
+    <string name="open_in">Open in</string>
+    <string name="open_in_unavailable">Open in isn\'t available yet</string>
+    <string name="duplicating">Duplicating…</string>
+    <string name="resource_duplicated">Copy created</string>
+    <string name="error_duplicate">Couldn\'t duplicate</string>
     <string name="qr_saved_to_gallery">QR code saved to Pictures/SolidShare</string>
     <string name="qr_save_failed">Couldn\'t save the QR code</string>
     <string name="share_via">Share via</string>
@@ -264,8 +265,17 @@
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
-    <string name="notifications_empty_title">You\'re all caught up</string>
-    <string name="notifications_empty_subtitle">Updates about your shares and access requests will appear here.</string>
+    <string name="notifications_empty_title">All Caught Up</string>
+    <string name="notifications_empty_subtitle">No notifications right now.</string>
+    <string name="notifications_empty_unread">No unread notifications right now.</string>
+    <string name="notifications_empty_requests">No requests right now.</string>
+    <string name="notifications_tab_all">All</string>
+    <string name="notifications_tab_unread">Unread</string>
+    <string name="notifications_tab_unread_count">Unread %1$d</string>
+    <string name="notifications_tab_requests">Requests</string>
+    <string name="notifications_request_subtitle">Wants access to a file you own</string>
+    <string name="notifications_accepted_subtitle">You can now open the file</string>
+    <string name="notifications_updated_subtitle">Your access level changed</string>
     <string name="notifications_offer_title">%1$s shared a resource with you</string>
     <string name="notifications_updated_title">%1$s updated your access</string>
     <string name="notifications_revoked_title">%1$s stopped sharing a resource</string>

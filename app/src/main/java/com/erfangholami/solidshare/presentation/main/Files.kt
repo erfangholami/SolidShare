@@ -31,6 +31,7 @@ import com.erfangholami.solidshare.presentation.container.Container
 import com.erfangholami.solidshare.presentation.container.ContainerViewModel
 import com.erfangholami.solidshare.presentation.navigation.ContainerNested
 import com.erfangholami.solidshare.presentation.navigation.ContainerRoot
+import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
 import com.erfangholami.solidshare.presentation.navigation.ResourceDetailsRoute
 import com.erfangholami.solidshare.presentation.notifications.TopBarNotificationBell
@@ -103,6 +104,11 @@ fun Files(
                     onResourceInfo = { item ->
                         navController.navigate(ResourceDetailsRoute(item))
                     },
+                    onManageAccess = { item ->
+                        navController.navigate(
+                            ManageSharingRoute(resourceUri = item.identifier, canManage = true),
+                        )
+                    },
                 )
             }
             composable<ContainerNested> {
@@ -110,11 +116,17 @@ fun Files(
                     modifier = Modifier.fillMaxSize(),
                     viewModel = hiltViewModel<ContainerViewModel>(),
                     shareViewModel = shareViewModel,
+                    onBack = { containerNavController.popBackStack() },
                     onContainerClick = { url ->
                         containerNavController.navigate(ContainerNested(containerUrl = url))
                     },
                     onResourceInfo = { item ->
                         navController.navigate(ResourceDetailsRoute(item))
+                    },
+                    onManageAccess = { item ->
+                        navController.navigate(
+                            ManageSharingRoute(resourceUri = item.identifier, canManage = true),
+                        )
                     },
                 )
             }

@@ -64,6 +64,7 @@ import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.presentation.components.RowDivider
 import com.erfangholami.solidshare.util.formatRelativeTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -175,10 +176,7 @@ fun ManageSharingPage(
                                     },
                                     onRemove = { shareToRevoke = share },
                                 )
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = 72.dp),
-                                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-                                )
+                                RowDivider(startIndent = 72.dp)
                             }
                         }
                     }

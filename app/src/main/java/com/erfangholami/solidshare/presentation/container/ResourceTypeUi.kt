@@ -1,5 +1,9 @@
 package com.erfangholami.solidshare.presentation.container
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.AudioFile
@@ -12,11 +16,16 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Slideshow
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material.icons.filled.Videocam
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.domain.model.ResourceType
 import com.erfangholami.solidshare.presentation.theme.solidShareColors
 
@@ -53,3 +62,24 @@ val ResourceType.tint: Color
         ResourceType.CODE -> MaterialTheme.solidShareColors.code
         ResourceType.OTHERS -> MaterialTheme.solidShareColors.file
     }
+
+@Composable
+fun ResourceTypeIcon(
+    type: ResourceType,
+    modifier: Modifier = Modifier,
+    size: Dp = 48.dp,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .background(type.tint.copy(alpha = 0.15f), RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = type.icon,
+            contentDescription = null,
+            tint = type.tint,
+            modifier = Modifier.size(size * 0.54f),
+        )
+    }
+}

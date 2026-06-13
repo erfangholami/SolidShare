@@ -237,47 +237,6 @@ class ShareViewModel @Inject constructor(
         return share
     }
 
-    fun revokeShare(share: GivenShare) {
-        viewModelScope.launch {
-            val webId = authRepository.getActiveWebId() ?: return@launch
-            try {
-                sharingRepository.revokeShare(webId, share.resourceUri, share.receiver)
-                load()
-            } catch (e: Exception) {
-                fail(e, retry = { revokeShare(share) })
-            }
-        }
-    }
-
-    fun addReceivedShareFromUrl(rawUrl: String) {
-        viewModelScope.launch {
-            val webId = authRepository.getActiveWebId() ?: return@launch
-            val parsed = sharingRepository.parseDeepLink(rawUrl)
-            val resourceUri = parsed?.resourceUri ?: rawUrl
-            if (authRepository.ownsResource(webId, resourceUri)) {
-                _ownedResource.value = resourceUri
-                return@launch
-            }
-            try {
-                val received =
-                    sharingRepository.addReceivedShare(webId, resourceUri, parsed?.ownerWebId)
-                if (received != null) {
-                    load()
-                    _uiState.value = _uiState.value.copy(
-                        error = null,
-                        notice = stringProvider.getString(R.string.added_to_shares),
-                    )
-                } else {
-                    _noAccessShare.value = NoAccessTarget(resourceUri, parsed?.ownerWebId)
-                }
-            } catch (e: SharingError.AccessDenied) {
-                _noAccessShare.value = NoAccessTarget(e.resourceUri, e.ownerWebId)
-            } catch (e: Exception) {
-                fail(e, retry = { addReceivedShareFromUrl(rawUrl) })
-            }
-        }
-    }
-
     fun confirmRequestAccessForNoAccess() {
         val target = _noAccessShare.value ?: return
         _noAccessShare.value = null

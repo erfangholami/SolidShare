@@ -15,10 +15,13 @@ import com.erfangholami.androidsolidservices.shared.model.access.WacAllow
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidContainer
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidMetadata
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidNonRDFResource
+import com.erfangholami.androidsolidservices.shared.model.resource.SolidRDFResource
+import com.erfangholami.androidsolidservices.shared.model.resource.SolidResourceReader
 import com.erfangholami.androidsolidservices.shared.util.encodeUriString
 import com.erfangholami.androidsolidservices.shared.util.getContentLength
 import com.erfangholami.androidsolidservices.shared.util.getETag
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.domain.model.ContainerStats
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.getResourceType
@@ -31,6 +34,7 @@ import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.io.InputStream
 import java.time.Instant
+import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import javax.inject.Inject
@@ -91,8 +95,11 @@ class FileRepositoryImplementation @Inject constructor(
                         mimeType = mimeType,
                         resourceType = getResourceType(isContainer, mimeType, extension),
                         resourceTypes = types,
-                        sizeBytes = metadata?.contentLength?.takeIf { it >= 0 },
-                        lastModified = metadata?.lastModified?.let(::parseHttpDateMillis),
+                        sizeBytes = if (isContainer) null
+                        else ref.size ?: metadata?.contentLength?.takeIf { it >= 0 },
+                        lastModified = ref.modified?.let(::parseIsoDateMillis)
+                            ?: ref.mtime?.let { it * 1000 }
+                            ?: metadata?.lastModified?.let(::parseHttpDateMillis),
                         etag = metadata?.etag,
                         access = if (includeItemAccess) {
                             metadata?.wacAllow?.toResourceAccess() ?: ResourceAccess.READ_ONLY
@@ -103,6 +110,57 @@ class FileRepositoryImplementation @Inject constructor(
                 }
             }.awaitAll()
         }
+    }
+
+    override suspend fun computeContainerStats(
+        webId: String,
+        containerUrl: String,
+    ): ContainerStats {
+        val reader = SolidResourceReader { uri ->
+            (resourceManager.read(webId, uri, SolidContainer::class.java)
+                    as? SolidNetworkResponse.Success)?.data
+        }
+        val container = (resourceManager.read(
+            webId,
+            encodeUriString(containerUrl),
+            SolidContainer::class.java,
+        ) as? SolidNetworkResponse.Success)?.data ?: return ContainerStats.EMPTY
+
+        if (!serverReportsSizes(container)) {
+            return ContainerStats(
+                totalSize = 0L,
+                newestModified = container.getLastModified(),
+            )
+        }
+        return ContainerStats(
+            totalSize = container.getSize(reader),
+            newestModified = container.getLastModified(reader),
+        )
+    }
+
+    private fun serverReportsSizes(container: SolidContainer): Boolean {
+        val directFiles = container.getContained()
+            .filter { !it.isContainer() && !it.isContainerByUri() }
+        if (directFiles.isEmpty()) return true
+        return directFiles.any {
+            it.size != null || (it.headMetadata?.contentLength ?: -1L) >= 0L
+        }
+    }
+
+    override suspend fun getResourceCreatedTime(webId: String, item: ContainerItem): Long? {
+        if (!item.isContainer && !isRdfMimeType(item.mimeType)) return null
+        return (resourceManager.read(
+            webId,
+            encodeUriString(item.identifier),
+            SolidRDFResource::class.java,
+        ) as? SolidNetworkResponse.Success)?.data?.getCreatedTime()
+    }
+
+    private fun isRdfMimeType(mimeType: String?): Boolean {
+        val mime = mimeType?.substringBefore(';')?.trim()?.lowercase() ?: return false
+        return mime == "text/turtle" || mime == "application/ld+json" ||
+                mime == "application/rdf+xml" || mime == "application/n-triples" ||
+                mime == "application/n-quads" || mime == "text/n3" || mime == "application/trig"
     }
 
     override suspend fun downloadFile(webId: String, fileUrl: String): DownloadedFile {
@@ -283,6 +341,64 @@ class FileRepositoryImplementation @Inject constructor(
         }
     }
 
+    override suspend fun duplicateResource(webId: String, item: ContainerItem): List<String> {
+        val created = mutableListOf<String>()
+        copyInto(
+            webId = webId,
+            sourceUri = item.identifier,
+            isContainer = item.isContainer,
+            destParentContainer = parentContainerUrl(item.identifier),
+            destName = copyNameFor(item.name, item.extension, item.isContainer),
+            created = created,
+        )
+        return created
+    }
+
+    private suspend fun copyInto(
+        webId: String,
+        sourceUri: String,
+        isContainer: Boolean,
+        destParentContainer: String,
+        destName: String,
+        created: MutableList<String>,
+    ) {
+        if (isContainer) {
+            createFolder(webId, destParentContainer, destName)
+            val destContainer = destParentContainer.trimEnd('/') + "/" + destName.trim() + "/"
+            created += destContainer
+            getContainerContents(webId, sourceUri).forEach { child ->
+                copyInto(
+                    webId = webId,
+                    sourceUri = child.identifier,
+                    isContainer = child.isContainer,
+                    destParentContainer = destContainer,
+                    destName = child.name,
+                    created = created,
+                )
+            }
+        } else {
+            val downloaded = downloadFile(webId, sourceUri)
+            File(downloaded.path).inputStream().use { stream ->
+                uploadFile(webId, destParentContainer, destName, downloaded.mimeType, stream) {}
+            }
+            created += destParentContainer.trimEnd('/') + "/" + destName
+        }
+    }
+
+    private fun parentContainerUrl(uri: String): String =
+        uri.trimEnd('/').substringBeforeLast('/') + "/"
+
+    private fun copyNameFor(name: String, extension: String?, isContainer: Boolean): String {
+        val base = name.trimEnd('/')
+        return when {
+            isContainer -> "${base}_copy"
+            extension != null && base.endsWith(".$extension") ->
+                "${base.dropLast(extension.length + 1)}_copy.$extension"
+
+            else -> "${base}_copy"
+        }
+    }
+
     private suspend fun isCachedFileStillFresh(
         webId: String,
         fileUrl: String,
@@ -314,6 +430,12 @@ class FileRepositoryImplementation @Inject constructor(
         private fun parseHttpDateMillis(raw: String): Long? = runCatching {
             Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.withZone(ZoneOffset.UTC).parse(raw))
                 .toEpochMilli()
+        }.getOrNull()
+
+        private fun parseIsoDateMillis(raw: String): Long? = runCatching {
+            OffsetDateTime.parse(raw).toInstant().toEpochMilli()
+        }.recoverCatching {
+            Instant.parse(raw).toEpochMilli()
         }.getOrNull()
     }
 }

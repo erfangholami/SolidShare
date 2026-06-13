@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
@@ -27,6 +28,7 @@ class ResourceDetailsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val sharingRepository: SharingRepository,
+    private val fileRepository: FileRepository,
 ) : ViewModel() {
 
     sealed interface SharesState {
@@ -37,14 +39,31 @@ class ResourceDetailsViewModel @Inject constructor(
         data class Error(val message: String) : SharesState
     }
 
-    val item: ContainerItem = savedStateHandle
+    private val routeItem: ContainerItem = savedStateHandle
         .toRoute<ResourceDetailsRoute>(resourceDetailsTypeMap)
         .item
 
-    val canManageSharing: Boolean = item.access.canControl
+    private val _itemState = MutableStateFlow(routeItem)
+    val itemState: StateFlow<ContainerItem> = _itemState.asStateFlow()
+
+    val canManageSharing: Boolean = routeItem.access.canControl
 
     private val _sharesState = MutableStateFlow<SharesState>(SharesState.Loading)
     val sharesState: StateFlow<SharesState> = _sharesState.asStateFlow()
+
+    init {
+        loadCreatedTime()
+    }
+
+    private fun loadCreatedTime() {
+        viewModelScope.launch {
+            val webId = authRepository.getActiveWebId() ?: return@launch
+            val created = runCatching {
+                fileRepository.getResourceCreatedTime(webId, routeItem)
+            }.getOrNull() ?: return@launch
+            _itemState.value = _itemState.value.copy(createdTime = created)
+        }
+    }
 
     fun loadShares() {
         if (!canManageSharing) {
@@ -59,7 +78,7 @@ class ResourceDetailsViewModel @Inject constructor(
                     SharesState.Loaded(
                         sharingRepository.getGivenSharesForResource(
                             webId,
-                            item.identifier
+                            routeItem.identifier
                         )
                     )
             } catch (e: CancellationException) {

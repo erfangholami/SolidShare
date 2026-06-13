@@ -44,6 +44,8 @@ interface SharingRepository {
         receiver: ShareReceiver,
     )
 
+    suspend fun makePrivate(webId: String, resourceUri: String)
+
     suspend fun getStoredReceivedShares(webId: String): List<ReceivedShare>
     suspend fun refreshReceivedShares(webId: String): List<ReceivedShare>
 

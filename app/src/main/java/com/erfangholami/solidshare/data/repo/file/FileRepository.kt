@@ -2,6 +2,7 @@ package com.erfangholami.solidshare.data.repo.file
 
 import android.net.Uri
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.domain.model.ContainerStats
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import java.io.InputStream
@@ -12,6 +13,16 @@ interface FileRepository {
         containerUrl: String,
         includeItemAccess: Boolean = false,
     ): List<ContainerItem>
+
+    suspend fun computeContainerStats(
+        webId: String,
+        containerUrl: String,
+    ): ContainerStats
+
+    suspend fun getResourceCreatedTime(
+        webId: String,
+        item: ContainerItem,
+    ): Long?
 
     suspend fun downloadFile(
         webId: String,
@@ -51,4 +62,9 @@ interface FileRepository {
         resourceUrl: String,
         isContainer: Boolean
     )
+
+    suspend fun duplicateResource(
+        webId: String,
+        item: ContainerItem,
+    ): List<String>
 }

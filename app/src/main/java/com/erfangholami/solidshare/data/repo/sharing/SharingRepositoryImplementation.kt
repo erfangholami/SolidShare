@@ -89,6 +89,10 @@ class SharingRepositoryImplementation @Inject constructor(
         sharingManager.revokeShare(webId, resourceUri, receiver.toLib()).unwrap()
     }
 
+    override suspend fun makePrivate(webId: String, resourceUri: String) {
+        sharingManager.makePrivate(webId, resourceUri).unwrap()
+    }
+
     override suspend fun getStoredReceivedShares(webId: String): List<ReceivedShare> =
         sharingManager.getStoredReceivedShares(webId).unwrap().map { it.toDomain() }
 
