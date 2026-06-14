@@ -102,6 +102,11 @@
     <string name="details_name">Name</string>
     <string name="details_type">Type</string>
     <string name="details_size">Size</string>
+    <string name="details_items">Items</string>
+    <plurals name="item_count">
+        <item quantity="one">%d item</item>
+        <item quantity="other">%d items</item>
+    </plurals>
     <string name="details_created">Created</string>
     <string name="details_modified">Modified</string>
     <string name="details_location">Location</string>
@@ -114,6 +119,9 @@
 
     <!-- Manage sharing -->
     <string name="manage_access">Manage access</string>
+    <string name="people_with_access">People with access</string>
+    <string name="manage_owner">Owner</string>
+    <string name="manage_you_suffix">%1$s (you)</string>
     <string name="add_people">Add people</string>
     <string name="manage_load_failed">Couldn\'t load sharing</string>
     <string name="manage_no_access_title">No one else has access</string>
@@ -123,6 +131,7 @@
     <string name="revoke_access_message">%1$s will no longer have access to this resource.</string>
     <string name="remove_access">Remove access</string>
     <string name="change_access">Change access</string>
+    <string name="access_granted_relative">Granted %1$s</string>
     <string name="can_label">Can %1$s</string>
 
     <!-- Share modes -->
@@ -143,6 +152,10 @@
     <string name="share_resource_title">Share resource</string>
     <string name="resource_url_label">Resource URL</string>
     <string name="access_label">Access</string>
+    <string name="who_can_access">Who can access</string>
+    <string name="access_mode">Access mode</string>
+    <string name="receiver_webid_placeholder">Type or paste receiver WebID…</string>
+    <string name="paste">Paste</string>
     <string name="share_created_title">Share created</string>
     <string name="share_summary">%1$s → %2$s</string>
     <string name="resource_prefix">Resource: %1$s</string>
@@ -154,6 +167,16 @@
     <string name="share_link_app_chip">SolidShare app</string>
     <string name="share_link_browser_chip">Any browser</string>
     <string name="share_link_chooser_title">Share link</string>
+    <string name="share_link_solid_tab">Solid Share link</string>
+    <string name="share_link_public_tab">Public link</string>
+    <string name="share_link_app_title">Open directly in the app</string>
+    <string name="share_link_app_desc">This code opens the file directly inside the app.</string>
+    <string name="share_link_public_title">Public Link</string>
+    <string name="share_link_public_desc">This code opens the file directly in your browser.</string>
+    <string name="save_image">Save image</string>
+    <string name="share_link_button">Share link</string>
+    <string name="image_saved">Image saved to your gallery</string>
+    <string name="image_save_failed">Couldn\'t save the image</string>
 
     <!-- Share lists (given / received) -->
     <string name="shared_by_me_tab">Shared by me · %1$d</string>
@@ -200,9 +223,16 @@
 
     <!-- Confirm access -->
     <string name="confirm_access_title">Confirm access</string>
+    <string name="access_required_title">Access Required</string>
     <string name="you_have_access">You have access</string>
     <string name="add_to_my_shares">Add to my shares</string>
     <string name="not_now">Not now</string>
+    <string name="back_to_my_files">Back to my files</string>
+    <string name="shared_by_owner">Shared by %1$s</string>
+    <string name="the_owner">the owner</string>
+    <string name="access_required_heading">You need permission to access this file</string>
+    <string name="access_required_body">No access granted by %1$s. Select a role and send request.</string>
+    <string name="request_access_mode">Request %1$s Access</string>
     <string name="you_are_owner_title">You own this</string>
     <string name="you_are_owner_body">You\'re the owner of \"%1$s\", so there\'s no need to add it to your received shares.</string>
     <string name="got_it">Got it</string>
@@ -236,6 +266,8 @@
     <string name="download">Download</string>
     <string name="link_copied">Link copied</string>
     <string name="duplicate">Duplicate</string>
+    <string name="make_available_offline">Make available offline</string>
+    <string name="make_offline_unavailable">Offline access isn\'t available yet</string>
     <string name="open_in">Open in</string>
     <string name="open_in_unavailable">Open in isn\'t available yet</string>
     <string name="duplicating">Duplicating…</string>
@@ -305,6 +337,10 @@
     <string name="access_updated">Access updated</string>
     <string name="notif_granted_access">Granted %1$s access</string>
     <string name="notif_request_rejected">Request rejected</string>
+
+    <!-- Receive share -->
+    <string name="choose_receiver_title">Receive this share</string>
+    <string name="choose_receiver_subtitle">Choose which account should receive this shared resource.</string>
 
     <!-- Errors -->
     <string name="not_signed_in">Not signed in</string>

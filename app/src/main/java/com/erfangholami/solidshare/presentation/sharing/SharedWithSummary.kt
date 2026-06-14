@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Surface
@@ -26,7 +25,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,6 +34,8 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
+import com.erfangholami.solidshare.presentation.components.BadgeAvatar
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.main.ModeChip
 import com.erfangholami.solidshare.presentation.theme.AppTheme
@@ -104,18 +105,62 @@ fun SharedAccessGroups(
     }
     FlowRow(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         groups.forEach { (mode, receivers) ->
             Row(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .padding(end = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                ModeChip(
+                    mode = mode,
+                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                )
                 AvatarStack(receivers = receivers, maxAvatars = maxAvatars)
-                ModeChip(mode = mode)
             }
         }
+    }
+}
+
+/**
+ * The "Shared with me" variant of an access group: the single owner who shared the resource (a
+ * clickable avatar, no stack) next to the mode they granted me. Same capsule styling as
+ * [SharedAccessGroups], with a bit more inner padding.
+ */
+@Composable
+fun SharedWithOwner(
+    ownerWebId: String,
+    mode: ShareMode,
+    onOwnerClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .padding(start = 6.dp, end = 12.dp, top = 3.dp, bottom = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        ModeChip(
+            mode = mode,
+            containerColor = MaterialTheme.colorScheme.primaryContainer,
+            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
+        ProfileAvatar(
+            webId = ownerWebId,
+            displayName = null,
+            size = 24.dp,
+            modifier = Modifier
+                .clip(CircleShape)
+                .clickable(onClick = onOwnerClick),
+        )
     }
 }
 
@@ -128,8 +173,11 @@ private fun AvatarStack(receivers: List<ShareReceiver>, maxAvatars: Int) {
                     is ShareReceiver.WebIdReceiver ->
                         ProfileAvatar(webId = receiver.webId, displayName = null, size = 24.dp)
 
-                    is ShareReceiver.GroupReceiver -> BadgeAvatar(Icons.Filled.Group)
-                    ShareReceiver.Public -> BadgeAvatar(Icons.Filled.Public)
+                    is ShareReceiver.GroupReceiver ->
+                        BadgeAvatar(Icons.Filled.Group, size = 24.dp, iconSize = 14.dp)
+
+                    ShareReceiver.Public ->
+                        BadgeAvatar(Icons.Filled.Public, size = 24.dp, iconSize = 14.dp)
                 }
             }
         }
@@ -163,23 +211,6 @@ private fun AvatarBubble(content: @Composable () -> Unit) {
         contentAlignment = Alignment.Center,
     ) {
         content()
-    }
-}
-
-@Composable
-private fun BadgeAvatar(icon: ImageVector) {
-    Box(
-        modifier = Modifier
-            .size(24.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
     }
 }
 
@@ -305,6 +336,47 @@ private fun SharedWithSummaryDarkPreview() {
                 previewPerson("erin", ShareMode.WRITE),
             ),
             onManage = {},
+        )
+    }
+}
+
+@Preview(name = "Header · with Manage", showBackground = true, widthDp = 360)
+@Composable
+private fun SharedWithHeaderManagePreview() {
+    SharedWithPreviewContainer {
+        SharedWithHeader(onManage = {})
+    }
+}
+
+@Preview(name = "Header · no Manage", showBackground = true, widthDp = 360)
+@Composable
+private fun SharedWithHeaderNoManagePreview() {
+    SharedWithPreviewContainer {
+        SharedWithHeader(onManage = null)
+    }
+}
+
+@Preview(name = "AccessGroups", showBackground = true, widthDp = 360)
+@Composable
+private fun SharedAccessGroupsPreview() {
+    SharedWithPreviewContainer {
+        SharedAccessGroups(
+            shares = listOf(
+                previewPerson("alice", ShareMode.READ),
+                previewPerson("ben", ShareMode.WRITE),
+            ),
+        )
+    }
+}
+
+@Preview(name = "SharedWithOwner", showBackground = true, widthDp = 360)
+@Composable
+private fun SharedWithOwnerPreview() {
+    SharedWithPreviewContainer {
+        SharedWithOwner(
+            ownerWebId = PreviewSamples.OWNER_WEB_ID,
+            mode = ShareMode.WRITE,
+            onOwnerClick = {},
         )
     }
 }

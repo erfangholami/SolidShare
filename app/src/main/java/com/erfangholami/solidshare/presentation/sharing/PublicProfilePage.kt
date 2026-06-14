@@ -1,6 +1,5 @@
 package com.erfangholami.solidshare.presentation.sharing
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -11,9 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,15 +20,15 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -71,9 +68,17 @@ fun PublicProfilePage(
                 .padding(padding),
         ) {
             when (val s = state) {
-                PublicProfileViewModel.UiState.Loading -> LoadingState()
+                PublicProfileViewModel.UiState.Loading -> LoadingState(
+                    modifier = Modifier.fillMaxSize(),
+                    label = stringResource(R.string.loading_profile),
+                )
+
                 is PublicProfileViewModel.UiState.Error -> ErrorState(
                     message = s.message,
+                    modifier = Modifier.fillMaxSize(),
+                    title = stringResource(R.string.profile_load_failed),
+                    icon = null,
+                    retryLabel = stringResource(R.string.retry),
                     onRetry = viewModel::load,
                 )
 
@@ -88,47 +93,5 @@ fun PublicProfilePage(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun LoadingState() {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        CircularProgressIndicator()
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = stringResource(R.string.loading_profile),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-    }
-}
-
-@Composable
-private fun ErrorState(message: String, onRetry: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = stringResource(R.string.profile_load_failed),
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
     }
 }

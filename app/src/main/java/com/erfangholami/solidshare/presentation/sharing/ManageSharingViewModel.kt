@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -32,17 +33,25 @@ class ManageSharingViewModel @Inject constructor(
     private val sharingRepository: SharingRepository,
 ) : ViewModel() {
 
+    @Immutable
+    data class OwnerInfo(val webId: String, val name: String?)
+
     sealed interface UiState {
         data object Loading : UiState
 
         @Immutable
-        data class Loaded(val shares: List<GivenShare>) : UiState
+        data class Loaded(
+            val owner: OwnerInfo?,
+            val shares: List<GivenShare>,
+        ) : UiState
+
         data class Error(val message: String) : UiState
     }
 
     private val route = savedStateHandle.toRoute<ManageSharingRoute>()
     val resourceUri: String = route.resourceUri
     val canManage: Boolean = route.canManage
+    val resourceSubtitle: String? = route.resourceSubtitle
 
     private var ownerWebId: String? = null
 
@@ -62,8 +71,14 @@ class ManageSharingViewModel @Inject constructor(
             try {
                 val webId = authRepository.getActiveWebId() ?: error("Not signed in")
                 ownerWebId = webId
-                _uiState.value =
-                    UiState.Loaded(sharingRepository.getGivenSharesForResource(webId, resourceUri))
+                val ownerName = runCatching { authRepository.activeProfileFlow.first() }
+                    .getOrNull()
+                    ?.name
+                    ?.takeIf { it.isNotBlank() }
+                _uiState.value = UiState.Loaded(
+                    owner = OwnerInfo(webId = webId, name = ownerName),
+                    shares = sharingRepository.getGivenSharesForResource(webId, resourceUri),
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -74,28 +89,30 @@ class ManageSharingViewModel @Inject constructor(
 
     fun revoke(share: GivenShare) {
         viewModelScope.launch {
+            _uiState.value = UiState.Loading
             try {
                 val webId = authRepository.getActiveWebId() ?: error("Not signed in")
                 sharingRepository.revokeShare(webId, resourceUri, share.receiver)
                 _messages.emit(stringProvider.getString(R.string.access_revoked))
-                load()
             } catch (e: Exception) {
                 _messages.emit(e.message ?: stringProvider.getString(R.string.error_revoke_access))
             }
+            load()
         }
     }
 
     fun changeMode(share: GivenShare, mode: ShareMode) {
         if (share.mode == mode) return
         viewModelScope.launch {
+            _uiState.value = UiState.Loading
             try {
                 val webId = authRepository.getActiveWebId() ?: error("Not signed in")
                 sharingRepository.updateShare(webId, resourceUri, mode, share.receiver)
                 _messages.emit(stringProvider.getString(R.string.access_updated))
-                load()
             } catch (e: Exception) {
                 _messages.emit(e.message ?: stringProvider.getString(R.string.error_update_access))
             }
+            load()
         }
     }
 
@@ -112,4 +129,7 @@ class ManageSharingViewModel @Inject constructor(
 
     fun deepLinkFor(resourceUri: String): String =
         sharingRepository.deepLinkFor(resourceUri, ownerWebId)
+
+    fun bareUrlFor(resourceUri: String): String =
+        sharingRepository.bareUrlFor(resourceUri)
 }

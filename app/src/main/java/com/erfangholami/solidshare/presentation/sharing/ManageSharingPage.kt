@@ -1,49 +1,45 @@
 package com.erfangholami.solidshare.presentation.sharing
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.outlined.Delete
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.AssistChip
+import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,11 +47,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
@@ -63,9 +58,15 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
+import com.erfangholami.solidshare.presentation.components.BadgeAvatar
+import com.erfangholami.solidshare.presentation.components.EntityRow
+import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
-import com.erfangholami.solidshare.presentation.components.RowDivider
+import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.util.formatRelativeTime
+import androidx.compose.material3.Surface
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,9 +78,9 @@ fun ManageSharingPage(
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
-    var shareToRevoke by remember { mutableStateOf<GivenShare?>(null) }
+    var sheetTarget by remember { mutableStateOf<GivenShare?>(null) }
 
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    LaunchedEffect(Unit) {
         viewModel.messages.collect { snackbarHostState.showSnackbar(it) }
     }
 
@@ -110,313 +111,308 @@ fun ManageSharingPage(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
-            Text(
-                text = displayNameForUri(viewModel.resourceUri),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+            ResourceHeaderRow(
+                resourceUri = viewModel.resourceUri,
+                subtitle = viewModel.resourceSubtitle,
             )
 
-            if (viewModel.canManage) {
-                FilledTonalButton(
-                    onClick = { showAddSheet = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                ) {
-                    Icon(
-                        Icons.Filled.PersonAdd,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp),
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(stringResource(R.string.add_people))
-                }
-                Spacer(Modifier.height(8.dp))
-            }
+            Spacer(Modifier.height(28.dp))
 
-            when (val s = state) {
-                ManageSharingViewModel.UiState.Loading ->
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
+            Text(
+                text = stringResource(R.string.people_with_access),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
 
-                is ManageSharingViewModel.UiState.Error ->
-                    StateMessage(
-                        title = stringResource(R.string.manage_load_failed),
-                        message = s.message,
-                        onRetry = viewModel::load,
-                    )
+            Spacer(Modifier.height(12.dp))
 
-                is ManageSharingViewModel.UiState.Loaded ->
-                    if (s.shares.isEmpty()) {
-                        StateMessage(
-                            title = stringResource(R.string.manage_no_access_title),
-                            message = stringResource(R.string.manage_no_access_message),
-                            onRetry = null,
+            OutlinedCard(
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                when (val s = state) {
+                    ManageSharingViewModel.UiState.Loading ->
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 220.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { CircularProgressIndicator() }
+
+                    is ManageSharingViewModel.UiState.Error ->
+                        ErrorState(
+                            message = s.message,
+                            title = stringResource(R.string.manage_load_failed),
+                            icon = null,
+                            retryLabel = stringResource(R.string.retry),
+                            onRetry = viewModel::load,
                         )
-                    } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxSize(),
-                            contentPadding = PaddingValues(bottom = 24.dp),
-                        ) {
-                            items(s.shares, key = { it.receiver.subjectKey() }) { share ->
-                                ShareRow(
-                                    share = share,
-                                    canManage = viewModel.canManage,
-                                    onChangeMode = { newMode ->
-                                        viewModel.changeMode(
-                                            share,
-                                            newMode
-                                        )
+
+                    is ManageSharingViewModel.UiState.Loaded ->
+                        Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                            s.owner?.let { owner ->
+                                OwnerRow(
+                                    owner = owner,
+                                    onAvatarClick = {
+                                        navController.navigate(PublicProfileRoute(owner.webId))
                                     },
-                                    onRemove = { shareToRevoke = share },
                                 )
-                                RowDivider(startIndent = 72.dp)
+                            }
+                            s.shares.forEach { share ->
+                                PersonRow(
+                                    share = share,
+                                    interactive = viewModel.canManage,
+                                    onClick = { sheetTarget = share },
+                                    onAvatarClick = (share.receiver as? ShareReceiver.WebIdReceiver)
+                                        ?.let { r ->
+                                            { navController.navigate(PublicProfileRoute(r.webId)) }
+                                        },
+                                )
+                            }
+                            if (viewModel.canManage) {
+                                AddPeopleButton(onClick = { showAddSheet = true })
                             }
                         }
-                    }
+                }
             }
         }
     }
 
     if (showAddSheet) {
         CreateShareSheet(
-            initialResourceUri = viewModel.resourceUri,
+            resourceUri = viewModel.resourceUri,
             onDismiss = { showAddSheet = false },
             submit = { uri, mode, receiver -> viewModel.createShareSuspend(uri, mode, receiver) },
             deepLinkFor = viewModel::deepLinkFor,
+            bareUrlFor = viewModel::bareUrlFor,
         )
     }
 
-    shareToRevoke?.let { share ->
-        AlertDialog(
-            onDismissRequest = { shareToRevoke = null },
-            title = { Text(stringResource(R.string.revoke_access_title)) },
-            text = {
-                Text(
-                    stringResource(
-                        R.string.revoke_access_message,
-                        describeReceiver(share.receiver)
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        shareToRevoke = null
-                        viewModel.revoke(share)
-                    },
-                ) {
-                    Text(
-                        stringResource(R.string.revoke),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { shareToRevoke = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
+    sheetTarget?.let { target ->
+        val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ModalBottomSheet(
+            onDismissRequest = { sheetTarget = null },
+            sheetState = sheetState,
+        ) {
+            AccessModeSheetContent(
+                current = target.mode,
+                onSelect = { mode ->
+                    sheetTarget = null
+                    viewModel.changeMode(target, mode)
+                },
+                onRemove = {
+                    sheetTarget = null
+                    viewModel.revoke(target)
+                },
+            )
+        }
+    }
+}
+
+@Composable
+private fun OwnerRow(
+    owner: ManageSharingViewModel.OwnerInfo,
+    onAvatarClick: () -> Unit,
+) {
+    EntityRow(
+        title = stringResource(
+            R.string.manage_you_suffix,
+            owner.name ?: shortenWebId(owner.webId),
+        ),
+        subtitle = owner.name?.let { shortenWebId(owner.webId) },
+        leading = {
+            ProfileAvatar(
+                webId = owner.webId,
+                displayName = owner.name,
+                size = 40.dp,
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .clickable(onClick = onAvatarClick),
+            )
+        },
+        trailing = {
+            Text(
+                text = stringResource(R.string.manage_owner),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        },
+    )
+}
+
+@Composable
+private fun PersonRow(
+    share: GivenShare,
+    interactive: Boolean,
+    onClick: () -> Unit,
+    onAvatarClick: (() -> Unit)?,
+) {
+    val timeText = share.createdAt
+        ?.let { formatRelativeTime(it) }
+        ?.let { stringResource(R.string.access_granted_relative, it) }
+    EntityRow(
+        title = describeReceiver(share.receiver),
+        subtitle = timeText,
+        leading = {
+            ReceiverAvatar(
+                receiver = share.receiver,
+                modifier = if (onAvatarClick != null) {
+                    Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onAvatarClick)
+                } else {
+                    Modifier
+                },
+            )
+        },
+        trailing = { AccessControl(mode = share.mode, interactive = interactive, onClick = onClick) },
+    )
+}
+
+@Composable
+private fun AccessControl(
+    mode: ShareMode,
+    interactive: Boolean,
+    onClick: () -> Unit,
+) {
+    if (interactive) {
+        Row(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(onClick = onClick)
+                .padding(start = 10.dp, end = 4.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = labelFor(mode),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+            Icon(
+                imageVector = Icons.Filled.ArrowDropDown,
+                contentDescription = stringResource(R.string.change_access),
+                modifier = Modifier.size(20.dp),
+            )
+        }
+    } else {
+        Text(
+            text = labelFor(mode),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
 @Composable
-private fun ShareRow(
-    share: GivenShare,
-    canManage: Boolean,
-    onChangeMode: (ShareMode) -> Unit,
-    onRemove: () -> Unit,
-) {
-    Row(
+private fun AddPeopleButton(onClick: () -> Unit) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = CircleShape,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .padding(horizontal = 16.dp, vertical = 8.dp),
     ) {
-        ReceiverAvatar(share.receiver)
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = describeReceiver(share.receiver),
-                style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            formatRelativeTime(share.createdAt)?.let { relative ->
-                Text(
-                    text = stringResource(R.string.shared_relative, relative),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
+        Text(stringResource(R.string.add_people))
         Spacer(Modifier.width(8.dp))
-        if (canManage) {
-            ModeDropdown(
-                currentMode = share.mode,
-                onSelect = onChangeMode,
-                onRemove = onRemove,
-            )
-        } else {
-            ModeLabel(share.mode)
-        }
-    }
-}
-
-@Composable
-private fun ModeDropdown(
-    currentMode: ShareMode,
-    onSelect: (ShareMode) -> Unit,
-    onRemove: () -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    Box {
-        AssistChip(
-            onClick = { expanded = true },
-            label = { Text(stringResource(R.string.can_label, labelFor(currentMode))) },
-            leadingIcon = {
-                Icon(
-                    imageVector = iconFor(currentMode),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-            },
-            trailingIcon = {
-                Icon(
-                    imageVector = Icons.Filled.ArrowDropDown,
-                    contentDescription = stringResource(R.string.change_access),
-                    modifier = Modifier.size(18.dp),
-                )
-            },
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            ShareMode.entries.forEach { option ->
-                DropdownMenuItem(
-                    text = { Text(labelFor(option)) },
-                    onClick = {
-                        expanded = false
-                        onSelect(option)
-                    },
-                    leadingIcon = {
-                        Icon(imageVector = iconFor(option), contentDescription = null)
-                    },
-                    trailingIcon = if (option == currentMode) {
-                        {
-                            Icon(
-                                imageVector = Icons.Filled.Check,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                )
-            }
-            HorizontalDivider()
-            DropdownMenuItem(
-                text = {
-                    Text(
-                        text = stringResource(R.string.remove_access),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                },
-                onClick = {
-                    expanded = false
-                    onRemove()
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Outlined.Delete,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.error,
-                    )
-                },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ModeLabel(mode: ShareMode) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
-            imageVector = iconFor(mode),
+            imageVector = Icons.Outlined.AddCircle,
             contentDescription = null,
-            modifier = Modifier.size(16.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = stringResource(R.string.can_label, labelFor(mode)),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp),
         )
     }
 }
 
 @Composable
-private fun ReceiverAvatar(receiver: ShareReceiver) {
+private fun ReceiverAvatar(receiver: ShareReceiver, modifier: Modifier = Modifier) {
     when (receiver) {
         is ShareReceiver.WebIdReceiver ->
-            ProfileAvatar(webId = receiver.webId, displayName = null, size = 40.dp)
+            ProfileAvatar(
+                webId = receiver.webId,
+                displayName = null,
+                size = 40.dp,
+                modifier = modifier,
+            )
 
-        is ShareReceiver.GroupReceiver -> BadgeAvatar(Icons.Filled.Group)
-        ShareReceiver.Public -> BadgeAvatar(Icons.Filled.Public)
+        is ShareReceiver.GroupReceiver -> BadgeAvatar(Icons.Filled.Group, modifier)
+        ShareReceiver.Public -> BadgeAvatar(Icons.Filled.Public, modifier)
     }
 }
 
+@Preview(name = "OwnerRow", showBackground = true, widthDp = 360)
 @Composable
-private fun BadgeAvatar(icon: ImageVector) {
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .background(MaterialTheme.colorScheme.secondaryContainer, CircleShape),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(22.dp),
-            tint = MaterialTheme.colorScheme.onSecondaryContainer,
-        )
+private fun OwnerRowPreview() {
+    AppTheme {
+        Surface {
+            OwnerRow(
+                owner = ManageSharingViewModel.OwnerInfo(
+                    webId = PreviewSamples.WEB_ID,
+                    name = "Alice Cooper",
+                ),
+                onAvatarClick = {},
+            )
+        }
     }
 }
 
+@Preview(name = "PersonRow", showBackground = true, widthDp = 360)
 @Composable
-private fun StateMessage(title: String, message: String, onRetry: (() -> Unit)?) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        if (onRetry != null) {
-            Spacer(Modifier.height(20.dp))
-            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
+private fun PersonRowPreview() {
+    AppTheme {
+        Surface {
+            PersonRow(
+                share = PreviewSamples.givenShare(name = "ben", mode = ShareMode.WRITE),
+                interactive = true,
+                onClick = {},
+                onAvatarClick = {},
+            )
+        }
+    }
+}
+
+@Preview(name = "AccessControl · interactive", showBackground = true, widthDp = 360)
+@Composable
+private fun AccessControlInteractivePreview() {
+    AppTheme {
+        Surface {
+            AccessControl(mode = ShareMode.READ, interactive = true, onClick = {})
+        }
+    }
+}
+
+@Preview(name = "AccessControl · read-only", showBackground = true, widthDp = 360)
+@Composable
+private fun AccessControlReadOnlyPreview() {
+    AppTheme {
+        Surface {
+            AccessControl(mode = ShareMode.READ, interactive = false, onClick = {})
+        }
+    }
+}
+
+@Preview(name = "AddPeopleButton", showBackground = true, widthDp = 360)
+@Composable
+private fun AddPeopleButtonPreview() {
+    AppTheme {
+        Surface {
+            AddPeopleButton(onClick = {})
+        }
+    }
+}
+
+@Preview(name = "ReceiverAvatar", showBackground = true, widthDp = 360)
+@Composable
+private fun ReceiverAvatarPreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                ReceiverAvatar(
+                    receiver = ShareReceiver.WebIdReceiver(PreviewSamples.WEB_ID),
+                )
+            }
         }
     }
 }

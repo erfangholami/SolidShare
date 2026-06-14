@@ -49,6 +49,13 @@ class ConfirmAccessViewModel @Inject constructor(
     private val _state = MutableStateFlow<State>(State.Checking)
     val state: StateFlow<State> = _state.asStateFlow()
 
+    private val _requestedMode = MutableStateFlow(ShareMode.READ)
+    val requestedMode: StateFlow<ShareMode> = _requestedMode.asStateFlow()
+
+    fun setRequestedMode(mode: ShareMode) {
+        _requestedMode.value = mode
+    }
+
     init {
         check()
     }
@@ -111,7 +118,7 @@ class ConfirmAccessViewModel @Inject constructor(
                     requesterWebId = webId,
                     ownerWebId = owner,
                     resourceUri = resourceUri,
-                    requestedMode = ShareMode.READ,
+                    requestedMode = _requestedMode.value,
                 )
                 _state.value = State.RequestSent
             } catch (e: Exception) {

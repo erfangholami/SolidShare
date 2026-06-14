@@ -2,6 +2,7 @@ package com.erfangholami.solidshare.util
 
 import android.content.ContentValues
 import android.content.Context
+import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.MediaStore
 import android.provider.OpenableColumns
@@ -10,6 +11,25 @@ import android.webkit.MimeTypeMap
 const val MIME_TYPE_VIDEO = "video/mp4"
 const val MIME_TYPE_IMAGE = "image/jpeg"
 const val MIME_TYPE_OCTET_STREAM = "application/octet-stream"
+
+/** Saves [bitmap] as a PNG into the device gallery (Pictures). Returns true on success. */
+fun saveImageToGallery(context: Context, bitmap: Bitmap, displayName: String): Boolean {
+    val values = ContentValues().apply {
+        put(MediaStore.Images.Media.DISPLAY_NAME, "$displayName.png")
+        put(MediaStore.Images.Media.MIME_TYPE, "image/png")
+    }
+    val resolver = context.contentResolver
+    val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values) ?: return false
+    return runCatching {
+        resolver.openOutputStream(uri)?.use { out ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+        } ?: error("No output stream")
+        true
+    }.getOrElse {
+        runCatching { resolver.delete(uri, null, null) }
+        false
+    }
+}
 
 fun createMediaUri(context: Context, isVideo: Boolean): Uri {
     return if (isVideo) {
