@@ -34,7 +34,6 @@ import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -65,7 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -76,6 +74,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -83,15 +82,18 @@ import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.NotificationItem
 import com.erfangholami.solidshare.domain.model.NotificationKind
+import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.presentation.components.DismissibleBanner
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.container.icon
 import com.erfangholami.solidshare.presentation.container.tint
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
-import com.erfangholami.solidshare.presentation.sharing.iconFor
-import com.erfangholami.solidshare.presentation.sharing.labelFor
+import com.erfangholami.solidshare.presentation.main.ModeChip
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.util.formatRelativeTime
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -205,7 +207,10 @@ fun NotificationsPage(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically(),
                 ) {
-                    ErrorBanner(state.error.orEmpty(), viewModel::clearError)
+                    DismissibleBanner(
+                        message = state.error.orEmpty(),
+                        onDismiss = viewModel::clearError,
+                    )
                 }
 
                 if (state.rows.isNotEmpty()) {
@@ -314,23 +319,18 @@ private fun FilterPill(label: String, selected: Boolean, onClick: () -> Unit) {
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label) },
+        label = { Text(label, maxLines = 1) },
         leadingIcon = if (selected) {
             {
                 Icon(
                     Icons.Filled.Check,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(FilterChipDefaults.IconSize),
                 )
             }
         } else {
             null
         },
-        colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = MaterialTheme.colorScheme.primary,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-            selectedLeadingIconColor = MaterialTheme.colorScheme.onPrimary,
-        ),
     )
 }
 
@@ -396,14 +396,21 @@ private fun NotificationRow(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         if (item.kind.showsMode()) {
-                            item.mode?.let { MetaChip(label = labelFor(it), icon = iconFor(it)) }
+                            item.mode?.let { ModeChip(mode = it) }
                         }
                         if (item.kind == NotificationKind.ACCESS_REQUEST) {
-                            MetaChip(
-                                label = if (alreadyGranted) {
-                                    stringResource(R.string.notifications_request_granted)
-                                } else {
-                                    stringResource(R.string.notifications_request_pending)
+                            AssistChip(
+                                onClick = {},
+                                enabled = false,
+                                label = {
+                                    Text(
+                                        text = if (alreadyGranted) {
+                                            stringResource(R.string.notifications_request_granted)
+                                        } else {
+                                            stringResource(R.string.notifications_request_pending)
+                                        },
+                                        maxLines = 1,
+                                    )
                                 },
                             )
                         }
@@ -629,31 +636,6 @@ private fun RejectReasonDialog(
 }
 
 @Composable
-private fun MetaChip(label: String, icon: ImageVector? = null) {
-    AssistChip(
-        onClick = {},
-        enabled = false,
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-        leadingIcon = icon?.let { vector ->
-            {
-                Icon(
-                    imageVector = vector,
-                    contentDescription = null,
-                    modifier = Modifier.size(16.dp),
-                )
-            }
-        },
-        colors = AssistChipDefaults.assistChipColors(
-            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            disabledLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            disabledLeadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
-        border = null,
-        modifier = Modifier.height(if (icon != null) 28.dp else 26.dp),
-    )
-}
-
-@Composable
 private fun EmptyNotifications(tab: NotificationTab) {
     Column(
         modifier = Modifier
@@ -689,32 +671,201 @@ private fun EmptyNotifications(tab: NotificationTab) {
     }
 }
 
+@Preview(showBackground = true, widthDp = 360, name = "Filters")
 @Composable
-private fun ErrorBanner(text: String, onDismiss: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp)),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier.weight(1f),
+private fun NotificationFiltersPreview() {
+    AppTheme {
+        Surface {
+            NotificationFilters(
+                selected = NotificationTab.ALL,
+                unreadCount = 3,
+                onSelect = {},
             )
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.close),
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Pill Selected")
+@Composable
+private fun FilterPillSelectedPreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                FilterPill(label = "Unread", selected = true, onClick = {})
             }
         }
     }
 }
+
+@Preview(showBackground = true, widthDp = 360, name = "Pill Unselected")
+@Composable
+private fun FilterPillUnselectedPreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                FilterPill(label = "Unread", selected = false, onClick = {})
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Row Offer")
+@Composable
+private fun NotificationRowOfferPreview() {
+    AppTheme {
+        Surface {
+            NotificationRow(
+                item = PreviewSamples.notification(
+                    kind = NotificationKind.ACCESS_OFFER,
+                    mode = ShareMode.READ,
+                ),
+                isUnread = true,
+                alreadyGranted = false,
+                pending = false,
+                onOpenResource = {},
+                onAccept = {},
+                onReject = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Row Request")
+@Composable
+private fun NotificationRowRequestPreview() {
+    AppTheme {
+        Surface {
+            NotificationRow(
+                item = PreviewSamples.notification(
+                    kind = NotificationKind.ACCESS_REQUEST,
+                    mode = ShareMode.READ,
+                    requestUri = "urn:req:1",
+                ),
+                isUnread = true,
+                alreadyGranted = false,
+                pending = false,
+                onOpenResource = {},
+                onAccept = {},
+                onReject = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Row Offer Dark")
+@Composable
+private fun NotificationRowOfferDarkPreview() {
+    AppTheme(isDarkTheme = true) {
+        Surface {
+            NotificationRow(
+                item = PreviewSamples.notification(
+                    kind = NotificationKind.ACCESS_OFFER,
+                    mode = ShareMode.READ,
+                ),
+                isUnread = false,
+                alreadyGranted = false,
+                pending = false,
+                onOpenResource = {},
+                onAccept = {},
+                onReject = {},
+                onDismiss = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "ResourceChip")
+@Composable
+private fun ResourceChipPreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                ResourceChip(resourceUri = PreviewSamples.RESOURCE, onOpen = {})
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "ReasonLine")
+@Composable
+private fun ReasonLinePreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                ReasonLine(text = "Requested because they need to collaborate")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "DismissButton")
+@Composable
+private fun DismissButtonPreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                DismissButton(pending = false, onDismiss = {})
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "RequestActions")
+@Composable
+private fun RequestActionsPreview() {
+    AppTheme {
+        Surface {
+            Column(modifier = Modifier.padding(16.dp)) {
+                RequestActions(pending = false, onReject = {}, onAccept = {})
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "RejectReasonDialog")
+@Composable
+private fun RejectReasonDialogPreview() {
+    AppTheme {
+        RejectReasonDialog(
+            item = PreviewSamples.notification(
+                kind = NotificationKind.ACCESS_REQUEST,
+                requestUri = "urn:req:1",
+            ),
+            onDismiss = {},
+            onConfirm = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 480, name = "Empty All")
+@Composable
+private fun EmptyNotificationsAllPreview() {
+    AppTheme {
+        Surface {
+            EmptyNotifications(tab = NotificationTab.ALL)
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 480, name = "Empty Unread")
+@Composable
+private fun EmptyNotificationsUnreadPreview() {
+    AppTheme {
+        Surface {
+            EmptyNotifications(tab = NotificationTab.UNREAD)
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 480, name = "Empty Requests")
+@Composable
+private fun EmptyNotificationsRequestsPreview() {
+    AppTheme {
+        Surface {
+            EmptyNotifications(tab = NotificationTab.REQUESTS)
+        }
+    }
+}
+
