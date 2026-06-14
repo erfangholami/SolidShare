@@ -6,20 +6,13 @@ import android.content.Intent
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,8 +32,11 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.presentation.components.BlockingProgressOverlay
+import com.erfangholami.solidshare.presentation.components.ResourceAction
+import com.erfangholami.solidshare.presentation.components.ResourceActions
+import com.erfangholami.solidshare.presentation.components.ResourceActionsSheet
 import com.erfangholami.solidshare.presentation.sharing.ShareLinkPanel
-import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.util.copyText
 import kotlinx.coroutines.launch
 
@@ -74,6 +70,7 @@ fun Container(
     val clipboard = LocalClipboard.current
     val linkCopiedMsg = stringResource(R.string.link_copied)
     val openInUnavailableMsg = stringResource(R.string.open_in_unavailable)
+    val makeOfflineUnavailableMsg = stringResource(R.string.make_offline_unavailable)
 
     var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
     var shareItemUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -180,79 +177,16 @@ fun Container(
         )
 
         if (isDownloading) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        stringResource(R.string.opening),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
+            BlockingProgressOverlay(label = stringResource(R.string.opening))
         }
-
         if (isCreatingFolder) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        stringResource(R.string.creating_folder),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
+            BlockingProgressOverlay(label = stringResource(R.string.creating_folder))
         }
-
         if (isDeletingResource) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        stringResource(R.string.deleting_resource),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
+            BlockingProgressOverlay(label = stringResource(R.string.deleting_resource))
         }
-
         if (isDuplicating) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.32f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimary)
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        stringResource(R.string.duplicating),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                }
-            }
+            BlockingProgressOverlay(label = stringResource(R.string.duplicating))
         }
 
         SnackbarHost(
@@ -265,46 +199,43 @@ fun Container(
 
     when {
         showResourceActionsSheet -> {
-            FileActionsBottomSheet(
-                item = selectedItem!!,
+            val actionItem = selectedItem!!
+            ResourceActionsSheet(
+                resourceUri = actionItem.identifier,
+                subtitle = actionItem.metaSubtitle(
+                    actionItem.itemCount?.let { itemCountLabel(it) },
+                ),
+                actions = if (viewModel.isShared) {
+                    ResourceActions.sharedFolderChild(
+                        isContainer = actionItem.isContainer,
+                        canEdit = actionItem.access.canWrite,
+                    )
+                } else {
+                    ResourceActions.ownerPod(isContainer = actionItem.isContainer)
+                },
                 onDismiss = { viewModel.dismissResourceActionsSheet() },
-                onShare = {
-                    val uri = selectedItem.identifier
-                    viewModel.dismissResourceActionsSheet()
-                    if (viewModel.isShared) reshareLinkItem = uri else shareItemUri = uri
-                },
-                onManageAccess = {
-                    val current = selectedItem
-                    viewModel.dismissResourceActionsSheet()
-                    onManageAccess(current)
-                },
-                onDuplicate = { viewModel.duplicateResource() },
-                onDownload = { viewModel.onDownloadClick() },
-                onCopyLink = {
-                    val uri = selectedItem.identifier
-                    viewModel.dismissResourceActionsSheet()
-                    scope.launch {
-                        clipboard.copyText(uri)
-                        snackbarHostState.showSnackbar(linkCopiedMsg)
+                onAction = { action ->
+                    when (action) {
+                        ResourceAction.SHARE -> shareItemUri = actionItem.identifier
+                        ResourceAction.MANAGE_ACCESS -> onManageAccess(actionItem)
+                        ResourceAction.DUPLICATE -> viewModel.duplicateResource()
+                        ResourceAction.DOWNLOAD -> viewModel.onDownloadClick()
+                        ResourceAction.MAKE_OFFLINE ->
+                            scope.launch { snackbarHostState.showSnackbar(makeOfflineUnavailableMsg) }
+
+                        ResourceAction.COPY_LINK -> scope.launch {
+                            clipboard.copyText(actionItem.identifier)
+                            snackbarHostState.showSnackbar(linkCopiedMsg)
+                        }
+
+                        ResourceAction.OPEN_IN ->
+                            scope.launch { snackbarHostState.showSnackbar(openInUnavailableMsg) }
+
+                        ResourceAction.INFO -> onResourceInfo(actionItem)
+                        ResourceAction.DELETE -> showDeleteResourceDialog = true
+                        else -> Unit
                     }
                 },
-                onOpenIn = {
-                    viewModel.dismissResourceActionsSheet()
-                    scope.launch { snackbarHostState.showSnackbar(openInUnavailableMsg) }
-                },
-                onInfo = {
-                    val current = selectedItem
-                    viewModel.dismissResourceActionsSheet()
-                    onResourceInfo(current)
-                },
-                onDelete = {
-                    viewModel.dismissResourceActionsSheet()
-                    showDeleteResourceDialog = true
-                },
-                showShare = selectedItem.access.canShareOnward,
-                showManage = !viewModel.isShared && containerAccess.canModify,
-                showDuplicate = !viewModel.isShared && containerAccess.canModify,
-                showDelete = containerAccess.canModify,
             )
         }
 
@@ -321,13 +252,17 @@ fun Container(
     }
 
     shareItemUri?.let { uri ->
+        val shareSubtitle = selectedItem?.takeIf { it.identifier == uri }
+            ?.let { item -> item.metaSubtitle(item.itemCount?.let { c -> itemCountLabel(c) }) }
         com.erfangholami.solidshare.presentation.sharing.CreateShareSheet(
-            initialResourceUri = uri,
+            resourceUri = uri,
+            resourceSubtitle = shareSubtitle,
             onDismiss = { shareItemUri = null },
             submit = { resourceUri, mode, receiver ->
                 shareViewModel.createShareSuspend(resourceUri, mode, receiver)
             },
             deepLinkFor = shareViewModel::deepLinkFor,
+            bareUrlFor = shareViewModel::bareUrlFor,
         )
     }
 
@@ -338,10 +273,9 @@ fun Container(
             sheetState = sheetState,
         ) {
             ShareLinkPanel(
-                title = displayNameForUri(uri),
+                resourceUri = uri,
                 deepLink = shareViewModel.reshareLinkFor(uri, viewModel.sharedOwnerWebId),
                 bareUrl = shareViewModel.bareUrlFor(uri),
-                onClose = { reshareLinkItem = null },
             )
         }
     }
