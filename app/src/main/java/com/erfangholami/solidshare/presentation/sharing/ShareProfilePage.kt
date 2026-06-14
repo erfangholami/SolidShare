@@ -53,16 +53,20 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.PublicProfile
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.generateQrBitmap
 import com.erfangholami.solidshare.presentation.util.generateQrWithCaptionBitmap
 import com.erfangholami.solidshare.presentation.util.loadQrLogo
@@ -325,5 +329,59 @@ private fun saveImageToPictures(
         }
     } catch (_: Exception) {
         false
+    }
+}
+
+@Preview(name = "ShareProfileContent", showBackground = true, widthDp = 360)
+@Composable
+private fun ShareProfileContentPreview() {
+    AppTheme {
+        ShareProfileContent(
+            profile = PreviewSamples.profile(),
+            context = LocalContext.current,
+            onMessage = {},
+        )
+    }
+}
+
+@Preview(name = "ShareProfileContent · dark", showBackground = true, widthDp = 360)
+@Composable
+private fun ShareProfileContentDarkPreview() {
+    AppTheme(isDarkTheme = true) {
+        ShareProfileContent(
+            profile = PreviewSamples.profile(),
+            context = LocalContext.current,
+            onMessage = {},
+        )
+    }
+}
+
+@Preview(name = "QrCard", showBackground = true, widthDp = 360)
+@Composable
+private fun QrCardPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            QrCard(content = "https://alice.solidcommunity.net/profile/card#me")
+        }
+    }
+}
+
+@Preview(name = "ActionRow", showBackground = true, widthDp = 360)
+@Composable
+private fun ActionRowPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ActionRow(onShare = {}, onCopy = {}, onDownload = {})
+        }
+    }
+}
+
+@Preview(name = "ActionButton", showBackground = true, widthDp = 360)
+@Composable
+private fun ActionButtonPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ActionButton(icon = Icons.Filled.Share, label = "Share", onClick = {})
+        }
     }
 }

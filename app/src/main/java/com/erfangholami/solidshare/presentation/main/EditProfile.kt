@@ -36,12 +36,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ProfileEdits
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -234,4 +237,46 @@ private fun ReadOnlyField(label: String, value: String) {
         supportingText = { Text(stringResource(R.string.profile_field_read_only)) },
         modifier = Modifier.fillMaxWidth(),
     )
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun LabeledFieldPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            LabeledField(
+                label = "Name",
+                value = "Alice Cooper",
+                onChange = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Disabled")
+@Composable
+private fun LabeledFieldDisabledPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            LabeledField(
+                label = "Name",
+                value = "Alice Cooper",
+                onChange = {},
+                enabled = false,
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ReadOnlyFieldPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ReadOnlyField(
+                label = "WebID",
+                value = PreviewSamples.WEB_ID,
+            )
+        }
+    }
 }

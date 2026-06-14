@@ -22,8 +22,10 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,5 +77,21 @@ fun Home() {
                 )
             }
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun HomePreview() {
+    AppTheme {
+        Home()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Home Dark")
+@Composable
+private fun HomeDarkPreview() {
+    AppTheme(isDarkTheme = true) {
+        Home()
     }
 }

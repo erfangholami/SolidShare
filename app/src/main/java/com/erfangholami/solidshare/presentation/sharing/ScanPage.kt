@@ -86,6 +86,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
@@ -98,6 +99,7 @@ import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.ConfirmAccessRoute
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.pasteText
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
@@ -532,4 +534,18 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ScannerContentPreview() {
+    AppTheme {
+        ScannerContent(
+            subtitle = "Scan a share or profile QR",
+            hasPermission = false,
+            onRequestPermission = {},
+            onResult = {},
+        )
+    }
 }

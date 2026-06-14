@@ -26,8 +26,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.domain.model.PublicProfile
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @Composable
 fun ProfileHeader(
@@ -107,5 +109,13 @@ private fun IdentityRow(icon: ImageVector, text: String) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ProfileHeaderPreview() {
+    AppTheme {
+        ProfileHeader(profile = PreviewSamples.profile())
     }
 }

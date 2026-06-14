@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Surface
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,11 +69,14 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
@@ -536,6 +540,116 @@ private fun PodProviderBottomSheet(
                     )
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun HexagonHeroPreview() {
+    AppTheme {
+        HexagonHero()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ChooseServerFieldPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ChooseServerField(onClick = {})
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun CustomUrlFieldPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            CustomUrlField(
+                value = "https://my.pod.example",
+                onValueChange = {},
+                isError = false,
+                onGo = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "CustomUrlField Error")
+@Composable
+private fun CustomUrlFieldErrorPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            CustomUrlField(
+                value = "https://my.pod.example",
+                onValueChange = {},
+                isError = true,
+                onGo = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun PreviouslyLoggedInWebIDsPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            PreviouslyLoggedInWebIDs(
+                webIDs = listOf(PreviewSamples.webIdOf("alice"), PreviewSamples.webIdOf("ben")),
+                onWebIdClicked = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun PreviouslyLoggedInWebIDItemPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            PreviouslyLoggedInWebIDItem(
+                webId = PreviewSamples.WEB_ID,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun OrDividerPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            OrDivider()
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun RedirectingStatePreview() {
+    AppTheme {
+        Surface {
+            RedirectingState(
+                providerName = "solidcommunity.net",
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640, name = "RedirectingState Dark")
+@Composable
+private fun RedirectingStateDarkPreview() {
+    AppTheme(isDarkTheme = true) {
+        Surface {
+            RedirectingState(
+                providerName = "solidcommunity.net",
+                modifier = Modifier.fillMaxSize(),
+            )
         }
     }
 }

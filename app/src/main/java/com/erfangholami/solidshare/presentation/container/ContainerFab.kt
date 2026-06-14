@@ -12,6 +12,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.tooling.preview.Preview
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @Composable
 fun ContainerFab(
@@ -47,5 +49,21 @@ fun ContainerFab(
                 modifier = Modifier.rotate(rotation),
             )
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Collapsed")
+@Composable
+private fun ContainerFabCollapsedPreview() {
+    AppTheme {
+        ContainerFab(isVisible = true, isExpanded = false, onToggle = {})
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Expanded")
+@Composable
+private fun ContainerFabExpandedPreview() {
+    AppTheme {
+        ContainerFab(isVisible = true, isExpanded = true, onToggle = {})
     }
 }

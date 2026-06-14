@@ -10,7 +10,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @Composable
 fun NotificationBell(
@@ -34,5 +36,21 @@ fun NotificationBell(
                 contentDescription = stringResource(R.string.notifications),
             )
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Unread")
+@Composable
+private fun NotificationBellUnreadPreview() {
+    AppTheme {
+        NotificationBell(unreadCount = 3, onClick = {})
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Empty")
+@Composable
+private fun NotificationBellEmptyPreview() {
+    AppTheme {
+        NotificationBell(unreadCount = 0, onClick = {})
     }
 }

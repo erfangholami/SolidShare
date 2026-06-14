@@ -25,12 +25,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 private val NavBarHeight = 64.dp
 private val AddButtonSize = 48.dp
@@ -90,5 +92,41 @@ fun MainBottomBar(
                 colors = itemColors,
             )
         }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun MainBottomBarPreview() {
+    AppTheme {
+        MainBottomBar(
+            items = listOf(
+                MainNavItem.MainNavBottomItem.HomeItem,
+                MainNavItem.MainNavBottomItem.ShareItem,
+                MainNavItem.MainNavBottomItem.DirectoryItem,
+                MainNavItem.MainNavBottomItem.ProfileItem,
+            ),
+            currentDestination = null,
+            onItemClick = {},
+            onAddClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Dark")
+@Composable
+private fun MainBottomBarDarkPreview() {
+    AppTheme(isDarkTheme = true) {
+        MainBottomBar(
+            items = listOf(
+                MainNavItem.MainNavBottomItem.HomeItem,
+                MainNavItem.MainNavBottomItem.ShareItem,
+                MainNavItem.MainNavBottomItem.DirectoryItem,
+                MainNavItem.MainNavBottomItem.ProfileItem,
+            ),
+            currentDestination = null,
+            onItemClick = {},
+            onAddClick = {},
+        )
     }
 }

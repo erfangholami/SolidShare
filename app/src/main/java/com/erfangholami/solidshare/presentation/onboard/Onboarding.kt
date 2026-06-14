@@ -31,6 +31,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,10 +45,12 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import kotlinx.coroutines.launch
 
 private const val SLIDE_COUNT = 3
@@ -349,6 +352,64 @@ private fun NextArrowButton(
                 contentDescription = null,
                 modifier = Modifier.size(28.dp),
             )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun SlideOnePreview() {
+    AppTheme {
+        SlideOne()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun SlideTwoPreview() {
+    AppTheme {
+        SlideTwo()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun SlideThreePreview() {
+    AppTheme {
+        SlideThree()
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun HexagonBackdropPreview() {
+    AppTheme {
+        HexagonBackdrop(tint = MaterialTheme.colorScheme.primary)
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, heightDp = 640, name = "HexagonBackdrop BottomTint")
+@Composable
+private fun HexagonBackdropBottomTintPreview() {
+    AppTheme {
+        HexagonBackdrop(
+            tint = MaterialTheme.colorScheme.primary,
+            bottomTint = MaterialTheme.colorScheme.tertiary,
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun NextArrowButtonPreview() {
+    AppTheme {
+        Surface(color = MaterialTheme.colorScheme.primary) {
+            Box(modifier = Modifier.padding(16.dp)) {
+                NextArrowButton(
+                    onClick = {},
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                )
+            }
         }
     }
 }
