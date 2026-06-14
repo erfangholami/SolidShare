@@ -8,7 +8,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Autorenew
@@ -33,14 +31,12 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -52,16 +48,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
@@ -69,20 +66,30 @@ import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.model.ReceivedShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.presentation.components.AccountSwitcherCircle
+import com.erfangholami.solidshare.presentation.components.BannerTone
+import com.erfangholami.solidshare.presentation.components.DismissibleBanner
+import com.erfangholami.solidshare.presentation.container.DeleteResourceDialog
 import com.erfangholami.solidshare.presentation.container.ResourceTypeIcon
+import com.erfangholami.solidshare.presentation.navigation.ConfirmAccessRoute
 import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
+import com.erfangholami.solidshare.presentation.navigation.ResourceDetailsRoute
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.notifications.TopBarNotificationBell
 import com.erfangholami.solidshare.presentation.sharing.ShareLinkPanel
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
+import com.erfangholami.solidshare.presentation.util.copyText
 import com.erfangholami.solidshare.presentation.sharing.iconFor
 import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.theme.AppTheme
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -99,8 +106,13 @@ fun Share(
     val ownedResource by viewModel.ownedResource.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
+    val clipboard = LocalClipboard.current
+    val scope = rememberCoroutineScope()
     val openWithChooser = stringResource(R.string.open_with_chooser)
     val noAppMsg = stringResource(R.string.no_app_to_open)
+    val linkCopiedMsg = stringResource(R.string.link_copied)
+
+    var receivedToDelete by remember { mutableStateOf<ReceivedShare?>(null) }
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         viewModel.load()
@@ -144,7 +156,7 @@ fun Share(
     LaunchedEffect(Unit) {
         viewModel.reshareLink.collect { link ->
             qrSharePayload = QrPayload(
-                title = link.title,
+                resourceUri = link.resourceUri,
                 deepLink = link.deepLink,
                 bareUrl = link.bareUrl,
             )
@@ -271,9 +283,10 @@ fun Share(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically(),
                 ) {
-                    NoticeBanner(
-                        text = state.notice.orEmpty(),
+                    DismissibleBanner(
+                        message = state.notice.orEmpty(),
                         onDismiss = viewModel::clearNotice,
+                        tone = BannerTone.INFO,
                     )
                 }
 
@@ -287,7 +300,7 @@ fun Share(
                             shares = state.given,
                             onShowQr = { resourceUri ->
                                 qrSharePayload = QrPayload(
-                                    title = displayNameForUri(resourceUri),
+                                    resourceUri = resourceUri,
                                     deepLink = viewModel.deepLinkFor(resourceUri),
                                     bareUrl = viewModel.bareUrlFor(resourceUri),
                                 )
@@ -297,17 +310,31 @@ fun Share(
                                     ManageSharingRoute(resourceUri = resourceUri, canManage = true),
                                 )
                             },
+                            loadMeta = { viewModel.resourceMetaItem(it) },
                         )
 
                         1 -> ReceivedList(
                             shares = state.received,
-                            reshareable = state.reshareable,
                             onOpen = { viewModel.openReceivedShare(it) },
                             onRemove = { viewModel.removeReceivedShare(it) },
                             onReshare = { viewModel.reshareReceivedShare(it) },
                             onOpenOwner = {
                                 navController.navigate(PublicProfileRoute(it.ownerWebId))
                             },
+                            onCopyLink = { share ->
+                                scope.launch {
+                                    clipboard.copyText(viewModel.bareUrlFor(share.resourceUri))
+                                    viewModel.showNotice(linkCopiedMsg)
+                                }
+                            },
+                            onDownload = { viewModel.downloadReceivedShare(it) },
+                            onInfo = {
+                                navController.navigate(
+                                    ResourceDetailsRoute(viewModel.detailsItemFor(it)),
+                                )
+                            },
+                            onDelete = { receivedToDelete = it },
+                            loadMeta = { viewModel.resourceMetaItem(it) },
                         )
                     }
                 }
@@ -338,7 +365,12 @@ fun Share(
         LostAccessDialog(
             resourceName = displayNameForUri(share.resourceUri),
             ownerWebId = share.ownerWebId,
-            onRequestAccess = { viewModel.confirmRequestAccessForLostShare() },
+            onRequestAccess = {
+                viewModel.clearLostAccessShare()
+                navController.navigate(
+                    ConfirmAccessRoute(share.resourceUri, share.ownerWebId),
+                )
+            },
             onDismiss = { viewModel.dismissLostAccessShare() },
         )
     }
@@ -347,7 +379,12 @@ fun Share(
         NoAccessDialog(
             resourceName = displayNameForUri(target.resourceUri),
             ownerWebId = target.ownerWebId,
-            onRequestAccess = { viewModel.confirmRequestAccessForNoAccess() },
+            onRequestAccess = {
+                viewModel.dismissNoAccessShare()
+                navController.navigate(
+                    ConfirmAccessRoute(target.resourceUri, target.ownerWebId),
+                )
+            },
             onDismiss = { viewModel.dismissNoAccessShare() },
         )
     }
@@ -359,6 +396,17 @@ fun Share(
         )
     }
 
+    receivedToDelete?.let { share ->
+        DeleteResourceDialog(
+            resourceName = displayNameForUri(share.resourceUri),
+            onDismiss = { receivedToDelete = null },
+            onDelete = {
+                receivedToDelete = null
+                viewModel.deleteReceivedShare(share)
+            },
+        )
+    }
+
     qrSharePayload?.let { payload ->
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(
@@ -366,17 +414,16 @@ fun Share(
             sheetState = sheetState,
         ) {
             ShareLinkPanel(
-                title = payload.title,
+                resourceUri = payload.resourceUri,
                 deepLink = payload.deepLink,
                 bareUrl = payload.bareUrl,
-                onClose = { qrSharePayload = null },
             )
         }
     }
 }
 
 internal data class QrPayload(
-    val title: String,
+    val resourceUri: String,
     val deepLink: String,
     val bareUrl: String,
 )
@@ -415,7 +462,11 @@ internal fun ResourceTile(resourceUri: String) {
 }
 
 @Composable
-internal fun ModeChip(mode: ShareMode) {
+internal fun ModeChip(
+    mode: ShareMode,
+    containerColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.secondaryContainer,
+    contentColor: androidx.compose.ui.graphics.Color = MaterialTheme.colorScheme.onSecondaryContainer,
+) {
     AssistChip(
         onClick = {},
         enabled = false,
@@ -429,9 +480,9 @@ internal fun ModeChip(mode: ShareMode) {
         },
         shape = CircleShape,
         colors = AssistChipDefaults.assistChipColors(
-            disabledContainerColor = MaterialTheme.colorScheme.secondaryContainer,
-            disabledLabelColor = MaterialTheme.colorScheme.onSecondaryContainer,
-            disabledLeadingIconContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            disabledContainerColor = containerColor,
+            disabledLabelColor = contentColor,
+            disabledLeadingIconContentColor = contentColor,
         ),
         border = null,
         modifier = Modifier.height(28.dp),
@@ -445,126 +496,27 @@ private fun ErrorBanner(
     onRetry: () -> Unit,
     onRequestAccess: (ShareViewModel.ErrorAction.RequestAccess) -> Unit,
 ) {
-    Surface(
-        color = MaterialTheme.colorScheme.errorContainer,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp)),
-    ) {
-        Column(modifier = Modifier.padding(start = 12.dp, top = 8.dp, end = 4.dp, bottom = 4.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = error.message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onErrorContainer,
-                    modifier = Modifier.weight(1f),
-                )
-                IconButton(onClick = onDismiss) {
-                    Icon(
-                        Icons.Default.Close,
-                        contentDescription = stringResource(R.string.dismiss),
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                    )
-                }
+    DismissibleBanner(
+        message = error.message,
+        onDismiss = onDismiss,
+        tone = BannerTone.ERROR,
+        action = when (val action = error.action) {
+            ShareViewModel.ErrorAction.Retry -> {
+                { TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } }
             }
-            when (val action = error.action) {
-                ShareViewModel.ErrorAction.Retry ->
-                    TextButton(
-                        onClick = onRetry,
-                        modifier = Modifier.align(Alignment.End),
-                    ) { Text(stringResource(R.string.retry)) }
 
-                is ShareViewModel.ErrorAction.RequestAccess ->
+            is ShareViewModel.ErrorAction.RequestAccess -> {
+                {
                     TextButton(
                         onClick = { onRequestAccess(action) },
                         enabled = action.ownerWebId != null,
-                        modifier = Modifier.align(Alignment.End),
                     ) { Text(stringResource(R.string.request_access)) }
-
-                null -> Unit
+                }
             }
-        }
-    }
-}
 
-@Composable
-private fun NoticeBanner(text: String, onDismiss: () -> Unit) {
-    Surface(
-        color = MaterialTheme.colorScheme.secondaryContainer,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(12.dp)),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
-                modifier = Modifier.weight(1f),
-            )
-            IconButton(onClick = onDismiss) {
-                Icon(
-                    Icons.Default.Close,
-                    contentDescription = stringResource(R.string.dismiss),
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
-        }
-    }
-}
-
-@Composable
-internal fun EmptyState(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    actionLabel: String?,
-    onAction: (() -> Unit)?,
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(72.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(36.dp),
-            )
-        }
-        Spacer(Modifier.size(16.dp))
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-        )
-        Spacer(Modifier.size(4.dp))
-        Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.size(16.dp))
-            FilledTonalButton(onClick = onAction) { Text(actionLabel) }
-        }
-    }
+            null -> null
+        },
+    )
 }
 
 @Composable
@@ -616,4 +568,100 @@ private fun OwnerDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.got_it)) }
         },
     )
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun LostAccessDialogPreview() {
+    AppTheme {
+        LostAccessDialog(
+            resourceName = "trip.jpg",
+            ownerWebId = PreviewSamples.OWNER_WEB_ID,
+            onRequestAccess = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ResourceTilePreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ResourceTile(resourceUri = PreviewSamples.RESOURCE)
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "ModeChip View")
+@Composable
+private fun ModeChipReadPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ModeChip(mode = ShareMode.READ)
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "ModeChip Add")
+@Composable
+private fun ModeChipAppendPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ModeChip(mode = ShareMode.APPEND)
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "ModeChip Edit")
+@Composable
+private fun ModeChipWritePreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            ModeChip(mode = ShareMode.WRITE)
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ErrorBannerPreview() {
+    AppTheme {
+        ErrorBanner(
+            error = ShareViewModel.UiError(
+                message = "Couldn't load shares.",
+                action = ShareViewModel.ErrorAction.RequestAccess(
+                    resourceUri = PreviewSamples.RESOURCE,
+                    ownerWebId = PreviewSamples.OWNER_WEB_ID,
+                ),
+            ),
+            onDismiss = {},
+            onRetry = {},
+            onRequestAccess = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun NoAccessDialogPreview() {
+    AppTheme {
+        NoAccessDialog(
+            resourceName = "trip.jpg",
+            ownerWebId = PreviewSamples.OWNER_WEB_ID,
+            onRequestAccess = {},
+            onDismiss = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun OwnerDialogPreview() {
+    AppTheme {
+        OwnerDialog(
+            resourceName = "trip.jpg",
+            onDismiss = {},
+        )
+    }
 }

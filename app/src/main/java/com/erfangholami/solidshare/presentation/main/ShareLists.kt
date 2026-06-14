@@ -13,40 +13,45 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Public
-import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.MoreVert
-import androidx.compose.material.icons.outlined.PersonRemove
 import androidx.compose.material.icons.outlined.QrCodeScanner
-import androidx.compose.material.icons.outlined.Share
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ReceivedShare
-import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.presentation.components.EmptyState
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.components.ResourceAction
+import com.erfangholami.solidshare.presentation.components.ResourceActions
+import com.erfangholami.solidshare.presentation.components.ResourceActionsSheet
 import com.erfangholami.solidshare.presentation.components.RowDivider
-import com.erfangholami.solidshare.presentation.components.SheetActionRow
+import com.erfangholami.solidshare.presentation.container.itemCountLabel
+import com.erfangholami.solidshare.presentation.container.metaSubtitle
 import com.erfangholami.solidshare.presentation.sharing.SharedAccessGroups
+import com.erfangholami.solidshare.presentation.sharing.SharedWithOwner
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
+import com.erfangholami.solidshare.presentation.sharing.isContainerUri
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.util.formatRelativeTime
 
 @Composable
@@ -54,6 +59,7 @@ internal fun GivenList(
     shares: List<GivenShare>,
     onShowQr: (String) -> Unit,
     onManage: (String) -> Unit,
+    loadMeta: suspend (String) -> ContainerItem?,
 ) {
     if (shares.isEmpty()) {
         EmptyState(
@@ -73,6 +79,7 @@ internal fun GivenList(
                 recipients = recipients,
                 onShowQr = { onShowQr(resourceUri) },
                 onManage = { onManage(resourceUri) },
+                loadMeta = loadMeta,
             )
             RowDivider(startIndent = 72.dp)
         }
@@ -82,11 +89,15 @@ internal fun GivenList(
 @Composable
 internal fun ReceivedList(
     shares: List<ReceivedShare>,
-    reshareable: Set<String>,
     onOpen: (ReceivedShare) -> Unit,
     onRemove: (ReceivedShare) -> Unit,
     onReshare: (ReceivedShare) -> Unit,
     onOpenOwner: (ReceivedShare) -> Unit,
+    onCopyLink: (ReceivedShare) -> Unit,
+    onDownload: (ReceivedShare) -> Unit,
+    onInfo: (ReceivedShare) -> Unit,
+    onDelete: (ReceivedShare) -> Unit,
+    loadMeta: suspend (String) -> ContainerItem?,
 ) {
     if (shares.isEmpty()) {
         EmptyState(
@@ -102,11 +113,15 @@ internal fun ReceivedList(
         items(shares, key = { "${it.ownerWebId}|${it.resourceUri}" }) { share ->
             ReceivedRow(
                 share = share,
-                canReshare = share.resourceUri in reshareable,
                 onOpen = { onOpen(share) },
                 onRemove = { onRemove(share) },
                 onReshare = { onReshare(share) },
                 onOpenOwner = { onOpenOwner(share) },
+                onCopyLink = { onCopyLink(share) },
+                onDownload = { onDownload(share) },
+                onInfo = { onInfo(share) },
+                onDelete = { onDelete(share) },
+                loadMeta = loadMeta,
             )
             RowDivider(startIndent = 72.dp)
         }
@@ -119,8 +134,16 @@ private fun GivenResourceRow(
     recipients: List<GivenShare>,
     onShowQr: () -> Unit,
     onManage: () -> Unit,
+    loadMeta: suspend (String) -> ContainerItem?,
 ) {
     var sheetOpen by remember { mutableStateOf(false) }
+    var headerItem by remember(resourceUri) { mutableStateOf<ContainerItem?>(null) }
+    LaunchedEffect(sheetOpen) {
+        if (sheetOpen && headerItem == null) headerItem = loadMeta(resourceUri)
+    }
+    val sharedAt = remember(recipients) {
+        recipients.mapNotNull { it.createdAt }.maxOrNull()
+    }?.let { formatRelativeTime(it) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -140,56 +163,33 @@ private fun GivenResourceRow(
             )
             Spacer(Modifier.size(8.dp))
             SharedAccessGroups(shares = recipients)
+            if (sharedAt != null) {
+                Spacer(Modifier.size(6.dp))
+                Text(
+                    text = stringResource(R.string.shared_relative, sharedAt),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
         IconButton(onClick = { sheetOpen = true }) {
             Icon(Icons.Outlined.MoreVert, contentDescription = stringResource(R.string.actions))
         }
     }
     if (sheetOpen) {
-        GivenShareActionsSheet(
+        ResourceActionsSheet(
             resourceUri = resourceUri,
+            subtitle = headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) },
+            actions = ResourceActions.sharedByMe,
             onDismiss = { sheetOpen = false },
-            onShowQr = onShowQr,
-            onManage = onManage,
+            onAction = { action ->
+                when (action) {
+                    ResourceAction.SHOW_SHARE_LINK -> onShowQr()
+                    ResourceAction.MANAGE_ACCESS -> onManage()
+                    else -> Unit
+                }
+            },
         )
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun GivenShareActionsSheet(
-    resourceUri: String,
-    onDismiss: () -> Unit,
-    onShowQr: () -> Unit,
-    onManage: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(bottom = 24.dp)) {
-            Text(
-                text = displayNameForUri(resourceUri),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            )
-            SheetActionRow(
-                icon = Icons.Outlined.QrCodeScanner,
-                label = stringResource(R.string.show_share_link),
-                onClick = {
-                    onDismiss()
-                    onShowQr()
-                },
-            )
-            SheetActionRow(
-                icon = Icons.Outlined.ManageAccounts,
-                label = stringResource(R.string.manage_access),
-                onClick = {
-                    onDismiss()
-                    onManage()
-                },
-            )
-        }
     }
 }
 
@@ -197,13 +197,21 @@ private fun GivenShareActionsSheet(
 @Composable
 private fun ReceivedRow(
     share: ReceivedShare,
-    canReshare: Boolean,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
     onReshare: () -> Unit,
     onOpenOwner: () -> Unit,
+    onCopyLink: () -> Unit,
+    onDownload: () -> Unit,
+    onInfo: () -> Unit,
+    onDelete: () -> Unit,
+    loadMeta: suspend (String) -> ContainerItem?,
 ) {
     var sheetOpen by remember { mutableStateOf(false) }
+    var headerItem by remember(share.resourceUri) { mutableStateOf<ContainerItem?>(null) }
+    LaunchedEffect(sheetOpen) {
+        if (sheetOpen && headerItem == null) headerItem = loadMeta(share.resourceUri)
+    }
     val addedAt = formatRelativeTime(share.addedAt)
     Row(
         modifier = Modifier
@@ -228,15 +236,11 @@ private fun ReceivedRow(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
-                ProfileAvatar(
-                    webId = share.ownerWebId,
-                    displayName = null,
-                    size = 24.dp,
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .clickable(onClick = onOpenOwner),
+                SharedWithOwner(
+                    ownerWebId = share.ownerWebId,
+                    mode = share.mode,
+                    onOwnerClick = onOpenOwner,
                 )
-                ModeChip(mode = share.mode)
                 if (addedAt != null) {
                     Text(
                         text = stringResource(R.string.added_relative, addedAt),
@@ -251,53 +255,98 @@ private fun ReceivedRow(
         }
     }
     if (sheetOpen) {
-        ReceivedShareActionsSheet(
-            share = share,
-            canReshare = canReshare,
+        ResourceActionsSheet(
+            resourceUri = share.resourceUri,
+            subtitle = headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) },
+            actions = ResourceActions.sharedWithMe(
+                isContainer = isContainerUri(share.resourceUri),
+                canEdit = share.mode == ShareMode.WRITE,
+            ),
             onDismiss = { sheetOpen = false },
-            onReshare = onReshare,
-            onRemove = onRemove,
+            onAction = { action ->
+                when (action) {
+                    ResourceAction.REMOVE_FROM_LIST -> onRemove()
+                    ResourceAction.RESHARE -> onReshare()
+                    ResourceAction.DOWNLOAD -> onDownload()
+                    ResourceAction.COPY_LINK -> onCopyLink()
+                    ResourceAction.OPEN_IN -> onOpen()
+                    ResourceAction.INFO -> onInfo()
+                    ResourceAction.DELETE -> onDelete()
+                    else -> Unit
+                }
+            },
         )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, widthDp = 360)
 @Composable
-private fun ReceivedShareActionsSheet(
-    share: ReceivedShare,
-    canReshare: Boolean,
-    onDismiss: () -> Unit,
-    onReshare: () -> Unit,
-    onRemove: () -> Unit,
-) {
-    ModalBottomSheet(onDismissRequest = onDismiss) {
-        Column(modifier = Modifier.padding(bottom = 24.dp)) {
-            Text(
-                text = displayNameForUri(share.resourceUri),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
-            )
-            if (canReshare) {
-                SheetActionRow(
-                    icon = Icons.Outlined.Share,
-                    label = stringResource(R.string.reshare),
-                    onClick = {
-                        onDismiss()
-                        onReshare()
-                    },
-                )
-            }
-            SheetActionRow(
-                icon = Icons.Outlined.PersonRemove,
-                label = stringResource(R.string.remove_from_list),
-                onClick = {
-                    onDismiss()
-                    onRemove()
-                },
-            )
-        }
+private fun GivenListPreview() {
+    AppTheme {
+        GivenList(
+            shares = listOf(
+                PreviewSamples.givenShare(name = "ben", mode = ShareMode.READ),
+                PreviewSamples.givenShare(name = "cara", mode = ShareMode.WRITE),
+            ),
+            onShowQr = {},
+            onManage = {},
+            loadMeta = { PreviewSamples.file() },
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ReceivedListPreview() {
+    AppTheme {
+        ReceivedList(
+            shares = listOf(
+                PreviewSamples.receivedShare(name = "owner", mode = ShareMode.READ),
+            ),
+            onOpen = {},
+            onRemove = {},
+            onReshare = {},
+            onOpenOwner = {},
+            onCopyLink = {},
+            onDownload = {},
+            onInfo = {},
+            onDelete = {},
+            loadMeta = { PreviewSamples.file() },
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun GivenResourceRowPreview() {
+    AppTheme {
+        GivenResourceRow(
+            resourceUri = PreviewSamples.RESOURCE,
+            recipients = listOf(
+                PreviewSamples.givenShare(name = "ben", mode = ShareMode.READ),
+            ),
+            onShowQr = {},
+            onManage = {},
+            loadMeta = { PreviewSamples.file() },
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ReceivedRowPreview() {
+    AppTheme {
+        ReceivedRow(
+            share = PreviewSamples.receivedShare(name = "owner", mode = ShareMode.WRITE),
+            onOpen = {},
+            onRemove = {},
+            onReshare = {},
+            onOpenOwner = {},
+            onCopyLink = {},
+            onDownload = {},
+            onInfo = {},
+            onDelete = {},
+            loadMeta = { PreviewSamples.file() },
+        )
     }
 }

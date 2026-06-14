@@ -1,8 +1,12 @@
 package com.erfangholami.solidshare.presentation.main
 
+import android.webkit.MimeTypeMap
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
@@ -13,20 +17,23 @@ import com.erfangholami.solidshare.data.repo.sharing.ReceivedSharesSignal
 import com.erfangholami.solidshare.data.repo.sharing.SharingError
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.data.repo.sharing.toSharingError
+import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.domain.model.ReceivedShare
+import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
+import com.erfangholami.solidshare.domain.model.getResourceType
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
 import com.erfangholami.solidshare.presentation.sharing.toSharingErrorMessage
+import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
 import com.erfangholami.solidshare.util.StringProvider
+import com.erfangholami.solidshare.worker.DownloadWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -39,7 +46,6 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
 
 @HiltViewModel
@@ -51,6 +57,7 @@ class ShareViewModel @Inject constructor(
     private val fileRepository: FileRepository,
     private val badgeStore: NotificationsBadgeStore,
     private val receivedSharesSignal: ReceivedSharesSignal,
+    private val workManager: WorkManager,
 ) : ViewModel() {
 
     data class UiError(
@@ -74,7 +81,6 @@ class ShareViewModel @Inject constructor(
         val isRefreshing: Boolean = false,
         val error: UiError? = null,
         val notice: String? = null,
-        val reshareable: Set<String> = emptySet(),
     )
 
     sealed interface OpenEvent {
@@ -86,7 +92,7 @@ class ShareViewModel @Inject constructor(
     }
 
     data class ReshareLink(
-        val title: String,
+        val resourceUri: String,
         val deepLink: String,
         val bareUrl: String,
     )
@@ -123,8 +129,6 @@ class ShareViewModel @Inject constructor(
 
     private var loadJob: Job? = null
 
-    private val reshareableProbe = ConcurrentHashMap<String, Boolean>()
-
     init {
         viewModelScope.launch {
             authRepository.activeWebIdFlow
@@ -135,7 +139,6 @@ class ShareViewModel @Inject constructor(
                     lastWebId = webId
                     if (isSwitch) {
                         _uiState.value = UiState()
-                        reshareableProbe.clear()
                     }
                     load()
                 }
@@ -159,7 +162,6 @@ class ShareViewModel @Inject constructor(
                     received = received,
                     isLoading = false,
                 )
-                refreshReshareable(webId, received)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -175,7 +177,6 @@ class ShareViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
             _uiState.value = _uiState.value.copy(isRefreshing = true, error = null)
-            reshareableProbe.clear()
             try {
                 val given = sharingRepository.refreshGivenShares(webId)
                 val received = sharingRepository.refreshReceivedShares(webId)
@@ -184,7 +185,6 @@ class ShareViewModel @Inject constructor(
                     received = received,
                     isRefreshing = false,
                 )
-                refreshReshareable(webId, received)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -202,7 +202,6 @@ class ShareViewModel @Inject constructor(
             }.getOrNull() ?: return@launch
             if (lastWebId != webId) return@launch
             _uiState.value = _uiState.value.copy(received = received)
-            refreshReshareable(webId, received)
         }
     }
 
@@ -237,12 +236,6 @@ class ShareViewModel @Inject constructor(
         return share
     }
 
-    fun confirmRequestAccessForNoAccess() {
-        val target = _noAccessShare.value ?: return
-        _noAccessShare.value = null
-        requestAccess(target.resourceUri, target.ownerWebId)
-    }
-
     fun dismissNoAccessShare() {
         _noAccessShare.value = null
     }
@@ -265,29 +258,11 @@ class ShareViewModel @Inject constructor(
         }
     }
 
-    private fun refreshReshareable(webId: String, shares: List<ReceivedShare>) {
-        viewModelScope.launch {
-            val eligible = shares.map { share ->
-                async {
-                    val canShare = reshareableProbe[share.resourceUri] ?: run {
-                        runCatching {
-                            fileRepository.probeAccess(webId, share.resourceUri).canShareOnward
-                        }.getOrNull()?.also { reshareableProbe[share.resourceUri] = it } ?: false
-                    }
-                    share.resourceUri.takeIf { canShare }
-                }
-            }.awaitAll().filterNotNull().toSet()
-            if (lastWebId == webId) {
-                _uiState.value = _uiState.value.copy(reshareable = eligible)
-            }
-        }
-    }
-
     fun reshareReceivedShare(share: ReceivedShare) {
         viewModelScope.launch {
             _reshareLink.emit(
                 ReshareLink(
-                    title = displayNameForUri(share.resourceUri),
+                    resourceUri = share.resourceUri,
                     deepLink = reshareLinkFor(share.resourceUri, share.ownerWebId),
                     bareUrl = bareUrlFor(share.resourceUri),
                 ),
@@ -322,28 +297,105 @@ class ShareViewModel @Inject constructor(
         }
     }
 
-    fun confirmRequestAccessForLostShare() {
-        val share = _lostAccessShare.value ?: return
-        _lostAccessShare.value = null
+    fun downloadReceivedShare(share: ReceivedShare) {
+        viewModelScope.launch {
+            val webId = authRepository.getActiveWebId() ?: return@launch
+            val fileName = displayNameForUri(share.resourceUri)
+            val mimeType = MimeTypeMap.getSingleton()
+                .getMimeTypeFromExtension(fileName.substringAfterLast('.', "").lowercase())
+                ?: MIME_TYPE_OCTET_STREAM
+            val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setInputData(
+                    workDataOf(
+                        DownloadWorker.KEY_WEB_ID to webId,
+                        DownloadWorker.KEY_FILE_URL to share.resourceUri,
+                        DownloadWorker.KEY_FILE_NAME to fileName,
+                        DownloadWorker.KEY_MIME_TYPE to mimeType,
+                    ),
+                )
+                .build()
+            workManager.enqueue(request)
+        }
+    }
+
+    fun deleteReceivedShare(share: ReceivedShare) {
         viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
             try {
-                notificationsRepository.sendRequest(
-                    requesterWebId = webId,
-                    ownerWebId = share.ownerWebId,
-                    resourceUri = share.resourceUri,
-                    requestedMode = share.mode,
+                fileRepository.deleteResource(
+                    webId, share.resourceUri, isContainerUri(share.resourceUri),
                 )
-                dropReceivedShare(webId, share)
-                _uiState.value = _uiState.value.copy(
-                    error = null,
-                    notice = stringProvider.getString(R.string.access_request_sent_and_removed),
-                )
+                sharingRepository.removeReceivedShare(webId, share.resourceUri, share.ownerWebId)
+                load()
             } catch (e: Exception) {
-                dropReceivedShare(webId, share)
-                fail(e, retry = null)
+                fail(e, retry = { deleteReceivedShare(share) })
             }
         }
+    }
+
+    /** A minimal [ContainerItem] for the Info page of a received (non-owned) resource. */
+    fun detailsItemFor(share: ReceivedShare): ContainerItem {
+        val isContainer = isContainerUri(share.resourceUri)
+        val name = displayNameForUri(share.resourceUri)
+        val extension = if (isContainer) {
+            null
+        } else {
+            name.substringAfterLast('.', "").lowercase().ifBlank { null }
+        }
+        return ContainerItem(
+            identifier = share.resourceUri,
+            isContainer = isContainer,
+            name = name,
+            extension = extension,
+            mimeType = null,
+            resourceType = getResourceType(isContainer, null, extension),
+            resourceTypes = emptyList(),
+            sizeBytes = null,
+            lastModified = null,
+            etag = null,
+            access = accessFor(share.mode),
+        )
+    }
+
+    /** Fetches a resource's size/modified/item-count and wraps it in a [ContainerItem] for a
+     *  ⋮ sheet header (shared resources carry only a URL). Returns null on failure. */
+    suspend fun resourceMetaItem(resourceUri: String): ContainerItem? {
+        val webId = authRepository.getActiveWebId() ?: return null
+        val meta = runCatching { fileRepository.getResourceMeta(webId, resourceUri) }
+            .getOrNull() ?: return null
+        val isContainer = isContainerUri(resourceUri)
+        val name = displayNameForUri(resourceUri)
+        val extension = if (isContainer) {
+            null
+        } else {
+            name.substringAfterLast('.', "").lowercase().ifBlank { null }
+        }
+        return ContainerItem(
+            identifier = resourceUri,
+            isContainer = isContainer,
+            name = name,
+            extension = extension,
+            mimeType = null,
+            resourceType = getResourceType(isContainer, null, extension),
+            resourceTypes = emptyList(),
+            sizeBytes = meta.sizeBytes,
+            lastModified = meta.lastModified,
+            etag = null,
+            itemCount = meta.itemCount,
+        )
+    }
+
+    private fun accessFor(mode: ShareMode): ResourceAccess = ResourceAccess(
+        canWrite = mode == ShareMode.WRITE,
+        canControl = false,
+        publicCanRead = false,
+        canAppend = mode == ShareMode.WRITE || mode == ShareMode.APPEND,
+    )
+
+    /** Clears the lost-access dialog WITHOUT removing the share — used when opening the
+     *  Confirm Access sheet to re-request access (the stale entry stays until re-granted). */
+    fun clearLostAccessShare() {
+        _lostAccessShare.value = null
     }
 
     fun dismissLostAccessShare() {
