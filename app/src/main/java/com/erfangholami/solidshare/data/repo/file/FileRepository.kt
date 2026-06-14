@@ -2,8 +2,8 @@ package com.erfangholami.solidshare.data.repo.file
 
 import android.net.Uri
 import com.erfangholami.solidshare.domain.model.ContainerItem
-import com.erfangholami.solidshare.domain.model.ContainerStats
 import com.erfangholami.solidshare.domain.model.DownloadedFile
+import com.erfangholami.solidshare.domain.model.ResourceMeta
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import java.io.InputStream
 
@@ -14,10 +14,15 @@ interface FileRepository {
         includeItemAccess: Boolean = false,
     ): List<ContainerItem>
 
-    suspend fun computeContainerStats(
+    suspend fun getContainerItemCount(
         webId: String,
         containerUrl: String,
-    ): ContainerStats
+    ): Int
+
+    suspend fun getResourceMeta(
+        webId: String,
+        resourceUri: String,
+    ): ResourceMeta
 
     suspend fun getResourceCreatedTime(
         webId: String,

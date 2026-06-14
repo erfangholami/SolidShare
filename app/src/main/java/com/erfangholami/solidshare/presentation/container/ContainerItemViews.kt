@@ -1,8 +1,8 @@
 package com.erfangholami.solidshare.presentation.container
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -15,25 +15,28 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material.icons.outlined.FolderOpen
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.domain.model.ResourceType
+import com.erfangholami.solidshare.presentation.components.EmptyState
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @Composable
 internal fun ContainerItemRow(
@@ -59,7 +62,7 @@ internal fun ContainerItemRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = item.getItemSubtitle(),
+                text = item.getItemSubtitle(item.itemCount?.let { itemCountLabel(it) }),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = 1,
@@ -131,7 +134,7 @@ internal fun ContainerItemCard(
                     overflow = TextOverflow.Ellipsis,
                 )
                 Text(
-                    text = item.getItemSubtitle(),
+                    text = item.getItemSubtitle(item.itemCount?.let { itemCountLabel(it) }),
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -144,61 +147,79 @@ internal fun ContainerItemCard(
 
 @Composable
 internal fun EmptyState(modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Outlined.FolderOpen,
-            contentDescription = null,
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-        )
-        Spacer(Modifier.height(20.dp))
-        Text(
-            text = stringResource(R.string.this_folder_is_empty),
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = stringResource(R.string.this_folder_is_empty_description),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
-            textAlign = TextAlign.Center,
-        )
+    EmptyState(
+        title = stringResource(R.string.this_folder_is_empty),
+        modifier = modifier,
+        illustration = {
+            Image(
+                painter = painterResource(R.drawable.empty_container),
+                contentDescription = null,
+                modifier = Modifier.size(width = 132.dp, height = 107.dp),
+            )
+        },
+        subtitle = stringResource(R.string.this_folder_is_empty_description),
+    )
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Row File")
+@Composable
+private fun ContainerItemRowFilePreview() {
+    AppTheme {
+        Surface {
+            ContainerItemRow(
+                item = PreviewSamples.file(name = "trip.jpg", resourceType = ResourceType.IMAGE),
+                onClick = {},
+                onMoreOptions = {},
+            )
+        }
     }
 }
 
+@Preview(showBackground = true, widthDp = 360, name = "Row Folder")
 @Composable
-internal fun ErrorState(
-    message: String,
-    onRetry: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier.padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Icon(
-            imageVector = Icons.Filled.Warning,
-            contentDescription = null,
-            modifier = Modifier.size(56.dp),
-            tint = MaterialTheme.colorScheme.error,
-        )
-        Spacer(Modifier.height(16.dp))
-        Text(
-            text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center,
-        )
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onRetry) {
-            Text(stringResource(R.string.retry))
+private fun ContainerItemRowFolderPreview() {
+    AppTheme {
+        Surface {
+            ContainerItemRow(
+                item = PreviewSamples.folder(name = "Documents", itemCount = 12),
+                onClick = {},
+                onMoreOptions = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Row Folder Dark")
+@Composable
+private fun ContainerItemRowFolderDarkPreview() {
+    AppTheme(isDarkTheme = true) {
+        Surface {
+            ContainerItemRow(
+                item = PreviewSamples.folder(name = "Documents", itemCount = 12),
+                onClick = {},
+                onMoreOptions = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 200, name = "Card")
+@Composable
+private fun ContainerItemCardPreview() {
+    AppTheme {
+        Surface {
+            Box(modifier = Modifier.padding(16.dp)) {
+                Column(modifier = Modifier.width(180.dp)) {
+                    ContainerItemCard(
+                        item = PreviewSamples.file(
+                            name = "report.pdf",
+                            resourceType = ResourceType.PDF,
+                        ),
+                        onClick = {},
+                        onMoreOptions = {},
+                    )
+                }
+            }
         }
     }
 }

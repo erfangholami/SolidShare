@@ -258,7 +258,7 @@ class ContainerViewModel @Inject constructor(
                     fileRepository.getContainerContents(webId, url, includeItemAccess = shared)
                 rawItems = items
                 applySort()
-                computeFolderStats(webId)
+                computeFolderItemCounts(webId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -269,21 +269,18 @@ class ContainerViewModel @Inject constructor(
         }
     }
 
-    private fun computeFolderStats(webId: String) {
+    private fun computeFolderItemCounts(webId: String) {
         val containers = rawItems.filter { it.isContainer }
         if (containers.isEmpty()) return
         statsJob = viewModelScope.launch {
             containers.forEach { container ->
                 launch {
-                    val stats = runCatching {
-                        fileRepository.computeContainerStats(webId, container.identifier)
+                    val count = runCatching {
+                        fileRepository.getContainerItemCount(webId, container.identifier)
                     }.getOrNull() ?: return@launch
                     rawItems = rawItems.map { item ->
                         if (item.identifier == container.identifier) {
-                            item.copy(
-                                sizeBytes = stats.totalSize,
-                                lastModified = stats.newestModified ?: item.lastModified,
-                            )
+                            item.copy(itemCount = count)
                         } else {
                             item
                         }

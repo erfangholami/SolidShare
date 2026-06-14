@@ -1,7 +1,10 @@
 package com.erfangholami.solidshare.presentation.container
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -24,10 +27,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceType
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.theme.solidShareColors
+import com.erfangholami.solidshare.util.formatRelativeTime
 
 val ResourceType.icon: ImageVector
     @Composable
@@ -64,6 +73,16 @@ val ResourceType.tint: Color
     }
 
 @Composable
+@ReadOnlyComposable
+fun itemCountLabel(count: Int): String =
+    pluralStringResource(R.plurals.item_count, count, count)
+
+fun ContainerItem.metaSubtitle(itemCountLabel: String? = null): String? {
+    val primary = if (isContainer) itemCountLabel else sizeLabel()
+    return listOfNotNull(primary, formatRelativeTime(lastModified)).joinToString(" · ").ifEmpty { null }
+}
+
+@Composable
 fun ResourceTypeIcon(
     type: ResourceType,
     modifier: Modifier = Modifier,
@@ -81,5 +100,22 @@ fun ResourceTypeIcon(
             tint = type.tint,
             modifier = Modifier.size(size * 0.54f),
         )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun ResourceTypeIconPreview() {
+    AppTheme {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            ResourceTypeIcon(type = ResourceType.FOLDER)
+            ResourceTypeIcon(type = ResourceType.IMAGE)
+            ResourceTypeIcon(type = ResourceType.PDF)
+            ResourceTypeIcon(type = ResourceType.AUDIO)
+            ResourceTypeIcon(type = ResourceType.CODE)
+        }
     }
 }

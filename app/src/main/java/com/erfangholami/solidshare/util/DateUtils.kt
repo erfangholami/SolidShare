@@ -21,8 +21,11 @@ fun epochMillisOrNull(iso: String?): Long? {
         ?: runCatching { ZonedDateTime.parse(iso).toInstant().toEpochMilli() }.getOrNull()
 }
 
-fun formatRelativeTime(iso: String?): String? {
-    val millis = epochMillisOrNull(iso) ?: return null
+fun formatRelativeTime(iso: String?): String? =
+    formatRelativeTime(epochMillisOrNull(iso))
+
+fun formatRelativeTime(epochMillis: Long?): String? {
+    val millis = epochMillis ?: return null
     return DateUtils.getRelativeTimeSpanString(
         millis,
         System.currentTimeMillis(),

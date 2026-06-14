@@ -16,13 +16,12 @@ import com.erfangholami.androidsolidservices.shared.model.resource.SolidContaine
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidMetadata
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidNonRDFResource
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidRDFResource
-import com.erfangholami.androidsolidservices.shared.model.resource.SolidResourceReader
 import com.erfangholami.androidsolidservices.shared.util.encodeUriString
 import com.erfangholami.androidsolidservices.shared.util.getContentLength
 import com.erfangholami.androidsolidservices.shared.util.getETag
 import com.erfangholami.solidshare.domain.model.ContainerItem
-import com.erfangholami.solidshare.domain.model.ContainerStats
 import com.erfangholami.solidshare.domain.model.DownloadedFile
+import com.erfangholami.solidshare.domain.model.ResourceMeta
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.getResourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -112,39 +111,39 @@ class FileRepositoryImplementation @Inject constructor(
         }
     }
 
-    override suspend fun computeContainerStats(
+    override suspend fun getContainerItemCount(
         webId: String,
         containerUrl: String,
-    ): ContainerStats {
-        val reader = SolidResourceReader { uri ->
-            (resourceManager.read(webId, uri, SolidContainer::class.java)
-                    as? SolidNetworkResponse.Success)?.data
-        }
+    ): Int {
         val container = (resourceManager.read(
             webId,
             encodeUriString(containerUrl),
             SolidContainer::class.java,
-        ) as? SolidNetworkResponse.Success)?.data ?: return ContainerStats.EMPTY
-
-        if (!serverReportsSizes(container)) {
-            return ContainerStats(
-                totalSize = 0L,
-                newestModified = container.getLastModified(),
-            )
-        }
-        return ContainerStats(
-            totalSize = container.getSize(reader),
-            newestModified = container.getLastModified(reader),
-        )
+        ) as? SolidNetworkResponse.Success)?.data ?: return 0
+        return container.getContained().size
     }
 
-    private fun serverReportsSizes(container: SolidContainer): Boolean {
-        val directFiles = container.getContained()
-            .filter { !it.isContainer() && !it.isContainerByUri() }
-        if (directFiles.isEmpty()) return true
-        return directFiles.any {
-            it.size != null || (it.headMetadata?.contentLength ?: -1L) >= 0L
+    override suspend fun getResourceMeta(
+        webId: String,
+        resourceUri: String,
+    ): ResourceMeta {
+        val uri = encodeUriString(resourceUri)
+        if (resourceUri.endsWith("/")) {
+            val container = (resourceManager.read(webId, uri, SolidContainer::class.java)
+                    as? SolidNetworkResponse.Success)?.data
+            return ResourceMeta(
+                sizeBytes = null,
+                lastModified = container?.getLastModified(),
+                itemCount = container?.getContained()?.size,
+            )
         }
+        val metadata = (resourceManager.head(webId, uri)
+                as? SolidNetworkResponse.Success)?.data
+        return ResourceMeta(
+            sizeBytes = metadata?.contentLength?.takeIf { it >= 0 },
+            lastModified = metadata?.lastModified?.let(::parseHttpDateMillis),
+            itemCount = null,
+        )
     }
 
     override suspend fun getResourceCreatedTime(webId: String, item: ContainerItem): Long? {

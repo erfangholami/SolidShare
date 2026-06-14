@@ -24,12 +24,12 @@ data class ContainerItem(
     val etag: String?,
     val access: ResourceAccess = ResourceAccess.FULL,
     val createdTime: Long? = null,
+    val itemCount: Int? = null,
 ) {
-    fun getItemSubtitle(): String {
+    fun getItemSubtitle(itemCountLabel: String? = null): String {
         if (isContainer) {
-            val size = sizeLabel()
             val date = lastModified?.let(::formatLastModified)
-            return listOfNotNull("Folder", size, date).joinToString(" · ")
+            return listOfNotNull("Folder", itemCountLabel, date).joinToString(" · ")
         }
         val type = when {
             mimeType != null -> formatMimeType(mimeType)

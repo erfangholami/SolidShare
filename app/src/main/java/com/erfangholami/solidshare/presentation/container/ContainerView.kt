@@ -77,6 +77,7 @@ import androidx.core.content.ContextCompat
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceType
+import com.erfangholami.solidshare.presentation.components.ErrorState
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RowDivider
 import com.erfangholami.solidshare.presentation.isScrollingUp
@@ -165,6 +166,7 @@ fun ContainerView(
                         onBack = onBack,
                         onSharerClick = onSharerClick,
                         title = state.title,
+                        itemCount = items?.size,
                         sharerWebId = state.sharerWebId,
                         sortField = state.sortField,
                         sortDirection = state.sortDirection,
@@ -183,8 +185,9 @@ fun ContainerView(
                     is ContainerContent.Error ->
                         ErrorState(
                             message = content.message,
-                            onRetry = onRetry,
                             modifier = Modifier.fillMaxSize(),
+                            retryLabel = stringResource(R.string.retry),
+                            onRetry = onRetry,
                         )
 
                     is ContainerContent.Items ->
@@ -261,6 +264,7 @@ private fun ContainerHeader(
     onBack: (() -> Unit)?,
     onSharerClick: (() -> Unit)?,
     title: String?,
+    itemCount: Int?,
     sharerWebId: String?,
     sortField: SortField,
     sortDirection: SortDirection,
@@ -301,14 +305,23 @@ private fun ContainerHeader(
             Spacer(Modifier.width(10.dp))
         }
         if (title != null) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (itemCount != null) {
+                    Text(
+                        text = itemCountLabel(itemCount),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
         } else {
             Spacer(Modifier.weight(1f))
         }
@@ -573,6 +586,7 @@ private fun previewItem(
     sizeBytes: Long?,
     extension: String? = null,
     mimeType: String? = null,
+    itemCount: Int? = null,
 ) = ContainerItem(
     identifier = "https://alice.solidcommunity.net/files/$name",
     isContainer = isContainer,
@@ -584,11 +598,12 @@ private fun previewItem(
     sizeBytes = sizeBytes,
     lastModified = PREVIEW_TIME,
     etag = null,
+    itemCount = itemCount,
 )
 
 private fun previewItems(): List<ContainerItem> = listOf(
-    previewItem("Documents", true, ResourceType.FOLDER, null),
-    previewItem("Photos", true, ResourceType.FOLDER, null),
+    previewItem("Documents", true, ResourceType.FOLDER, null, itemCount = 12),
+    previewItem("Photos", true, ResourceType.FOLDER, null, itemCount = 1),
     previewItem("budget.xlsx", false, ResourceType.SPREADSHEET, 84_213, "xlsx", "application/vnd.ms-excel"),
     previewItem("trip.jpg", false, ResourceType.IMAGE, 2_415_919, "jpg", "image/jpeg"),
     previewItem("notes.md", false, ResourceType.DOCUMENT, 1_240, "md", "text/markdown"),
