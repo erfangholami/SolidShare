@@ -33,6 +33,7 @@ class MainActivity : ComponentActivity() {
         }
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+            val pendingShareLink by viewModel.pendingShareLink.collectAsStateWithLifecycle()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -42,6 +43,8 @@ class MainActivity : ComponentActivity() {
                 AppNavHost(
                     openNotifications = openNotifications,
                     onOpenNotificationsHandled = { openNotifications = false },
+                    pendingShareLink = pendingShareLink,
+                    onShareLinkHandled = { viewModel.consumePendingShareLink() },
                 )
             }
         }

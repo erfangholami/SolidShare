@@ -53,16 +53,22 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.domain.model.ThemeMode
+import com.erfangholami.solidshare.presentation.components.AccountRow
+import com.erfangholami.solidshare.presentation.components.AddAccountRow
+import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
+import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import com.erfangholami.solidshare.presentation.navigation.EditProfileRoute
 import com.erfangholami.solidshare.presentation.navigation.NotificationsRoute
@@ -230,6 +236,7 @@ private fun AccountsCard(
                     profile = profile,
                     isActive = webId == activeWebId,
                     onClick = { onSelectAccount(webId) },
+                    enabled = webId != activeWebId,
                 )
                 if (index < accounts.size - 1) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
@@ -238,82 +245,6 @@ private fun AccountsCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             AddAccountRow(onClick = onAddAccount)
         }
-    }
-}
-
-@Composable
-private fun AccountRow(
-    profile: PublicProfile,
-    isActive: Boolean,
-    onClick: () -> Unit,
-) {
-    val webId = profile.webId
-    val name = displayNameFor(profile)
-
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(enabled = !isActive, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        ProfileAvatar(webId = webId, displayName = name, size = 40.dp)
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = name ?: webId,
-                style = MaterialTheme.typography.bodyLarge,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(
-                text = webId,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        if (isActive) {
-            Spacer(Modifier.width(8.dp))
-            Icon(
-                Icons.Filled.Check,
-                contentDescription = stringResource(R.string.active_account),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun AddAccountRow(onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                Icons.Filled.Add,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        Text(
-            text = stringResource(R.string.add_account),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.primary,
-        )
     }
 }
 
@@ -480,6 +411,104 @@ private fun AboutSheet(onDismiss: () -> Unit) {
                 onClick = onDismiss,
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             ) { Text(stringResource(R.string.close)) }
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun AccountsCardPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            AccountsCard(
+                accounts = PreviewSamples.profiles("alice", "ben"),
+                activeWebId = PreviewSamples.webIdOf("alice"),
+                onSelectAccount = {},
+                onAddAccount = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun AccountRowActivePreview() {
+    AppTheme {
+        Surface {
+            AccountRow(
+                profile = PreviewSamples.profile(),
+                isActive = true,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Inactive")
+@Composable
+private fun AccountRowInactivePreview() {
+    AppTheme {
+        Surface {
+            AccountRow(
+                profile = PreviewSamples.profile(),
+                isActive = false,
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun AddAccountRowPreview() {
+    AppTheme {
+        Surface {
+            AddAccountRow(onClick = {})
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun SettingsCardPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            SettingsCard(
+                onAppearanceClick = {},
+                onAboutClick = {},
+                onLogoutClick = {},
+                onLogoutAllClick = {},
+                hasMultipleAccounts = true,
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun SettingRowPreview() {
+    AppTheme {
+        Surface {
+            SettingRow(
+                icon = Icons.Outlined.Palette,
+                label = "Appearance",
+                onClick = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Error tint")
+@Composable
+private fun SettingRowErrorPreview() {
+    AppTheme {
+        Surface {
+            SettingRow(
+                icon = Icons.Outlined.Palette,
+                label = "Log out",
+                onClick = {},
+                tintError = true,
+            )
         }
     }
 }

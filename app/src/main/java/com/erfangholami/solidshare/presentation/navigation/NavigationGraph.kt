@@ -16,13 +16,16 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
+import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navigation
 import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
+import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.presentation.container.ResourceDetailsPage
 import com.erfangholami.solidshare.presentation.container.ResourceDetailsViewModel
 import com.erfangholami.solidshare.presentation.container.SharedContainerPage
@@ -39,6 +42,7 @@ import com.erfangholami.solidshare.presentation.sharing.ManageSharingPage
 import com.erfangholami.solidshare.presentation.sharing.ManageSharingViewModel
 import com.erfangholami.solidshare.presentation.sharing.PublicProfilePage
 import com.erfangholami.solidshare.presentation.sharing.PublicProfileViewModel
+import com.erfangholami.solidshare.presentation.sharing.ChooseReceiverDialog
 import com.erfangholami.solidshare.presentation.sharing.ConfirmAccessPage
 import com.erfangholami.solidshare.presentation.sharing.ScanPage
 import com.erfangholami.solidshare.presentation.sharing.ShareProfilePage
@@ -56,6 +60,8 @@ fun AppNavHost(
     navController: NavHostController = rememberNavController(),
     openNotifications: Boolean = false,
     onOpenNotificationsHandled: () -> Unit = {},
+    pendingShareLink: ParsedShareLink? = null,
+    onShareLinkHandled: () -> Unit = {},
 ) {
     LaunchedEffect(openNotifications) {
         if (!openNotifications) return@LaunchedEffect
@@ -64,6 +70,14 @@ fun AppNavHost(
         }
         navController.navigate(NotificationsRoute)
         onOpenNotificationsHandled()
+    }
+    LaunchedEffect(pendingShareLink) {
+        val link = pendingShareLink ?: return@LaunchedEffect
+        if (navController.currentDestination?.isOnMain() != true) {
+            navController.currentBackStackEntryFlow.first { it.destination.isOnMain() }
+        }
+        navController.navigate(ChooseReceiverRoute(link.resourceUri, link.ownerWebId))
+        onShareLinkHandled()
     }
     NavHost(
         modifier = modifier,
@@ -172,8 +186,15 @@ fun NavGraphBuilder.profileSubGraph(navController: NavController) {
     composable<ScanRoute> {
         ScanPage(navController)
     }
-    composable<ConfirmAccessRoute> {
+    dialog<ConfirmAccessRoute>(
+        dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
         ConfirmAccessPage(navController)
+    }
+    dialog<ChooseReceiverRoute>(
+        dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        ChooseReceiverDialog(navController)
     }
     composable<PublicProfileRoute> {
         PublicProfilePage(navController, hiltViewModel<PublicProfileViewModel>())
@@ -237,6 +258,12 @@ data class ConfirmAccessRoute(
 )
 
 @Serializable
+data class ChooseReceiverRoute(
+    val resourceUri: String,
+    val ownerWebId: String? = null,
+)
+
+@Serializable
 data class PublicProfileRoute(val webId: String)
 
 @Serializable
@@ -246,6 +273,7 @@ data class ResourceDetailsRoute(val item: ContainerItem)
 data class ManageSharingRoute(
     val resourceUri: String,
     val canManage: Boolean = true,
+    val resourceSubtitle: String? = null,
 )
 
 @Serializable
