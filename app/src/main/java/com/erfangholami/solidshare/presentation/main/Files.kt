@@ -29,6 +29,7 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.components.AccountSwitcherCircle
 import com.erfangholami.solidshare.presentation.container.Container
 import com.erfangholami.solidshare.presentation.container.ContainerViewModel
+import com.erfangholami.solidshare.presentation.container.metaSubtitle
 import com.erfangholami.solidshare.presentation.navigation.ContainerNested
 import com.erfangholami.solidshare.presentation.navigation.ContainerRoot
 import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
@@ -106,7 +107,11 @@ fun Files(
                     },
                     onManageAccess = { item ->
                         navController.navigate(
-                            ManageSharingRoute(resourceUri = item.identifier, canManage = true),
+                            ManageSharingRoute(
+                                resourceUri = item.identifier,
+                                canManage = true,
+                                resourceSubtitle = item.metaSubtitle(),
+                            ),
                         )
                     },
                 )
@@ -125,7 +130,11 @@ fun Files(
                     },
                     onManageAccess = { item ->
                         navController.navigate(
-                            ManageSharingRoute(resourceUri = item.identifier, canManage = true),
+                            ManageSharingRoute(
+                                resourceUri = item.identifier,
+                                canManage = true,
+                                resourceSubtitle = item.metaSubtitle(),
+                            ),
                         )
                     },
                 )

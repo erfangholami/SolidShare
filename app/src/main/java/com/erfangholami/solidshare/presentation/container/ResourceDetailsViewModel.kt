@@ -11,6 +11,8 @@ import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
+import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.navigation.ResourceDetailsRoute
 import com.erfangholami.solidshare.presentation.navigation.resourceDetailsTypeMap
 import com.erfangholami.solidshare.util.StringProvider
@@ -47,21 +49,38 @@ class ResourceDetailsViewModel @Inject constructor(
     val itemState: StateFlow<ContainerItem> = _itemState.asStateFlow()
 
     val canManageSharing: Boolean = routeItem.access.canControl
+    val canShare: Boolean = routeItem.access.canShareOnward
+    val resourceUri: String = routeItem.identifier
+
+    private var ownerWebId: String? = null
 
     private val _sharesState = MutableStateFlow<SharesState>(SharesState.Loading)
     val sharesState: StateFlow<SharesState> = _sharesState.asStateFlow()
 
     init {
         loadCreatedTime()
+        loadItemCount()
     }
 
     private fun loadCreatedTime() {
         viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
+            ownerWebId = webId
             val created = runCatching {
                 fileRepository.getResourceCreatedTime(webId, routeItem)
             }.getOrNull() ?: return@launch
             _itemState.value = _itemState.value.copy(createdTime = created)
+        }
+    }
+
+    private fun loadItemCount() {
+        if (!routeItem.isContainer) return
+        viewModelScope.launch {
+            val webId = authRepository.getActiveWebId() ?: return@launch
+            val count = runCatching {
+                fileRepository.getContainerItemCount(webId, routeItem.identifier)
+            }.getOrNull() ?: return@launch
+            _itemState.value = _itemState.value.copy(itemCount = count)
         }
     }
 
@@ -88,4 +107,22 @@ class ResourceDetailsViewModel @Inject constructor(
             }
         }
     }
+
+    suspend fun createShareSuspend(
+        resourceUri: String,
+        mode: ShareMode,
+        receiver: ShareReceiver,
+    ): GivenShare {
+        val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+        ownerWebId = webId
+        val share = sharingRepository.createShare(webId, resourceUri, mode, receiver)
+        loadShares()
+        return share
+    }
+
+    fun deepLinkFor(resourceUri: String): String =
+        sharingRepository.deepLinkFor(resourceUri, ownerWebId)
+
+    fun bareUrlFor(resourceUri: String): String =
+        sharingRepository.bareUrlFor(resourceUri)
 }
