@@ -32,12 +32,15 @@ class NotificationPollingWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result {
-        val webIds = authRepository.loggedInProfilesFlow.first().map { it.webId }
-        webIds.forEach { webId -> runCatching { pollAccount(webId) } }
+        val profiles = authRepository.loggedInProfilesFlow.first()
+        profiles.forEach { profile ->
+            val label = profile.name?.takeIf { it.isNotBlank() } ?: shortWebId(profile.webId)
+            runCatching { pollAccount(profile.webId, label) }
+        }
         return Result.success()
     }
 
-    private suspend fun pollAccount(webId: String) {
+    private suspend fun pollAccount(webId: String, accountLabel: String) {
         val items = notificationsRepository.listFeed(webId)
         val threshold = listOfNotNull(
             parseInstant(settingsRepository.getNotificationsLastSeen(webId).first()),
@@ -54,11 +57,11 @@ class NotificationPollingWorker @AssistedInject constructor(
             .filter { it.second.isAfter(threshold) }
         if (fresh.isEmpty()) return
 
-        fresh.forEach { (item, _) -> if (item.kind.isAlertable()) notify(item) }
+        fresh.forEach { (item, _) -> if (item.kind.isAlertable()) notify(item, accountLabel) }
         settingsRepository.setNotificationsLastNotified(webId, fresh.maxOf { it.second }.toString())
     }
 
-    private fun notify(item: NotificationItem) {
+    private fun notify(item: NotificationItem, accountLabel: String) {
         val title = applicationContext.getString(
             titleResFor(item.kind),
             shortWebId(item.counterpartWebId),
@@ -70,6 +73,7 @@ class NotificationPollingWorker @AssistedInject constructor(
                 context = applicationContext,
                 title = title,
                 text = resourceName(item.resourceUri),
+                account = accountLabel,
                 highPriority = item.kind == NotificationKind.ACCESS_REQUEST,
             ),
         )

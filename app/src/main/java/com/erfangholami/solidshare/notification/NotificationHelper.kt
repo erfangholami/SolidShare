@@ -6,11 +6,18 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
+import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.MainActivity
 
 object NotificationHelper {
+
+    /** SolidShare brand accent (Primary40) used to tint the small icon + accent. */
+    private const val BRAND_COLOR = 0xFF4D65FF.toInt()
 
     private const val NOTIFICATION_CHANNEL_ID = "channel_file_transfer"
     private const val NOTIFICATION_CHANNEL_NAME = "File Transfers"
@@ -63,6 +70,7 @@ object NotificationHelper {
         context: Context,
         title: String,
         text: String,
+        account: String,
         highPriority: Boolean,
     ): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -79,7 +87,11 @@ object NotificationHelper {
         return NotificationCompat.Builder(context, channel)
             .setContentTitle(title)
             .setContentText(text)
-            .setSmallIcon(android.R.drawable.stat_notify_chat)
+            .setSubText(account)
+            .setSmallIcon(R.drawable.ic_solid)
+            .setLargeIcon(appLogo(context))
+            .setColor(BRAND_COLOR)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text).setSummaryText(account))
             .setAutoCancel(true)
             .setContentIntent(pending)
             .setPriority(
@@ -87,6 +99,11 @@ object NotificationHelper {
             )
             .build()
     }
+
+    /** The colored app logo as a bitmap for the notification's large icon. */
+    private fun appLogo(context: Context): Bitmap? = runCatching {
+        ContextCompat.getDrawable(context, R.drawable.logo)?.toBitmap(width = 128, height = 128)
+    }.getOrNull()
 
     fun buildProgressNotification(
         context: Context,
