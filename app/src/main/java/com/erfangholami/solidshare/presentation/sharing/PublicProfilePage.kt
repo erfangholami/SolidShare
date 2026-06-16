@@ -44,7 +44,7 @@ fun PublicProfilePage(
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        text = stringResource(R.string.scanned_profile),
+                        text = stringResource(R.string.profile),
                         fontWeight = FontWeight.SemiBold,
                     )
                 },

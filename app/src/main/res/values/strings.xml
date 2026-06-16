@@ -258,6 +258,8 @@
     <string name="profile_field_organization">Organization</string>
     <string name="profile_field_email">Email</string>
     <string name="profile_field_phone">Phone</string>
+    <string name="profile_field_webid">WebID</string>
+    <string name="profile_field_pod_provider">Pod provider</string>
 
     <!-- Share profile & QR -->
     <string name="share_my_profile">Share my profile</string>
@@ -306,7 +308,6 @@
     <string name="storage_permission_settings">Storage access is turned off. Open Settings and allow storage for Solid Share to save downloads on Android 9 and older.</string>
 
     <!-- Public profile -->
-    <string name="scanned_profile">Scanned profile</string>
     <string name="loading_profile">Loading profile…</string>
     <string name="profile_load_failed">Couldn\'t load the profile</string>
 
