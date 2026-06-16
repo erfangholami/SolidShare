@@ -1,8 +1,8 @@
 package com.erfangholami.solidshare.presentation.container
 
 import android.Manifest
-import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -73,7 +73,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceType
@@ -81,6 +80,7 @@ import com.erfangholami.solidshare.presentation.components.ErrorState
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RowDivider
 import com.erfangholami.solidshare.presentation.isScrollingUp
+import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.util.MIME_TYPE_IMAGE
 import com.erfangholami.solidshare.util.MIME_TYPE_VIDEO
@@ -434,6 +434,7 @@ private fun ContainerAddFlow(
 ) {
     val context = LocalContext.current
     val cameraPermissionMessage = stringResource(R.string.camera_permission_needed_capture)
+    val captureFailedMessage = stringResource(R.string.media_capture_failed)
 
     val takePhotoLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
@@ -451,24 +452,21 @@ private fun ContainerAddFlow(
         if (success && uri != null) onUpload(uri, createTakenVideoName(), MIME_TYPE_VIDEO)
     }
 
-    var pendingCameraCapture by remember { mutableStateOf<(() -> Unit)?>(null) }
-    val cameraPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { granted ->
-        val capture = pendingCameraCapture
-        pendingCameraCapture = null
-        if (granted) capture?.invoke() else onMessage(cameraPermissionMessage)
-    }
-    val withCameraPermission: (() -> Unit) -> Unit = { capture ->
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)
-            == PackageManager.PERMISSION_GRANTED
-        ) {
-            capture()
-        } else {
-            pendingCameraCapture = capture
-            cameraPermLauncher.launch(Manifest.permission.CAMERA)
-        }
-    }
+    val cameraGate = rememberPermissionGate(
+        permission = Manifest.permission.CAMERA,
+        required = true,
+        rationaleTitle = stringResource(R.string.camera_permission_title),
+        rationaleText = stringResource(R.string.camera_permission_capture_rationale),
+        settingsText = stringResource(R.string.camera_permission_capture_settings),
+        onDenied = { onMessage(cameraPermissionMessage) },
+    )
+    val captureStorageGate = rememberPermissionGate(
+        permission = Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        required = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q,
+        rationaleTitle = stringResource(R.string.storage_permission_title),
+        rationaleText = stringResource(R.string.storage_permission_rationale),
+        settingsText = stringResource(R.string.storage_permission_settings),
+    )
 
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
@@ -494,17 +492,25 @@ private fun ContainerAddFlow(
             onDismiss = onSheetDismiss,
             onUploadFile = { filePickerLauncher.launch("*/*") },
             onTakePhoto = {
-                withCameraPermission {
-                    val uri = createMediaUri(context, isVideo = false)
-                    onPendingCaptureUriChange(uri)
-                    takePhotoLauncher.launch(uri)
+                cameraGate.run {
+                    captureStorageGate.run {
+                        runCatching {
+                            val uri = createMediaUri(context, isVideo = false)
+                            onPendingCaptureUriChange(uri)
+                            takePhotoLauncher.launch(uri)
+                        }.onFailure { onMessage(captureFailedMessage) }
+                    }
                 }
             },
             onRecordVideo = {
-                withCameraPermission {
-                    val uri = createMediaUri(context, isVideo = true)
-                    onPendingCaptureUriChange(uri)
-                    recordVideoLauncher.launch(uri)
+                cameraGate.run {
+                    captureStorageGate.run {
+                        runCatching {
+                            val uri = createMediaUri(context, isVideo = true)
+                            onPendingCaptureUriChange(uri)
+                            recordVideoLauncher.launch(uri)
+                        }.onFailure { onMessage(captureFailedMessage) }
+                    }
                 }
             },
             onChooseFromGallery = {

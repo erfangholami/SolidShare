@@ -35,4 +35,11 @@ class SettingsRepositoryImplementation @Inject constructor(
     override suspend fun setNotificationsLastNotified(webId: String, isoInstant: String) {
         settingsLocalDataStore.setNotificationsLastNotified(webId, isoInstant)
     }
+
+    override fun hasPromptedNotificationsPermission(): Flow<Boolean> =
+        settingsLocalDataStore.hasPromptedNotificationsPermission()
+
+    override suspend fun setPromptedNotificationsPermission(prompted: Boolean) {
+        settingsLocalDataStore.setPromptedNotificationsPermission(prompted)
+    }
 }

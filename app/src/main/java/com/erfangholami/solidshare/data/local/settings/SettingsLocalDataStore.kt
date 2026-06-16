@@ -19,4 +19,8 @@ interface SettingsLocalDataStore {
     fun getNotificationsLastNotified(webId: String): Flow<String?>
 
     suspend fun setNotificationsLastNotified(webId: String, isoInstant: String)
+
+    fun hasPromptedNotificationsPermission(): Flow<Boolean>
+
+    suspend fun setPromptedNotificationsPermission(prompted: Boolean)
 }

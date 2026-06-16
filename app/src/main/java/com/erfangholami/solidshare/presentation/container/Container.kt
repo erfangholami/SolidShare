@@ -4,8 +4,6 @@ import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.os.Build
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -36,6 +34,7 @@ import com.erfangholami.solidshare.presentation.components.BlockingProgressOverl
 import com.erfangholami.solidshare.presentation.components.ResourceAction
 import com.erfangholami.solidshare.presentation.components.ResourceActions
 import com.erfangholami.solidshare.presentation.components.ResourceActionsSheet
+import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
 import com.erfangholami.solidshare.presentation.sharing.ShareLinkPanel
 import com.erfangholami.solidshare.presentation.util.copyText
 import kotlinx.coroutines.launch
@@ -76,22 +75,15 @@ fun Container(
     var shareItemUri by rememberSaveable { mutableStateOf<String?>(null) }
     var reshareLinkItem by rememberSaveable { mutableStateOf<String?>(null) }
 
-    val storagePermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { }
-
-    val notifPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) { }
+    val downloadStorageGate = rememberPermissionGate(
+        permission = Manifest.permission.WRITE_EXTERNAL_STORAGE,
+        required = Build.VERSION.SDK_INT < Build.VERSION_CODES.Q,
+        rationaleTitle = stringResource(R.string.storage_permission_title),
+        rationaleText = stringResource(R.string.storage_permission_rationale),
+        settingsText = stringResource(R.string.storage_permission_settings),
+    )
 
     LaunchedEffect(Unit) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-            storagePermLauncher.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE)
-        }
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
-
         viewModel.fileOpenEvent.collect { event ->
             when (event) {
                 is ContainerViewModel.FileOpenEvent.OpenFile -> {
@@ -219,7 +211,7 @@ fun Container(
                         ResourceAction.SHARE -> shareItemUri = actionItem.identifier
                         ResourceAction.MANAGE_ACCESS -> onManageAccess(actionItem)
                         ResourceAction.DUPLICATE -> viewModel.duplicateResource()
-                        ResourceAction.DOWNLOAD -> viewModel.onDownloadClick()
+                        ResourceAction.DOWNLOAD -> downloadStorageGate.run { viewModel.onDownloadClick() }
                         ResourceAction.MAKE_OFFLINE ->
                             scope.launch { snackbarHostState.showSnackbar(makeOfflineUnavailableMsg) }
 

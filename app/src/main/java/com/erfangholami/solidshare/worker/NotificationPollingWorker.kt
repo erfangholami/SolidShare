@@ -62,6 +62,7 @@ class NotificationPollingWorker @AssistedInject constructor(
     }
 
     private fun notify(item: NotificationItem, accountLabel: String) {
+        if (!NotificationHelper.canPost(applicationContext)) return
         val title = applicationContext.getString(
             titleResFor(item.kind),
             shortWebId(item.counterpartWebId),

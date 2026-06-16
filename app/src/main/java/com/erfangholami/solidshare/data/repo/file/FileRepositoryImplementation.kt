@@ -234,7 +234,9 @@ class FileRepositoryImplementation @Inject constructor(
                 val destUri = insertIntoDownloads(fileName, mimeType)
                     ?: throw Exception("Could not create entry in Downloads")
 
-                context.contentResolver.openOutputStream(destUri)?.use { output ->
+                val outputStream = context.contentResolver.openOutputStream(destUri)
+                    ?: throw IllegalStateException("Could not open output stream for the download")
+                outputStream.use { output ->
                     var bytesWritten = 0L
                     val buffer = ByteArray(8 * 1024)
                     resource.use { r ->

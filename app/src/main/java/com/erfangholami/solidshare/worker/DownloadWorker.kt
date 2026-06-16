@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.worker
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
@@ -49,7 +50,7 @@ class DownloadWorker @AssistedInject constructor(
                 fileName = fileName,
                 mimeType = mimeType,
                 onProgress = { pct ->
-                    nm.notify(
+                    post(
                         NotificationHelper.NOTIFICATION_ID_DOWNLOAD_PROGRESS,
                         NotificationHelper.buildProgressNotification(
                             applicationContext, "Downloading $fileName", pct,
@@ -58,7 +59,7 @@ class DownloadWorker @AssistedInject constructor(
                 },
             )
 
-            nm.notify(
+            post(
                 NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE,
                 NotificationHelper.buildDownloadCompleteNotification(
                     applicationContext, fileName, uri, mimeType,
@@ -67,7 +68,7 @@ class DownloadWorker @AssistedInject constructor(
 
             Result.success(workDataOf(KEY_RESULT_URI to uri.toString()))
         } catch (e: Exception) {
-            nm.notify(
+            post(
                 NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE,
                 NotificationHelper.buildErrorNotification(
                     applicationContext, "Download failed", e.message ?: "Unknown error",
@@ -75,6 +76,10 @@ class DownloadWorker @AssistedInject constructor(
             )
             Result.failure(workDataOf("error" to (e.message ?: "Unknown error")))
         }
+    }
+
+    private fun post(id: Int, notification: Notification) {
+        if (NotificationHelper.canPost(applicationContext)) nm.notify(id, notification)
     }
 
     private fun buildForegroundInfo(fileName: String, progress: Int): ForegroundInfo {

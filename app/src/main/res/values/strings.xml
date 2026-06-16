@@ -74,6 +74,7 @@
     <string name="take_photo">Take photo</string>
     <string name="record_video">Record video</string>
     <string name="camera_permission_needed_capture">Camera permission is needed to take photos and videos</string>
+    <string name="media_capture_failed">Couldn\'t start the camera. Check available storage and try again.</string>
     <string name="choose_from_gallery">Choose from gallery</string>
     <string name="open_with">Open with</string>
     <string name="open_with_chooser">Open with…</string>
@@ -289,6 +290,20 @@
     <string name="camera_permission_title">Camera access needed</string>
     <string name="camera_permission_rationale">Solid Share uses the camera to scan QR codes. Camera access is turned off, so open Settings and enable the Camera permission for Solid Share.</string>
     <string name="open_settings">Open settings</string>
+
+    <!-- Permissions -->
+    <string name="permission_allow">Allow</string>
+    <string name="permission_not_now">Not now</string>
+    <string name="camera_permission_capture_rationale">Solid Share needs camera access to take photos and videos you can upload to your pod.</string>
+    <string name="camera_permission_capture_settings">Camera access is turned off. Open Settings and enable the Camera permission for Solid Share to take photos and videos.</string>
+    <string name="notifications_permission_title">Turn on notifications</string>
+    <string name="notifications_permission_rationale">Solid Share can let you know about uploads, downloads, and when someone shares with you or changes your access. You can turn this off anytime in Settings.</string>
+    <string name="notifications_permission_settings_rationale">Notifications are turned off. Open Settings and allow notifications for Solid Share to get alerts about transfers and sharing activity.</string>
+    <string name="notifications_permission_banner">Turn on notifications to get alerts about sharing and file transfers.</string>
+    <string name="notifications_permission_enable">Enable</string>
+    <string name="storage_permission_title">Save to your device</string>
+    <string name="storage_permission_rationale">Solid Share needs storage access to save downloads to your device on Android 9 and older.</string>
+    <string name="storage_permission_settings">Storage access is turned off. Open Settings and allow storage for Solid Share to save downloads on Android 9 and older.</string>
 
     <!-- Public profile -->
     <string name="scanned_profile">Scanned profile</string>

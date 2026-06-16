@@ -1,7 +1,9 @@
 package com.erfangholami.solidshare.presentation.notifications
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -19,7 +21,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -71,9 +72,9 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
@@ -83,14 +84,16 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.NotificationItem
 import com.erfangholami.solidshare.domain.model.NotificationKind
 import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.presentation.components.BannerTone
 import com.erfangholami.solidshare.presentation.components.DismissibleBanner
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.container.icon
 import com.erfangholami.solidshare.presentation.container.tint
-import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
-import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.main.ModeChip
+import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
+import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
+import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
 import com.erfangholami.solidshare.presentation.theme.AppTheme
@@ -105,6 +108,18 @@ fun NotificationsPage(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     var rejectTarget by remember { mutableStateOf<NotificationItem?>(null) }
+
+    val notificationsGate = rememberPermissionGate(
+        permission = Manifest.permission.POST_NOTIFICATIONS,
+        required = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
+        rationaleTitle = stringResource(R.string.notifications_permission_title),
+        rationaleText = stringResource(R.string.notifications_permission_rationale),
+        settingsText = stringResource(R.string.notifications_permission_settings_rationale),
+    )
+    var notificationsBannerDismissed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(notificationsGate.isGranted) {
+        if (notificationsGate.isGranted) notificationsBannerDismissed = false
+    }
 
     LaunchedEffect(state.infoMessage) {
         val msg = state.infoMessage ?: return@LaunchedEffect
@@ -202,6 +217,23 @@ fun NotificationsPage(
                 .padding(padding),
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
+                AnimatedVisibility(
+                    visible = !notificationsGate.isGranted && !notificationsBannerDismissed,
+                    enter = fadeIn() + expandVertically(),
+                    exit = fadeOut() + shrinkVertically(),
+                ) {
+                    DismissibleBanner(
+                        message = stringResource(R.string.notifications_permission_banner),
+                        onDismiss = { notificationsBannerDismissed = true },
+                        tone = BannerTone.INFO,
+                        action = {
+                            TextButton(onClick = { notificationsGate.run {} }) {
+                                Text(stringResource(R.string.notifications_permission_enable))
+                            }
+                        },
+                    )
+                }
+
                 AnimatedVisibility(
                     visible = state.error != null,
                     enter = fadeIn() + expandVertically(),

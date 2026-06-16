@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.worker
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.ServiceInfo
@@ -62,14 +63,14 @@ class UploadWorker @AssistedInject constructor(
                     )
                 } ?: return Result.failure(workDataOf("error" to "Cannot open file"))
 
-            nm.notify(
+            post(
                 NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE,
                 NotificationHelper.buildUploadCompleteNotification(applicationContext, fileName),
             )
 
             Result.success()
         } catch (e: Exception) {
-            nm.notify(
+            post(
                 NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE,
                 NotificationHelper.buildErrorNotification(
                     applicationContext, "Upload failed", e.message ?: "Unknown error",
@@ -80,10 +81,14 @@ class UploadWorker @AssistedInject constructor(
     }
 
     private fun updateProgress(fileName: String, pct: Int) {
-        nm.notify(
+        post(
             NotificationHelper.NOTIFICATION_ID_UPLOAD_PROGRESS,
             NotificationHelper.buildUploadProgressNotification(applicationContext, fileName, pct),
         )
+    }
+
+    private fun post(id: Int, notification: Notification) {
+        if (NotificationHelper.canPost(applicationContext)) nm.notify(id, notification)
     }
 
     private fun buildForegroundInfo(fileName: String, progress: Int): ForegroundInfo {

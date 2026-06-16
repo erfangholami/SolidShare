@@ -20,6 +20,8 @@ class SettingsLocalDataStoreImplementation @Inject constructor(
     private object PreferencesKeys {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val NOTIFICATIONS_PERMISSION_PROMPTED =
+            booleanPreferencesKey("notifications_permission_prompted")
     }
 
     override fun getSettingPreferences(): Flow<Settings> {
@@ -64,6 +66,18 @@ class SettingsLocalDataStoreImplementation @Inject constructor(
         val key = notificationsLastNotifiedKey(webId)
         settingsDataSource.edit {
             it[key] = isoInstant
+        }
+    }
+
+    override fun hasPromptedNotificationsPermission(): Flow<Boolean> {
+        return settingsDataSource.data.map {
+            it[PreferencesKeys.NOTIFICATIONS_PERMISSION_PROMPTED] ?: false
+        }
+    }
+
+    override suspend fun setPromptedNotificationsPermission(prompted: Boolean) {
+        settingsDataSource.edit {
+            it[PreferencesKeys.NOTIFICATIONS_PERMISSION_PROMPTED] = prompted
         }
     }
 

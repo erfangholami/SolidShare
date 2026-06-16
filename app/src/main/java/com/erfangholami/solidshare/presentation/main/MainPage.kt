@@ -1,5 +1,7 @@
 package com.erfangholami.solidshare.presentation.main
 
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,7 +14,9 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -20,8 +24,10 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
+import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
 
 private const val RECEIVED_SHARE_MSG_KEY = "received_share_msg"
 
@@ -33,6 +39,28 @@ fun MainPage(
     val nestedNavController = rememberNavController()
     val shareViewModel = hiltViewModel<ShareViewModel>()
     val snackbarHostState = remember { SnackbarHostState() }
+
+    val notificationPromptViewModel = hiltViewModel<NotificationPromptViewModel>()
+    val shouldPromptNotifications by notificationPromptViewModel
+        .shouldPromptAfterLogin.collectAsStateWithLifecycle()
+    val notificationsGate = rememberPermissionGate(
+        permission = Manifest.permission.POST_NOTIFICATIONS,
+        required = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU,
+        rationaleTitle = stringResource(R.string.notifications_permission_title),
+        rationaleText = stringResource(R.string.notifications_permission_rationale),
+        settingsText = stringResource(R.string.notifications_permission_settings_rationale),
+        onComplete = { notificationPromptViewModel.markPrompted() },
+    )
+
+    LaunchedEffect(shouldPromptNotifications) {
+        if (shouldPromptNotifications) {
+            if (notificationsGate.isGranted) {
+                notificationPromptViewModel.markPrompted()
+            } else {
+                notificationsGate.run {}
+            }
+        }
+    }
 
     val nestedEntry by nestedNavController.currentBackStackEntryAsState()
     val parentEntry by parentNavController.currentBackStackEntryAsState()
