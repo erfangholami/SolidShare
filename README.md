@@ -8,6 +8,9 @@
 
 The goal is to make Solid accessible to regular people: a smooth, familiar mobile experience that puts users in control of their own data.
 
+<img width="14060" height="7908" alt="solid share coverr" src="https://github.com/user-attachments/assets/502e4bfb-cc60-4271-ad32-70a96c41ae4a" />
+
+
 ## Features
 
 ### v0.3.0 - Current
