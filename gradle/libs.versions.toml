@@ -32,7 +32,7 @@ zxing = "3.5.4"
 cameraX = "1.6.1"
 mlkitBarcode = "17.3.0"
 
-ass = "0.5.0"
+ass = "0.5.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
