@@ -21,8 +21,8 @@ import com.erfangholami.androidsolidservices.shared.util.getContentLength
 import com.erfangholami.androidsolidservices.shared.util.getETag
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
-import com.erfangholami.solidshare.domain.model.ResourceMeta
 import com.erfangholami.solidshare.domain.model.ResourceAccess
+import com.erfangholami.solidshare.domain.model.ResourceMeta
 import com.erfangholami.solidshare.domain.model.getResourceType
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
@@ -305,7 +305,10 @@ class FileRepositoryImplementation @Inject constructor(
         )
         onProgress(40)
 
-        when (val response = resourceManager.create(webId, resource)) {
+        when (
+            val response =
+                resourceManager.createInContainer(webId, encodeUriString(containerUrl), resource)
+        ) {
             is SolidNetworkResponse.Success -> {
                 localCache.remove(fileUrl)
                 onProgress(100)
@@ -320,7 +323,10 @@ class FileRepositoryImplementation @Inject constructor(
     override suspend fun createFolder(webId: String, containerUrl: String, folderName: String) {
         val folderUri = encodeUriString(containerUrl.trimEnd('/') + "/${folderName.trim()}/")
         val container = SolidContainer(folderUri)
-        when (val response = resourceManager.create(webId, container)) {
+        when (
+            val response =
+                resourceManager.createInContainer(webId, encodeUriString(containerUrl), container)
+        ) {
             is SolidNetworkResponse.Success -> Unit
             is SolidNetworkResponse.Error ->
                 throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")

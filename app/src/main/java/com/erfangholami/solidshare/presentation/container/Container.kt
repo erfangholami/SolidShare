@@ -208,7 +208,7 @@ fun Container(
                 actions = if (viewModel.isShared) {
                     ResourceActions.sharedFolderChild(
                         isContainer = actionItem.isContainer,
-                        canEdit = actionItem.access.canWrite,
+                        canEdit = containerAccess.canWrite && actionItem.access.canWrite,
                     )
                 } else {
                     ResourceActions.ownerPod(isContainer = actionItem.isContainer)

@@ -17,9 +17,9 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
+import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.DownloadWorker
 import com.erfangholami.solidshare.worker.UploadWorker
-import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -195,6 +195,10 @@ class ContainerViewModel @Inject constructor(
 
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
         viewModelScope.launch {
+            if (!_screenState.value.containerAccess.canAddTo) {
+                _folderCreationError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                return@launch
+            }
             val webId = _activeWebId.value ?: return@launch
             val containerUrl = resolvedContainerUrl ?: return@launch
             val request = OneTimeWorkRequestBuilder<UploadWorker>()
@@ -293,6 +297,10 @@ class ContainerViewModel @Inject constructor(
 
     fun createNewFolder(folderName: String) {
         viewModelScope.launch {
+            if (!_screenState.value.containerAccess.canAddTo) {
+                _folderCreationError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                return@launch
+            }
             _screenState.update { it.copy(isCreatingFolder = true) }
             try {
                 val webId = _activeWebId.value ?: return@launch
@@ -363,6 +371,11 @@ class ContainerViewModel @Inject constructor(
     fun deleteResource() {
         viewModelScope.launch {
             val selectedItem = _screenState.value.selectedItem ?: return@launch
+            if (!_screenState.value.containerAccess.canModify || !selectedItem.access.canWrite) {
+                dismissResourceActionsSheet()
+                _resourceDeletionError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                return@launch
+            }
             _screenState.update { it.copy(isDeletingResource = true) }
             dismissResourceActionsSheet()
             try {
@@ -385,6 +398,10 @@ class ContainerViewModel @Inject constructor(
         val item = _screenState.value.selectedItem ?: return
         dismissResourceActionsSheet()
         viewModelScope.launch {
+            if (!_screenState.value.containerAccess.canModify) {
+                _duplicateMessage.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                return@launch
+            }
             _screenState.update { it.copy(isDuplicating = true) }
             try {
                 val webId = _activeWebId.value ?: return@launch

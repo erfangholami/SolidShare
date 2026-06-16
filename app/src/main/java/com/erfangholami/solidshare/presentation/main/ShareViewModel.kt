@@ -319,6 +319,12 @@ class ShareViewModel @Inject constructor(
     }
 
     fun deleteReceivedShare(share: ReceivedShare) {
+        if (share.mode != ShareMode.WRITE) {
+            _uiState.value = _uiState.value.copy(
+                notice = stringProvider.getString(R.string.error_no_permission_for_action),
+            )
+            return
+        }
         viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
             try {

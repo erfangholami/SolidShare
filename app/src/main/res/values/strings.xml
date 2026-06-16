@@ -353,6 +353,7 @@
     <string name="error_revoke_access">Couldn\'t revoke access</string>
     <string name="error_update_access">Couldn\'t update access</string>
     <string name="couldnt_open_item">Couldn\'t open this item.</string>
+    <string name="error_no_permission_for_action">You don\'t have permission to do that here.</string>
     <string name="error_access_denied_with_owner">You don\'t have access to this resource. You can request access from %1$s.</string>
     <string name="error_access_denied_no_owner">You don\'t have access to this resource. You can request access from the owner.</string>
     <string name="error_stale_acl">This share was changed somewhere else. Please try again.</string>
