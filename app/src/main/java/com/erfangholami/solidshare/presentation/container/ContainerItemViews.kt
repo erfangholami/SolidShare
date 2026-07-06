@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.OfflinePin
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -41,6 +42,7 @@ import com.erfangholami.solidshare.presentation.theme.AppTheme
 @Composable
 internal fun ContainerItemRow(
     item: ContainerItem,
+    isAvailableOffline: Boolean = false,
     onClick: () -> Unit,
     onMoreOptions: () -> Unit,
 ) {
@@ -68,6 +70,15 @@ internal fun ContainerItemRow(
                 maxLines = 1,
             )
         }
+        if (isAvailableOffline) {
+            Icon(
+                imageVector = Icons.Filled.OfflinePin,
+                contentDescription = stringResource(R.string.available_offline),
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(4.dp))
+        }
         IconButton(onClick = onMoreOptions) {
             Icon(
                 imageVector = Icons.Filled.MoreVert,
@@ -81,6 +92,7 @@ internal fun ContainerItemRow(
 @Composable
 internal fun ContainerItemCard(
     item: ContainerItem,
+    isAvailableOffline: Boolean = false,
     onClick: () -> Unit,
     onMoreOptions: () -> Unit,
 ) {
@@ -120,6 +132,17 @@ internal fun ContainerItemCard(
                         contentDescription = stringResource(R.string.more_options),
                         modifier = Modifier.size(18.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (isAvailableOffline) {
+                    Icon(
+                        imageVector = Icons.Filled.OfflinePin,
+                        contentDescription = stringResource(R.string.available_offline),
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(6.dp)
+                            .size(16.dp),
+                        tint = MaterialTheme.colorScheme.primary,
                     )
                 }
             }
@@ -168,6 +191,7 @@ private fun ContainerItemRowFilePreview() {
         Surface {
             ContainerItemRow(
                 item = PreviewSamples.file(name = "trip.jpg", resourceType = ResourceType.IMAGE),
+                isAvailableOffline = true,
                 onClick = {},
                 onMoreOptions = {},
             )

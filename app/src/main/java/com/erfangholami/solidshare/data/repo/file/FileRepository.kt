@@ -5,9 +5,37 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.ResourceMeta
 import com.erfangholami.solidshare.domain.model.ResourceAccess
+import kotlinx.coroutines.flow.Flow
 import java.io.InputStream
 
 interface FileRepository {
+    fun observeContainer(
+        webId: String,
+        containerUrl: String,
+    ): Flow<List<ContainerItem>>
+
+    suspend fun refreshContainer(
+        webId: String,
+        containerUrl: String,
+        includeItemAccess: Boolean = false,
+    )
+
+    suspend fun getCachedContainer(
+        webId: String,
+        containerUrl: String,
+    ): List<ContainerItem>
+
+    suspend fun cacheContainer(
+        webId: String,
+        containerUrl: String,
+        items: List<ContainerItem>,
+    )
+
+    suspend fun lastCachedAt(
+        webId: String,
+        containerUrl: String,
+    ): Long?
+
     suspend fun getContainerContents(
         webId: String,
         containerUrl: String,
@@ -33,6 +61,20 @@ interface FileRepository {
         webId: String,
         fileUrl: String
     ): DownloadedFile
+
+    fun observeAvailableOffline(
+        webId: String,
+    ): Flow<List<String>>
+
+    suspend fun pinOffline(
+        webId: String,
+        fileUrl: String,
+    )
+
+    suspend fun unpinOffline(
+        webId: String,
+        fileUrl: String,
+    )
 
     suspend fun probeAccess(
         webId: String,
@@ -72,4 +114,8 @@ interface FileRepository {
         webId: String,
         item: ContainerItem,
     ): List<String>
+
+    suspend fun clearCacheForWebId(
+        webId: String,
+    )
 }

@@ -17,20 +17,26 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
+import com.erfangholami.solidshare.util.NetworkMonitor
 import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.DownloadWorker
 import com.erfangholami.solidshare.worker.UploadWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -45,6 +51,7 @@ class ContainerViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val fileRepository: FileRepository,
     private val sharingRepository: SharingRepository,
+    private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     sealed class UiState {
@@ -110,6 +117,29 @@ class ContainerViewModel @Inject constructor(
 
     private val _duplicateMessage = MutableSharedFlow<String>()
     val duplicateMessage: SharedFlow<String> = _duplicateMessage.asSharedFlow()
+
+    private val _offlineMessage = MutableSharedFlow<String>()
+    val offlineMessage: SharedFlow<String> = _offlineMessage.asSharedFlow()
+
+    private val _isOfflineData = MutableStateFlow(false)
+    val isOfflineData: StateFlow<Boolean> = _isOfflineData.asStateFlow()
+
+    private val _lastSyncedAt = MutableStateFlow<Long?>(null)
+    val lastSyncedAt: StateFlow<Long?> = _lastSyncedAt.asStateFlow()
+
+    val isOnline: StateFlow<Boolean> = networkMonitor.isOnline
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5_000),
+            networkMonitor.currentlyOnline(),
+        )
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val availableOffline: StateFlow<Set<String>> = _activeWebId
+        .filterNotNull()
+        .flatMapLatest { fileRepository.observeAvailableOffline(it) }
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private var rawItems: List<ContainerItem> = emptyList()
 
@@ -193,6 +223,29 @@ class ContainerViewModel @Inject constructor(
         onFileClick(item)
     }
 
+    fun makeItemAvailableOffline(item: ContainerItem) {
+        dismissResourceActionsSheet()
+        if (item.isContainer) return
+        viewModelScope.launch {
+            val webId = _activeWebId.value ?: return@launch
+            try {
+                fileRepository.pinOffline(webId, item.identifier)
+                _offlineMessage.emit(stringProvider.getString(R.string.saved_for_offline))
+            } catch (e: Exception) {
+                _offlineMessage.emit(e.message ?: stringProvider.getString(R.string.error_unknown))
+            }
+        }
+    }
+
+    fun removeItemOfflineCopy(item: ContainerItem) {
+        dismissResourceActionsSheet()
+        viewModelScope.launch {
+            val webId = _activeWebId.value ?: return@launch
+            runCatching { fileRepository.unpinOffline(webId, item.identifier) }
+            _offlineMessage.emit(stringProvider.getString(R.string.offline_copy_removed))
+        }
+    }
+
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
         viewModelScope.launch {
             if (!_screenState.value.containerAccess.canAddTo) {
@@ -253,20 +306,52 @@ class ContainerViewModel @Inject constructor(
                     }
                 }
                 resolvedContainerUrl = url
+
+                if (rawItems.isEmpty()) {
+                    val cached = runCatching { fileRepository.getCachedContainer(webId, url) }
+                        .getOrDefault(emptyList())
+                    if (cached.isNotEmpty()) {
+                        rawItems = cached
+                        applySort()
+                        _lastSyncedAt.value =
+                            runCatching { fileRepository.lastCachedAt(webId, url) }.getOrNull()
+                        _screenState.update { it.copy(isRefreshing = true) }
+                    }
+                }
+
                 if (shared) {
                     val access = runCatching { fileRepository.probeAccess(webId, url) }
                         .getOrDefault(ResourceAccess.READ_ONLY)
                     _screenState.update { it.copy(containerAccess = access) }
                 }
-                val items =
+
+                val fetched = try {
                     fileRepository.getContainerContents(webId, url, includeItemAccess = shared)
-                rawItems = items
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    if (rawItems.isNotEmpty()) {
+                        _isOfflineData.value = true
+                        return@launch
+                    }
+                    _uiState.value =
+                        UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
+                    return@launch
+                }
+
+                _isOfflineData.value = false
+                rawItems = fetched
                 applySort()
+                runCatching { fileRepository.cacheContainer(webId, url, fetched) }
+                _lastSyncedAt.value = System.currentTimeMillis()
                 computeFolderItemCounts(webId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
+                if (rawItems.isEmpty()) {
+                    _uiState.value =
+                        UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
+                }
             } finally {
                 if (isActive) _screenState.update { it.copy(isRefreshing = false) }
             }

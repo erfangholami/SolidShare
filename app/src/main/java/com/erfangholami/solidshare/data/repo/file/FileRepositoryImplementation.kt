@@ -7,7 +7,6 @@ import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
-import androidx.collection.LruCache
 import com.erfangholami.androidsolidservices.api.resource.SolidResourceManager
 import com.erfangholami.androidsolidservices.shared.http.HTTPAcceptType.OCTET_STREAM
 import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
@@ -19,19 +18,30 @@ import com.erfangholami.androidsolidservices.shared.model.resource.SolidRDFResou
 import com.erfangholami.androidsolidservices.shared.util.encodeUriString
 import com.erfangholami.androidsolidservices.shared.util.getContentLength
 import com.erfangholami.androidsolidservices.shared.util.getETag
+import com.erfangholami.solidshare.data.local.cache.BlobDao
+import com.erfangholami.solidshare.data.local.cache.BlobState
+import com.erfangholami.solidshare.data.local.cache.CacheKeyManager
+import com.erfangholami.solidshare.data.local.cache.CachedBlobEntity
+import com.erfangholami.solidshare.data.local.cache.ResourceDao
+import com.erfangholami.solidshare.data.local.cache.toCacheEntity
+import com.erfangholami.solidshare.data.local.cache.toDomain
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.DownloadedFile
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.ResourceMeta
 import com.erfangholami.solidshare.domain.model.getResourceType
+import com.erfangholami.solidshare.util.NetworkMonitor
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import java.io.File
 import java.io.InputStream
+import java.security.MessageDigest
 import java.time.Instant
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
@@ -42,9 +52,61 @@ import javax.inject.Inject
 class FileRepositoryImplementation @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val resourceManager: SolidResourceManager,
+    private val resourceDao: ResourceDao,
+    private val blobDao: BlobDao,
+    private val keyManager: CacheKeyManager,
+    private val networkMonitor: NetworkMonitor,
 ) : FileRepository {
 
-    private val localCache = LruCache<String, DownloadedFile>(20)
+    override fun observeContainer(
+        webId: String,
+        containerUrl: String,
+    ): Flow<List<ContainerItem>> =
+        resourceDao.observeContainer(webId, containerUrl).map { rows -> rows.map { it.toDomain() } }
+
+    override suspend fun refreshContainer(
+        webId: String,
+        containerUrl: String,
+        includeItemAccess: Boolean,
+    ) {
+        val items = getContainerContents(webId, containerUrl, includeItemAccess)
+        val now = System.currentTimeMillis()
+        resourceDao.replaceContainer(
+            webId = webId,
+            parentUri = containerUrl,
+            items = items.map {
+                it.toCacheEntity(
+                    webId = webId,
+                    parentContainerUri = containerUrl,
+                    cachedAt = now,
+                )
+            },
+        )
+    }
+
+    override suspend fun getCachedContainer(
+        webId: String,
+        containerUrl: String,
+    ): List<ContainerItem> =
+        resourceDao.getContainer(webId, containerUrl).map { it.toDomain() }
+
+    override suspend fun cacheContainer(
+        webId: String,
+        containerUrl: String,
+        items: List<ContainerItem>,
+    ) {
+        val now = System.currentTimeMillis()
+        resourceDao.replaceContainer(
+            webId = webId,
+            parentUri = containerUrl,
+            items = items.map {
+                it.toCacheEntity(webId = webId, parentContainerUri = containerUrl, cachedAt = now)
+            },
+        )
+    }
+
+    override suspend fun lastCachedAt(webId: String, containerUrl: String): Long? =
+        resourceDao.lastCachedAt(webId, containerUrl)
 
     override suspend fun getContainerContents(
         webId: String,
@@ -163,9 +225,16 @@ class FileRepositoryImplementation @Inject constructor(
     }
 
     override suspend fun downloadFile(webId: String, fileUrl: String): DownloadedFile {
-        localCache[fileUrl]?.let { cached ->
-            if (isCachedFileStillFresh(webId, fileUrl, cached)) return cached
-            localCache.remove(fileUrl)
+        blobDao.find(webId, fileUrl)?.let { cached ->
+            val encrypted = File(cached.localPath)
+            if (encrypted.exists() && isBlobStillFresh(webId, fileUrl, cached.etag)) {
+                blobDao.touch(webId, fileUrl, System.currentTimeMillis())
+                return DownloadedFile(
+                    path = decryptToOpenTemp(webId, fileUrl, encrypted).absolutePath,
+                    mimeType = cached.mimeType,
+                    etag = cached.etag,
+                )
+            }
         }
         val response =
             resourceManager.read(webId, encodeUriString(fileUrl), SolidNonRDFResource::class.java)
@@ -173,25 +242,18 @@ class FileRepositoryImplementation @Inject constructor(
             is SolidNetworkResponse.Success -> {
                 val resource = response.data
                 val rawContentType = resource.getContentType().substringBefore(';').trim()
-                val filename = fileUrl.trimEnd('/').substringAfterLast('/')
+                val filename = fileNameFor(fileUrl)
                 val mimeType = rawContentType.ifBlank {
                     val ext = filename.substringAfterLast('.', "").lowercase()
                     MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: OCTET_STREAM
                 }
                 val etag = resource.getHeaders().getETag()
-                val file = File(context.cacheDir, filename)
+                val openFile = openTempFile(webId, fileUrl, filename)
                 resource.use { r ->
-                    file.outputStream().use { output ->
-                        r.getEntity().copyTo(output)
-                    }
+                    openFile.outputStream().use { output -> r.getEntity().copyTo(output) }
                 }
-                val downloadedFile = DownloadedFile(
-                    path = file.absolutePath,
-                    mimeType = mimeType,
-                    etag = etag,
-                )
-                localCache.put(fileUrl, downloadedFile)
-                downloadedFile
+                persistBlob(webId, fileUrl, openFile, mimeType, etag)
+                DownloadedFile(path = openFile.absolutePath, mimeType = mimeType, etag = etag)
             }
 
             is SolidNetworkResponse.Error ->
@@ -200,6 +262,92 @@ class FileRepositoryImplementation @Inject constructor(
             is SolidNetworkResponse.Exception -> throw response.exception
         }
     }
+
+    override fun observeAvailableOffline(webId: String): Flow<List<String>> =
+        blobDao.observeCompleteUris(webId, BlobState.COMPLETE)
+
+    override suspend fun pinOffline(webId: String, fileUrl: String) {
+        if (blobDao.find(webId, fileUrl) == null) downloadFile(webId, fileUrl)
+        blobDao.setPinned(webId, fileUrl, true)
+    }
+
+    override suspend fun unpinOffline(webId: String, fileUrl: String) {
+        blobDao.setPinned(webId, fileUrl, false)
+    }
+
+    override suspend fun clearCacheForWebId(webId: String) {
+        blobDao.forWebId(webId).forEach { File(it.localPath).delete() }
+        blobDao.purgeRowsForWebId(webId)
+        resourceDao.purgeForWebId(webId)
+    }
+
+    private suspend fun persistBlob(
+        webId: String,
+        fileUrl: String,
+        plaintext: File,
+        mimeType: String,
+        etag: String?,
+    ) {
+        val wasPinned = blobDao.find(webId, fileUrl)?.pinned == true
+        val encrypted = blobFileFor(webId, fileUrl)
+        plaintext.inputStream().use { keyManager.encryptStream(it, encrypted) }
+        blobDao.upsert(
+            CachedBlobEntity(
+                webId = webId,
+                uri = fileUrl,
+                localPath = encrypted.absolutePath,
+                etag = etag,
+                mimeType = mimeType,
+                sizeBytes = encrypted.length(),
+                pinned = wasPinned,
+                lastAccessedAt = System.currentTimeMillis(),
+                state = BlobState.COMPLETE,
+            ),
+        )
+        enforceBlobBudget()
+    }
+
+    private fun decryptToOpenTemp(webId: String, fileUrl: String, encrypted: File): File {
+        val temp = openTempFile(webId, fileUrl, fileNameFor(fileUrl))
+        temp.outputStream().use { keyManager.decryptStream(encrypted, it) }
+        return temp
+    }
+
+    private suspend fun enforceBlobBudget() {
+        var total = blobDao.unpinnedSize(BlobState.COMPLETE)
+        if (total <= MAX_BLOB_CACHE_BYTES) return
+        for (blob in blobDao.unpinnedByAge(BlobState.COMPLETE)) {
+            if (total <= MAX_BLOB_CACHE_BYTES) break
+            File(blob.localPath).delete()
+            blobDao.delete(blob)
+            total -= blob.sizeBytes
+        }
+    }
+
+    private suspend fun removeBlob(webId: String, fileUrl: String) {
+        blobDao.find(webId, fileUrl)?.let {
+            File(it.localPath).delete()
+            blobDao.delete(it)
+        }
+    }
+
+    private fun fileNameFor(fileUrl: String): String =
+        fileUrl.trimEnd('/').substringAfterLast('/')
+
+    private fun blobDir(): File = File(context.filesDir, BLOB_DIR).apply { mkdirs() }
+
+    private fun openDir(): File = File(context.cacheDir, OPEN_DIR).apply { mkdirs() }
+
+    private fun blobFileFor(webId: String, fileUrl: String): File =
+        File(blobDir(), blobKey(webId, fileUrl))
+
+    private fun openTempFile(webId: String, fileUrl: String, filename: String): File =
+        File(openDir(), blobKey(webId, fileUrl) + "-" + filename)
+
+    private fun blobKey(webId: String, fileUrl: String): String =
+        MessageDigest.getInstance("SHA-256")
+            .digest("$webId\n$fileUrl".toByteArray())
+            .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
 
     override suspend fun probeAccess(webId: String, resourceUri: String): ResourceAccess {
         return when (val response = resourceManager.head(webId, encodeUriString(resourceUri))) {
@@ -312,7 +460,7 @@ class FileRepositoryImplementation @Inject constructor(
                 resourceManager.createInContainer(webId, encodeUriString(containerUrl), resource)
         ) {
             is SolidNetworkResponse.Success -> {
-                localCache.remove(fileUrl)
+                removeBlob(webId, fileUrl)
                 onProgress(100)
             }
             is SolidNetworkResponse.Error ->
@@ -340,7 +488,7 @@ class FileRepositoryImplementation @Inject constructor(
     override suspend fun deleteResource(webId: String, resourceUrl: String, isContainer: Boolean) {
         val resourceUri = encodeUriString(resourceUrl)
         when (val response = resourceManager.delete(webId, resourceUri)) {
-            is SolidNetworkResponse.Success -> localCache.remove(resourceUrl)
+            is SolidNetworkResponse.Success -> removeBlob(webId, resourceUrl)
             is SolidNetworkResponse.Error ->
                 throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
 
@@ -406,13 +554,13 @@ class FileRepositoryImplementation @Inject constructor(
         }
     }
 
-    private suspend fun isCachedFileStillFresh(
+    private suspend fun isBlobStillFresh(
         webId: String,
         fileUrl: String,
-        cached: DownloadedFile,
+        cachedEtag: String?,
     ): Boolean {
-        if (!File(cached.path).exists()) return false
-        val cachedEtag = cached.etag ?: return false
+        if (!networkMonitor.currentlyOnline()) return true
+        if (cachedEtag == null) return false
         val metadata = runCatching { resourceManager.head(webId, encodeUriString(fileUrl)) }
             .getOrNull() ?: return true
         val currentEtag = (metadata as? SolidNetworkResponse.Success<SolidMetadata>)?.data?.etag
@@ -433,6 +581,9 @@ class FileRepositoryImplementation @Inject constructor(
 
     companion object {
         private const val MAX_PARALLEL_HEADS = 8
+        private const val MAX_BLOB_CACHE_BYTES = 512L * 1024 * 1024
+        private const val BLOB_DIR = "blob_cache"
+        private const val OPEN_DIR = "open"
 
         private fun parseHttpDateMillis(raw: String): Long? = runCatching {
             Instant.from(DateTimeFormatter.RFC_1123_DATE_TIME.withZone(ZoneOffset.UTC).parse(raw))

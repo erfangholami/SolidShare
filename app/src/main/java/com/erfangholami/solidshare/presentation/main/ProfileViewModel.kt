@@ -4,6 +4,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.domain.model.ThemeMode
@@ -19,6 +20,7 @@ import javax.inject.Inject
 class ProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val settingsRepository: SettingsRepository,
+    private val fileRepository: FileRepository,
 ) : ViewModel() {
 
     val accounts: StateFlow<List<PublicProfile>> = authRepository.loggedInProfilesFlow
@@ -58,6 +60,7 @@ class ProfileViewModel @Inject constructor(
             logoutLoading.value = true
             val webId = activeWebId.value
             authRepository.removeProfile(webId)
+            fileRepository.clearCacheForWebId(webId)
             logoutLoading.value = false
         }
     }
@@ -65,7 +68,9 @@ class ProfileViewModel @Inject constructor(
     fun logoutAll() {
         viewModelScope.launch {
             logoutLoading.value = true
+            val webIds = accounts.value.map { it.webId }
             authRepository.removeAllProfiles()
+            webIds.forEach { fileRepository.clearCacheForWebId(it) }
             logoutLoading.value = false
         }
     }

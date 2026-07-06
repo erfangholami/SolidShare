@@ -53,6 +53,10 @@ fun Container(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val screen by viewModel.screenState.collectAsStateWithLifecycle()
+    val availableOffline by viewModel.availableOffline.collectAsStateWithLifecycle()
+    val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
+    val isOfflineData by viewModel.isOfflineData.collectAsStateWithLifecycle()
+    val lastSyncedAt by viewModel.lastSyncedAt.collectAsStateWithLifecycle()
     val isDownloading = screen.isDownloading
     val isCreatingFolder = screen.isCreatingFolder
     val isDeletingResource = screen.isDeletingResource
@@ -69,7 +73,6 @@ fun Container(
     val clipboard = LocalClipboard.current
     val linkCopiedMsg = stringResource(R.string.link_copied)
     val openInUnavailableMsg = stringResource(R.string.open_in_unavailable)
-    val makeOfflineUnavailableMsg = stringResource(R.string.make_offline_unavailable)
 
     var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
     var shareItemUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -129,6 +132,12 @@ fun Container(
         }
     }
 
+    LaunchedEffect(Unit) {
+        viewModel.offlineMessage.collect { message ->
+            snackbarHostState.showSnackbar(message)
+        }
+    }
+
     val content = when (val state = uiState) {
         is ContainerViewModel.UiState.Loading -> ContainerContent.Loading
         is ContainerViewModel.UiState.Error -> ContainerContent.Error(state.message)
@@ -146,6 +155,9 @@ fun Container(
                 sortDirection = screen.sortDirection,
                 viewMode = screen.viewMode,
                 canAdd = containerAccess.canAddTo,
+                isOffline = !isOnline || isOfflineData,
+                lastSyncedAt = lastSyncedAt,
+                availableOffline = availableOffline,
             ),
             onItemClick = { item ->
                 if (item.isContainer) {
@@ -197,13 +209,22 @@ fun Container(
                 subtitle = actionItem.metaSubtitle(
                     actionItem.itemCount?.let { itemCountLabel(it) },
                 ),
-                actions = if (viewModel.isShared) {
-                    ResourceActions.sharedFolderChild(
-                        isContainer = actionItem.isContainer,
-                        canEdit = containerAccess.canWrite && actionItem.access.canWrite,
-                    )
-                } else {
-                    ResourceActions.ownerPod(isContainer = actionItem.isContainer)
+                actions = run {
+                    val base = if (viewModel.isShared) {
+                        ResourceActions.sharedFolderChild(
+                            isContainer = actionItem.isContainer,
+                            canEdit = containerAccess.canWrite && actionItem.access.canWrite,
+                        )
+                    } else {
+                        ResourceActions.ownerPod(isContainer = actionItem.isContainer)
+                    }
+                    if (availableOffline.contains(actionItem.identifier)) {
+                        base.map {
+                            if (it == ResourceAction.MAKE_OFFLINE) ResourceAction.REMOVE_OFFLINE else it
+                        }
+                    } else {
+                        base
+                    }
                 },
                 onDismiss = { viewModel.dismissResourceActionsSheet() },
                 onAction = { action ->
@@ -212,8 +233,8 @@ fun Container(
                         ResourceAction.MANAGE_ACCESS -> onManageAccess(actionItem)
                         ResourceAction.DUPLICATE -> viewModel.duplicateResource()
                         ResourceAction.DOWNLOAD -> downloadStorageGate.run { viewModel.onDownloadClick() }
-                        ResourceAction.MAKE_OFFLINE ->
-                            scope.launch { snackbarHostState.showSnackbar(makeOfflineUnavailableMsg) }
+                        ResourceAction.MAKE_OFFLINE -> viewModel.makeItemAvailableOffline(actionItem)
+                        ResourceAction.REMOVE_OFFLINE -> viewModel.removeItemOfflineCopy(actionItem)
 
                         ResourceAction.COPY_LINK -> scope.launch {
                             clipboard.copyText(actionItem.identifier)

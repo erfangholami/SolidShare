@@ -271,6 +271,12 @@
     <string name="duplicate">Duplicate</string>
     <string name="make_available_offline">Make available offline</string>
     <string name="make_offline_unavailable">Offline access isn\'t available yet</string>
+    <string name="remove_offline_copy">Remove offline copy</string>
+    <string name="available_offline">Available offline</string>
+    <string name="offline_banner">You\'re offline. Showing your last synced copy.</string>
+    <string name="offline_banner_synced">You\'re offline. Last synced %1$s.</string>
+    <string name="saved_for_offline">Saved for offline use</string>
+    <string name="offline_copy_removed">Offline copy removed</string>
     <string name="open_in">Open in</string>
     <string name="open_in_unavailable">Open in isn\'t available yet</string>
     <string name="duplicating">Duplicating…</string>

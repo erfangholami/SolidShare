@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DownloadForOffline
@@ -43,6 +44,7 @@ enum class ResourceAction(
     DUPLICATE(R.string.duplicate, Icons.Outlined.ContentCopy),
     DOWNLOAD(R.string.download_to_device, Icons.Filled.Download),
     MAKE_OFFLINE(R.string.make_available_offline, Icons.Outlined.DownloadForOffline),
+    REMOVE_OFFLINE(R.string.remove_offline_copy, Icons.Outlined.CloudOff),
     COPY_LINK(R.string.copy_link, Icons.Filled.Link),
     OPEN_IN(R.string.open_in, Icons.AutoMirrored.Filled.OpenInNew),
     INFO(R.string.info, Icons.Outlined.Info),
@@ -58,7 +60,6 @@ object ResourceActions {
             listOf(
                 ResourceAction.SHARE,
                 ResourceAction.MANAGE_ACCESS,
-                ResourceAction.MAKE_OFFLINE,
                 ResourceAction.COPY_LINK,
                 ResourceAction.INFO,
                 ResourceAction.DELETE,

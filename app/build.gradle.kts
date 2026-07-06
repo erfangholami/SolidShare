@@ -127,6 +127,13 @@ dependencies {
     implementation(libs.androidx.datastore)
     implementation(libs.androidx.datastore.preferences)
 
+    //Room offline cache (encrypted at rest via SQLCipher)
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.sqlite)
+    implementation(libs.zetetic.sqlcipher.android)
+
     //Test
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

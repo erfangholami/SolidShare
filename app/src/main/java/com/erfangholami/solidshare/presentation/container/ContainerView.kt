@@ -3,6 +3,7 @@ package com.erfangholami.solidshare.presentation.container
 import android.Manifest
 import android.net.Uri
 import android.os.Build
+import android.text.format.DateUtils
 import android.webkit.MimeTypeMap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -56,6 +57,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -76,6 +78,8 @@ import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceType
+import com.erfangholami.solidshare.presentation.components.BannerTone
+import com.erfangholami.solidshare.presentation.components.DismissibleBanner
 import com.erfangholami.solidshare.presentation.components.ErrorState
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RowDivider
@@ -109,6 +113,9 @@ data class ContainerViewState(
     val sortDirection: SortDirection = SortDirection.ASCENDING,
     val viewMode: ViewMode = ViewMode.LIST,
     val canAdd: Boolean = false,
+    val isOffline: Boolean = false,
+    val lastSyncedAt: Long? = null,
+    val availableOffline: Set<String> = emptySet(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -136,6 +143,8 @@ fun ContainerView(
     var addSheetOpen by rememberSaveable { mutableStateOf(false) }
     var showCreateFolderDialog by rememberSaveable { mutableStateOf(false) }
     var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    var offlineBannerDismissed by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.isOffline) { if (state.isOffline) offlineBannerDismissed = false }
 
     val items = (state.content as? ContainerContent.Items)?.items
     val hasItems = !items.isNullOrEmpty()
@@ -176,6 +185,13 @@ fun ContainerView(
                         onToggleViewMode = onToggleViewMode,
                     )
                 }
+                if (state.isOffline && !offlineBannerDismissed) {
+                    DismissibleBanner(
+                        message = offlineBannerMessage(state.lastSyncedAt),
+                        onDismiss = { offlineBannerDismissed = true },
+                        tone = BannerTone.INFO,
+                    )
+                }
                 when (val content = state.content) {
                     ContainerContent.Loading ->
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -200,6 +216,7 @@ fun ContainerView(
                                     ContainerItemsList(
                                         items = content.items,
                                         listState = listState,
+                                        availableOffline = state.availableOffline,
                                         onItemClick = onItemClick,
                                         onItemMoreOptions = onItemMoreOptions,
                                     )
@@ -207,6 +224,7 @@ fun ContainerView(
                                     ContainerItemsGrid(
                                         items = content.items,
                                         gridState = gridState,
+                                        availableOffline = state.availableOffline,
                                         onItemClick = onItemClick,
                                         onItemMoreOptions = onItemMoreOptions,
                                     )
@@ -538,6 +556,7 @@ private fun ContainerAddFlow(
 private fun ContainerItemsList(
     items: List<ContainerItem>,
     listState: LazyListState,
+    availableOffline: Set<String>,
     onItemClick: (ContainerItem) -> Unit,
     onItemMoreOptions: (ContainerItem) -> Unit,
 ) {
@@ -549,6 +568,7 @@ private fun ContainerItemsList(
         items(items, key = { it.identifier }) { item ->
             ContainerItemRow(
                 item = item,
+                isAvailableOffline = availableOffline.contains(item.identifier),
                 onClick = { onItemClick(item) },
                 onMoreOptions = { onItemMoreOptions(item) },
             )
@@ -561,6 +581,7 @@ private fun ContainerItemsList(
 private fun ContainerItemsGrid(
     items: List<ContainerItem>,
     gridState: LazyGridState,
+    availableOffline: Set<String>,
     onItemClick: (ContainerItem) -> Unit,
     onItemMoreOptions: (ContainerItem) -> Unit,
 ) {
@@ -575,12 +596,28 @@ private fun ContainerItemsGrid(
         items(items, key = { it.identifier }) { item ->
             ContainerItemCard(
                 item = item,
+                isAvailableOffline = availableOffline.contains(item.identifier),
                 onClick = { onItemClick(item) },
                 onMoreOptions = { onItemMoreOptions(item) },
             )
         }
     }
 }
+
+@Composable
+private fun offlineBannerMessage(lastSyncedAt: Long?): String =
+    if (lastSyncedAt != null) {
+        stringResource(
+            R.string.offline_banner_synced,
+            DateUtils.getRelativeTimeSpanString(
+                lastSyncedAt,
+                System.currentTimeMillis(),
+                DateUtils.MINUTE_IN_MILLIS,
+            ).toString(),
+        )
+    } else {
+        stringResource(R.string.offline_banner)
+    }
 
 private const val PREVIEW_TIME = 1_717_000_000_000L
 private const val PREVIEW_OWNER = "https://alice.solidcommunity.net/profile/card#me"
@@ -622,12 +659,16 @@ private fun previewState(
     sharerWebId: String? = null,
     viewMode: ViewMode = ViewMode.LIST,
     canAdd: Boolean = true,
+    isOffline: Boolean = false,
+    availableOffline: Set<String> = emptySet(),
 ) = ContainerViewState(
     content = content,
     title = title,
     sharerWebId = sharerWebId,
     viewMode = viewMode,
     canAdd = canAdd,
+    isOffline = isOffline,
+    availableOffline = availableOffline,
 )
 
 @Composable
@@ -730,6 +771,20 @@ private fun ContainerViewErrorPreview() {
             previewState(
                 content = ContainerContent.Error("Couldn't load this folder. Check your connection."),
                 title = "Photos",
+            ),
+        )
+    }
+}
+
+@Preview(name = "Offline · cached", showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun ContainerViewOfflinePreview() {
+    ContainerViewPreviewHost {
+        PreviewContainerView(
+            previewState(
+                title = "Documents",
+                isOffline = true,
+                availableOffline = setOf("https://alice.solidcommunity.net/files/contract.pdf"),
             ),
         )
     }
