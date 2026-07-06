@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.ThemeMode
+import com.erfangholami.solidshare.domain.model.TicketDraft
+import com.erfangholami.solidshare.presentation.wallet.TicketImportHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +22,8 @@ import javax.inject.Inject
 @HiltViewModel
 class MainViewModel @Inject constructor(
     private val sharingRepository: SharingRepository,
+    private val ticketsRepository: TicketsRepository,
+    private val ticketImportHolder: TicketImportHolder,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
@@ -29,13 +34,33 @@ class MainViewModel @Inject constructor(
     private val _pendingShareLink = MutableStateFlow<ParsedShareLink?>(null)
     val pendingShareLink: StateFlow<ParsedShareLink?> = _pendingShareLink.asStateFlow()
 
+    private val _pendingTicketDraft = MutableStateFlow<TicketDraft?>(null)
+    val pendingTicketDraft: StateFlow<TicketDraft?> = _pendingTicketDraft.asStateFlow()
+
     fun handleDeepLink(intent: Intent?) {
         val data = intent?.data ?: return
-        val parsed = sharingRepository.parseDeepLink(data.toString()) ?: return
-        _pendingShareLink.value = parsed
+        val raw = data.toString()
+        sharingRepository.parseDeepLink(raw)?.let {
+            _pendingShareLink.value = it
+            return
+        }
+        ticketsRepository.parseTicketQr(raw)?.let {
+            _pendingTicketDraft.value = it
+        }
+    }
+
+    fun handlePassFile(bytes: ByteArray) {
+        val parsed = ticketsRepository.parsePassFile(bytes) ?: return
+        val (draft, artifact) = parsed
+        ticketImportHolder.stash(artifact)
+        _pendingTicketDraft.value = draft
     }
 
     fun consumePendingShareLink() {
         _pendingShareLink.value = null
+    }
+
+    fun consumePendingTicketDraft() {
+        _pendingTicketDraft.value = null
     }
 }

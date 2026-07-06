@@ -32,7 +32,7 @@ zxing = "3.5.4"
 cameraX = "1.6.1"
 mlkitBarcode = "17.3.0"
 
-ass = "0.5.1"
+ass = "0.6.0"
 
 room = "2.8.4"
 androidxSqlite = "2.5.0"

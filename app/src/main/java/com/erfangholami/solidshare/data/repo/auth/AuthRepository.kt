@@ -27,6 +27,7 @@ interface AuthRepository {
         oidcIssuer: String? = null,
         appName: String,
         redirectUri: String,
+        clientId: String? = null,
     ): Pair<Intent?, String?>
 
     suspend fun submitAuthorizationResponse(responseData: Intent?): String?

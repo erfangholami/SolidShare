@@ -26,6 +26,13 @@ import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ParsedShareLink
+import com.erfangholami.solidshare.domain.model.TicketDraft
+import com.erfangholami.solidshare.presentation.contacts.ContactDetailPage
+import com.erfangholami.solidshare.presentation.contacts.ContactDetailViewModel
+import com.erfangholami.solidshare.presentation.contacts.ContactsPage
+import com.erfangholami.solidshare.presentation.contacts.ContactsSettingsPage
+import com.erfangholami.solidshare.presentation.contacts.ContactsSettingsViewModel
+import com.erfangholami.solidshare.presentation.contacts.ContactsViewModel
 import com.erfangholami.solidshare.presentation.container.ResourceDetailsPage
 import com.erfangholami.solidshare.presentation.container.ResourceDetailsViewModel
 import com.erfangholami.solidshare.presentation.container.SharedContainerPage
@@ -49,6 +56,14 @@ import com.erfangholami.solidshare.presentation.sharing.ShareProfilePage
 import com.erfangholami.solidshare.presentation.sharing.ShareProfileViewModel
 import com.erfangholami.solidshare.presentation.startup.Startup
 import com.erfangholami.solidshare.presentation.startup.StartupViewModel
+import com.erfangholami.solidshare.presentation.wallet.TicketDetailPage
+import com.erfangholami.solidshare.presentation.wallet.TicketDetailViewModel
+import com.erfangholami.solidshare.presentation.wallet.TicketEditPage
+import com.erfangholami.solidshare.presentation.wallet.TicketEditViewModel
+import com.erfangholami.solidshare.presentation.wallet.TicketScanPage
+import com.erfangholami.solidshare.presentation.wallet.TicketScanViewModel
+import com.erfangholami.solidshare.presentation.wallet.WalletPage
+import com.erfangholami.solidshare.presentation.wallet.WalletViewModel
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -62,6 +77,8 @@ fun AppNavHost(
     onOpenNotificationsHandled: () -> Unit = {},
     pendingShareLink: ParsedShareLink? = null,
     onShareLinkHandled: () -> Unit = {},
+    pendingTicketDraft: TicketDraft? = null,
+    onTicketDraftHandled: () -> Unit = {},
 ) {
     LaunchedEffect(openNotifications) {
         if (!openNotifications) return@LaunchedEffect
@@ -79,6 +96,14 @@ fun AppNavHost(
         navController.navigate(ChooseReceiverRoute(link.resourceUri, link.ownerWebId))
         onShareLinkHandled()
     }
+    LaunchedEffect(pendingTicketDraft) {
+        val draft = pendingTicketDraft ?: return@LaunchedEffect
+        if (navController.currentDestination?.isOnMain() != true) {
+            navController.currentBackStackEntryFlow.first { it.destination.isOnMain() }
+        }
+        navController.navigate(TicketEditRoute(draft = draft))
+        onTicketDraftHandled()
+    }
     NavHost(
         modifier = modifier,
         navController = navController,
@@ -93,6 +118,78 @@ fun AppNavHost(
         resourceDetailsGraph(navController)
         manageSharingGraph(navController)
         notificationsGraph(navController)
+        contactsGraph(navController)
+        walletGraph(navController)
+    }
+}
+
+fun NavGraphBuilder.contactsGraph(navController: NavController) {
+    composable<ContactsRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        ContactsPage(navController, hiltViewModel<ContactsViewModel>())
+    }
+    composable<ContactDetailRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        ContactDetailPage(navController, hiltViewModel<ContactDetailViewModel>())
+    }
+    composable<ContactsSettingsRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        ContactsSettingsPage(navController, hiltViewModel<ContactsSettingsViewModel>())
+    }
+}
+
+fun NavGraphBuilder.walletGraph(navController: NavController) {
+    composable<WalletRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        WalletPage(navController, hiltViewModel<WalletViewModel>())
+    }
+    composable<TicketDetailRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        TicketDetailPage(navController, hiltViewModel<TicketDetailViewModel>())
+    }
+    composable<TicketEditRoute>(
+        typeMap = ticketEditTypeMap,
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        TicketEditPage(navController, hiltViewModel<TicketEditViewModel>())
+    }
+    composable<TicketScanRoute> {
+        TicketScanPage(navController, hiltViewModel<TicketScanViewModel>())
     }
 }
 
@@ -117,6 +214,25 @@ val ContainerItemNavType = object : NavType<ContainerItem>(isNullableAllowed = f
 }
 
 val resourceDetailsTypeMap = mapOf(typeOf<ContainerItem>() to ContainerItemNavType)
+
+val TicketDraftNavType = object : NavType<TicketDraft>(isNullableAllowed = false) {
+    override fun get(bundle: Bundle, key: String): TicketDraft? =
+        bundle.getString(key)?.let { Json.decodeFromString<TicketDraft>(it) }
+
+    override fun parseValue(value: String): TicketDraft =
+        Json.decodeFromString(Uri.decode(value))
+
+    override fun serializeAsValue(value: TicketDraft): String =
+        Uri.encode(Json.encodeToString(value))
+
+    override fun put(bundle: Bundle, key: String, value: TicketDraft) {
+        bundle.putString(key, Json.encodeToString(value))
+    }
+
+    override val name: String = "ticketDraft"
+}
+
+val ticketEditTypeMap = mapOf(typeOf<TicketDraft>() to TicketDraftNavType)
 
 fun NavGraphBuilder.resourceDetailsGraph(navController: NavController) {
     composable<ResourceDetailsRoute>(
@@ -278,6 +394,33 @@ data class ManageSharingRoute(
 
 @Serializable
 object NotificationsRoute
+
+@Serializable
+object ContactsRoute
+
+@Serializable
+object ContactsSettingsRoute
+
+@Serializable
+data class ContactDetailRoute(
+    val bookUri: String,
+    val contactUri: String,
+)
+
+@Serializable
+object WalletRoute
+
+@Serializable
+data class TicketDetailRoute(val ticketUri: String)
+
+@Serializable
+data class TicketEditRoute(
+    val ticketUri: String? = null,
+    val draft: TicketDraft = TicketDraft(),
+)
+
+@Serializable
+object TicketScanRoute
 
 @Serializable
 object OnBoarding

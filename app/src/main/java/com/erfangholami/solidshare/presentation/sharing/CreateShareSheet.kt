@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.outlined.ContentPaste
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Public
@@ -49,6 +50,7 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
+import com.erfangholami.solidshare.presentation.contacts.ContactReceiverPicker
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.theme.AppTheme
@@ -126,6 +128,7 @@ private fun ShareFormContent(
     var receiverValue by rememberSaveable { mutableStateOf("") }
     var whoSheetOpen by remember { mutableStateOf(false) }
     var modeSheetOpen by remember { mutableStateOf(false) }
+    var contactPickerOpen by remember { mutableStateOf(false) }
 
     val clipboard = LocalClipboard.current
     val scope = rememberCoroutineScope()
@@ -160,15 +163,25 @@ private fun ShareFormContent(
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 trailingIcon = {
-                    IconButton(onClick = {
-                        scope.launch {
-                            clipboard.pasteText()?.let { receiverValue = it.trim() }
+                    Row {
+                        IconButton(onClick = { contactPickerOpen = true }) {
+                            Icon(
+                                Icons.Filled.Contacts,
+                                contentDescription = stringResource(
+                                    R.string.share_pick_from_contacts,
+                                ),
+                            )
                         }
-                    }) {
-                        Icon(
-                            Icons.Outlined.ContentPaste,
-                            contentDescription = stringResource(R.string.paste),
-                        )
+                        IconButton(onClick = {
+                            scope.launch {
+                                clipboard.pasteText()?.let { receiverValue = it.trim() }
+                            }
+                        }) {
+                            Icon(
+                                Icons.Outlined.ContentPaste,
+                                contentDescription = stringResource(R.string.paste),
+                            )
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -239,6 +252,16 @@ private fun ShareFormContent(
                 },
             )
         }
+    }
+
+    if (contactPickerOpen) {
+        ContactReceiverPicker(
+            onPick = { webId ->
+                receiverValue = webId
+                contactPickerOpen = false
+            },
+            onDismiss = { contactPickerOpen = false },
+        )
     }
 }
 

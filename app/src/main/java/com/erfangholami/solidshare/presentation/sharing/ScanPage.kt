@@ -99,6 +99,7 @@ import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.ConfirmAccessRoute
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
+import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.pasteText
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
@@ -172,7 +173,7 @@ fun ScanPage(
 
     var scanResetToken by remember { mutableIntStateOf(0) }
 
-    val onResult: (String) -> Unit = { raw ->
+    val onResult: (String, Int) -> Unit = { raw, _ ->
         when (val target = viewModel.classify(raw)) {
             is ScanViewModel.ScanTarget.Share ->
                 navController.navigate(
@@ -181,6 +182,9 @@ fun ScanPage(
 
             is ScanViewModel.ScanTarget.Profile ->
                 navController.navigate(PublicProfileRoute(target.webId))
+
+            is ScanViewModel.ScanTarget.Ticket ->
+                navController.navigate(TicketEditRoute(draft = target.draft))
 
             ScanViewModel.ScanTarget.Unrecognized -> {
                 scope.launch { snackbarHostState.showSnackbar(notRecognizedMsg) }
@@ -250,11 +254,13 @@ fun ScanPage(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ScannerContent(
+internal fun ScannerContent(
     subtitle: String,
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
-    onResult: (String) -> Unit,
+    onResult: (String, Int) -> Unit,
+    barcodeFormats: IntArray = intArrayOf(Barcode.FORMAT_QR_CODE),
+    submitLabel: String = stringResource(R.string.open_share),
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -285,10 +291,13 @@ private fun ScannerContent(
         label = "scanLine",
     )
 
-    val scanner = remember {
+    val scanner = remember(barcodeFormats) {
         BarcodeScanning.getClient(
             BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
+                .setBarcodeFormats(
+                    barcodeFormats.first(),
+                    *barcodeFormats.drop(1).toIntArray(),
+                )
                 .build(),
         )
     }
@@ -306,10 +315,13 @@ private fun ScannerContent(
                 runCatching { InputImage.fromFilePath(context, uri) }
                     .onSuccess { input ->
                         scanner.process(input).addOnSuccessListener { barcodes ->
-                            val raw = barcodes.firstNotNullOfOrNull { it.rawValue }
-                            if (!raw.isNullOrBlank() && !hasFired) {
+                            val hit = barcodes.firstNotNullOfOrNull { barcode ->
+                                barcode.rawValue?.takeIf { it.isNotBlank() }
+                                    ?.let { it to barcode.format }
+                            }
+                            if (hit != null && !hasFired) {
                                 hasFired = true
-                                onResult(raw)
+                                onResult(hit.first, hit.second)
                             }
                         }
                     }
@@ -325,7 +337,7 @@ private fun ScannerContent(
         val value = linkInput.trim()
         if (value.isNotEmpty() && !hasFired) {
             hasFired = true
-            onResult(value)
+            onResult(value, Barcode.FORMAT_QR_CODE)
         }
     }
 
@@ -354,10 +366,10 @@ private fun ScannerContent(
                                 previewView = preview,
                                 scanner = scanner,
                                 onCameraControl = { cameraControlHolder.value = it },
-                                onScan = { raw ->
+                                onScan = { raw, format ->
                                     if (!hasFired) {
                                         hasFired = true
-                                        onResult(raw)
+                                        onResult(raw, format)
                                     }
                                 },
                             )
@@ -525,7 +537,7 @@ private fun ScannerContent(
             enabled = linkInput.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Text(stringResource(R.string.open_share))
+            Text(submitLabel)
         }
     }
 }
@@ -545,7 +557,7 @@ private fun ScannerContentPreview() {
             subtitle = "Scan a share or profile QR",
             hasPermission = false,
             onRequestPermission = {},
-            onResult = {},
+            onResult = { _, _ -> },
         )
     }
 }

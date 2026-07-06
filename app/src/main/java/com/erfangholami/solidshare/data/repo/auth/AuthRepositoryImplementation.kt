@@ -56,8 +56,9 @@ class AuthRepositoryImplementation @Inject constructor(
         oidcIssuer: String?,
         appName: String,
         redirectUri: String,
+        clientId: String?,
     ): Pair<Intent?, String?> =
-        authenticator.createAuthenticationIntent(webId, oidcIssuer, appName, redirectUri)
+        authenticator.createAuthenticationIntent(webId, oidcIssuer, appName, redirectUri, clientId)
 
     override suspend fun submitAuthorizationResponse(responseData: Intent?): String? = try {
         val webId = authenticator.submitAuthorizationResponse(responseData)

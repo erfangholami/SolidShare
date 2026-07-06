@@ -394,4 +394,144 @@
     <string name="error_unsupported_auth">This server\'s access-control system isn\'t supported yet.</string>
     <string name="error_something_went_wrong">Something went wrong.</string>
 
+    <!-- Home hub -->
+    <string name="home_greeting">Hi %1$s</string>
+    <string name="home_hub_caption">Your data, on your pod</string>
+    <string name="home_card_contacts_title">Contacts</string>
+    <string name="home_card_contacts_subtitle">Your address book, synced with this device</string>
+    <string name="home_card_wallet_title">Wallet</string>
+    <string name="home_card_wallet_subtitle">Tickets and passes, always at hand</string>
+
+    <!-- Contacts -->
+    <string name="contacts_title">Contacts</string>
+    <string name="contacts_default_book_title">Contacts</string>
+    <string name="contacts_search_hint">Search contacts</string>
+    <string name="contacts_empty_title">No contacts yet</string>
+    <string name="contacts_empty_subtitle">Turn on Google sync or import a .vcf file in the contacts settings.</string>
+    <string name="contacts_all_books">All</string>
+    <string name="contact_not_found">This contact is gone</string>
+
+    <!-- Contact details -->
+    <string name="contact_phone_label">Phone</string>
+    <string name="contact_email_label">Email</string>
+    <string name="contact_type_home">Home</string>
+    <string name="contact_type_work">Work</string>
+    <string name="contact_phone_type_mobile">Mobile</string>
+    <string name="contact_phone_type_fax">Fax</string>
+    <string name="contact_phone_type_pager">Pager</string>
+    <string name="contact_address_label">Address</string>
+    <string name="contact_po_box_label">PO Box %1$s</string>
+    <string name="contact_birthday_label">Birthday</string>
+    <string name="contact_anniversary_label">Anniversary</string>
+    <string name="contact_organization_label">Company</string>
+    <string name="contact_job_title_label">Job title</string>
+    <string name="contact_role_label">Role</string>
+    <string name="contact_note_label">Note</string>
+    <string name="contact_links_label">Links</string>
+    <string name="contact_groups_label">Groups</string>
+    <string name="contact_webid_label">WebID</string>
+    <string name="contact_view_profile">View Solid profile</string>
+    <string name="contact_delete_title">Delete contact</string>
+    <string name="contact_delete_message">"%1$s" will be permanently deleted from your pod and this device.</string>
+    <string name="contact_delete_google_message">"%1$s" syncs from Google, so it will reappear on the next sync unless you also delete it in your Google contacts.</string>
+    <string name="contact_link_type_homepage">Homepage</string>
+    <string name="contact_link_type_webid">WebID</string>
+    <string name="contact_link_type_publicid">Public ID</string>
+    <string name="contact_synced_from_google">Synced from Google · %1$s</string>
+
+    <!-- Contacts settings -->
+    <string name="contacts_settings_title">Contacts settings</string>
+    <string name="contacts_settings_google_section">Sync with Google</string>
+    <string name="contacts_settings_google_description">Contacts from the selected Google accounts are copied to your pod and kept up to date — changes and deletions in Google follow automatically.</string>
+    <string name="contacts_settings_google_empty">No Google accounts with contacts were found on this device.</string>
+    <string name="contacts_settings_google_count">%1$d contacts</string>
+    <string name="contacts_settings_files_section">Files</string>
+    <string name="contacts_settings_import_vcf">Import from .vcf file</string>
+    <string name="contacts_settings_import_vcf_subtitle">Copy contacts from a vCard file to your pod</string>
+    <string name="contacts_settings_export_vcf">Export to .vcf file</string>
+    <string name="contacts_settings_export_vcf_subtitle">Save all pod contacts as a vCard file</string>
+    <string name="contacts_settings_mirror_info">Your pod contacts also appear in this phone\'s Contacts app under your Solid account, one account per logged-in WebID. Signing out removes them from the device.</string>
+    <string name="contacts_vcf_invalid">No contacts found in that file</string>
+    <string name="contacts_import_progress">Importing %1$d of %2$d…</string>
+    <string name="contacts_import_done">%1$d imported, %2$d already existed</string>
+    <string name="contacts_export_saved">Contacts exported</string>
+    <string name="contacts_export_failed">Couldn\'t export contacts</string>
+    <string name="contacts_permission_title">Contacts access</string>
+    <string name="contacts_permission_rationale">Solid Share needs access to your contacts to sync them with your pod and keep your pod contacts available across the device.</string>
+    <string name="contacts_permission_settings">Contacts access is turned off. Open Settings and allow contacts for Solid Share.</string>
+    <string name="contacts_permission_grant">Allow access</string>
+
+    <!-- Contacts sync -->
+    <string name="contacts_sync_now">Sync now</string>
+    <string name="contacts_sync_now_subtitle">Run a pod and device sync right away</string>
+    <string name="contacts_sync_requested">Sync requested</string>
+
+    <!-- Add profile to contacts -->
+    <string name="contact_add_to_contacts">Add to contacts</string>
+    <string name="contact_add_added">Added to your contacts</string>
+    <string name="contact_add_already_exists">Already in your contacts</string>
+    <string name="contact_add_already_exists_named">%1$s is already in your contacts</string>
+    <string name="contact_add_own_profile">This is one of your own accounts</string>
+
+    <!-- Share from contacts -->
+    <string name="share_pick_from_contacts">Choose from contacts</string>
+    <string name="share_contacts_empty_title">No contacts with a WebID</string>
+    <string name="share_contacts_empty_subtitle">Add Solid profiles to your contacts by scanning their QR code.</string>
+
+    <!-- Wallet -->
+    <string name="wallet_title">Wallet</string>
+    <string name="wallet_upcoming">Upcoming</string>
+    <string name="wallet_past">Past</string>
+    <string name="wallet_empty_title">Your wallet is empty</string>
+    <string name="wallet_empty_subtitle">Add tickets and passes by scanning their barcode, importing a pass file, or entering them by hand.</string>
+    <string name="wallet_add_ticket">Add ticket</string>
+    <string name="wallet_add_scan">Scan barcode</string>
+    <string name="wallet_add_import">Import pass file</string>
+    <string name="wallet_add_manual">Enter manually</string>
+    <string name="wallet_import_unreadable">Couldn\'t read that pass file</string>
+
+    <!-- Ticket form & details -->
+    <string name="ticket_form_new_title">New ticket</string>
+    <string name="ticket_form_edit_title">Edit ticket</string>
+    <string name="ticket_form_needs_title">Give the ticket a title first</string>
+    <string name="ticket_field_title">Title</string>
+    <string name="ticket_field_category">Category</string>
+    <string name="ticket_field_token">Barcode payload</string>
+    <string name="ticket_field_barcode_format">Barcode format</string>
+    <string name="ticket_field_event">Event</string>
+    <string name="ticket_field_starts">Starts</string>
+    <string name="ticket_field_ends">Ends</string>
+    <string name="ticket_field_venue">Venue</string>
+    <string name="ticket_field_venue_address">Venue address</string>
+    <string name="ticket_field_seat">Seat</string>
+    <string name="ticket_field_seat_section">Section</string>
+    <string name="ticket_field_seat_row">Row</string>
+    <string name="ticket_field_seat_number">Seat</string>
+    <string name="ticket_field_number">Ticket number</string>
+    <string name="ticket_field_holder">Ticket holder</string>
+    <string name="ticket_field_issuer">Issuer</string>
+    <string name="ticket_field_price">Price</string>
+    <string name="ticket_field_currency">Currency</string>
+    <string name="ticket_field_valid_from">Valid from</string>
+    <string name="ticket_field_valid_through">Valid until</string>
+    <string name="ticket_field_notes">Notes</string>
+    <string name="ticket_barcode_description">Ticket barcode</string>
+    <string name="ticket_delete_title">Delete ticket</string>
+    <string name="ticket_delete_message">"%1$s" will be permanently deleted from your pod.</string>
+    <string name="ticket_open_pass">Open original pass</string>
+    <string name="ticket_no_viewer">No app on this device can open the pass file</string>
+    <string name="ticket_category_event">Event</string>
+    <string name="ticket_category_flight">Flight</string>
+    <string name="ticket_category_train">Train</string>
+    <string name="ticket_category_bus">Bus</string>
+    <string name="ticket_category_cinema">Cinema</string>
+    <string name="ticket_category_loyalty">Loyalty card</string>
+    <string name="ticket_category_coupon">Coupon</string>
+    <string name="ticket_category_generic">Pass</string>
+
+    <!-- Ticket scanning -->
+    <string name="scan_ticket_title">Scan ticket</string>
+    <string name="scan_ticket_subtitle">Point the camera at the ticket\'s barcode — QR, Aztec, PDF417 and most 1D codes are supported. You can also paste the code below.</string>
+    <string name="scan_ticket_submit">Add ticket</string>
+
 </resources>

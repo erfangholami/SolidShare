@@ -24,7 +24,7 @@ internal fun bindCamera(
     previewView: PreviewView,
     scanner: BarcodeScanner,
     onCameraControl: (CameraControl) -> Unit,
-    onScan: (String) -> Unit,
+    onScan: (String, Int) -> Unit,
 ) {
     val providerFuture = ProcessCameraProvider.getInstance(context)
     providerFuture.addListener({
@@ -69,7 +69,7 @@ internal fun bindCamera(
 private fun processImageProxy(
     proxy: ImageProxy,
     scanner: BarcodeScanner,
-    onScan: (String) -> Unit,
+    onScan: (String, Int) -> Unit,
 ) {
     val mediaImage = proxy.image
     if (mediaImage == null) {
@@ -79,8 +79,10 @@ private fun processImageProxy(
     val input = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
     scanner.process(input)
         .addOnSuccessListener { barcodes ->
-            val raw = barcodes.firstNotNullOfOrNull { it.rawValue }
-            if (!raw.isNullOrBlank()) onScan(raw)
+            val hit = barcodes.firstNotNullOfOrNull { barcode ->
+                barcode.rawValue?.takeIf { it.isNotBlank() }?.let { it to barcode.format }
+            }
+            if (hit != null) onScan(hit.first, hit.second)
         }
         .addOnCompleteListener { proxy.close() }
 }

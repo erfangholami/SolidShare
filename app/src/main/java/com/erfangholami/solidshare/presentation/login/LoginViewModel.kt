@@ -28,6 +28,7 @@ class LoginViewModel @Inject constructor(
     companion object {
         const val APP_NAME = "Solid Share"
         const val REDIRECT_URI = "com.erfangholami.solidshare:/oauth2redirect"
+        const val CLIENT_ID = "https://solidshare.app/.well-known/clientid.jsonld"
     }
 
     val isAddingAccount: Boolean = savedStateHandle.toRoute<AuthNavItem.Login>().isAddingAccount
@@ -76,7 +77,8 @@ class LoginViewModel @Inject constructor(
             authRepository.createAuthenticationIntent(
                 webId = webId,
                 appName = APP_NAME,
-                redirectUri = REDIRECT_URI
+                redirectUri = REDIRECT_URI,
+                clientId = CLIENT_ID
             )
         }
     }
@@ -86,7 +88,8 @@ class LoginViewModel @Inject constructor(
             authRepository.createAuthenticationIntent(
                 oidcIssuer = oidcIssuer,
                 appName = APP_NAME,
-                redirectUri = REDIRECT_URI
+                redirectUri = REDIRECT_URI,
+                clientId = CLIENT_ID
             )
         }
     }

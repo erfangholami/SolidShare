@@ -1,0 +1,137 @@
+package com.erfangholami.solidshare.presentation.wallet
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
+import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Flight
+import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.Movie
+import androidx.compose.material.icons.filled.Train
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
+import com.erfangholami.solidshare.domain.model.TicketCategory
+import com.google.mlkit.vision.barcode.common.Barcode
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+
+fun iconFor(category: TicketCategory): ImageVector = when (category) {
+    TicketCategory.EVENT -> Icons.Filled.ConfirmationNumber
+    TicketCategory.FLIGHT -> Icons.Filled.Flight
+    TicketCategory.TRAIN -> Icons.Filled.Train
+    TicketCategory.BUS -> Icons.Filled.DirectionsBus
+    TicketCategory.CINEMA -> Icons.Filled.Movie
+    TicketCategory.LOYALTY -> Icons.Filled.CardMembership
+    TicketCategory.COUPON -> Icons.Filled.LocalOffer
+    TicketCategory.GENERIC -> Icons.Filled.AccountBalanceWallet
+}
+
+@Composable
+fun labelFor(category: TicketCategory): String = stringResource(
+    when (category) {
+        TicketCategory.EVENT -> R.string.ticket_category_event
+        TicketCategory.FLIGHT -> R.string.ticket_category_flight
+        TicketCategory.TRAIN -> R.string.ticket_category_train
+        TicketCategory.BUS -> R.string.ticket_category_bus
+        TicketCategory.CINEMA -> R.string.ticket_category_cinema
+        TicketCategory.LOYALTY -> R.string.ticket_category_loyalty
+        TicketCategory.COUPON -> R.string.ticket_category_coupon
+        TicketCategory.GENERIC -> R.string.ticket_category_generic
+    },
+)
+
+@Composable
+fun TicketCategoryIcon(
+    category: TicketCategory,
+    size: Dp = 48.dp,
+) {
+    Box(
+        modifier = Modifier
+            .size(size)
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = iconFor(category),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+            modifier = Modifier.size(size / 2),
+        )
+    }
+}
+
+fun formatTicketDate(iso: String?): String? {
+    if (iso.isNullOrBlank()) return null
+    return runCatching {
+        if (iso.contains('T')) {
+            val instant = Instant.parse(iso)
+            DateTimeFormatter.ofPattern("EEE d MMM yyyy · HH:mm", Locale.getDefault())
+                .withZone(ZoneId.systemDefault())
+                .format(instant)
+        } else {
+            val date = LocalDate.parse(iso)
+            DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.getDefault()).format(date)
+        }
+    }.getOrDefault(iso)
+}
+
+fun ticketInstantOrNull(iso: String?): Instant? {
+    if (iso.isNullOrBlank()) return null
+    return runCatching { Instant.parse(iso) }.getOrElse {
+        runCatching {
+            LocalDate.parse(iso).atStartOfDay(ZoneId.systemDefault()).toInstant()
+        }.getOrNull()
+    }
+}
+
+fun mlKitFormatToDomain(format: Int): TicketBarcodeFormat = when (format) {
+    Barcode.FORMAT_QR_CODE -> TicketBarcodeFormat.QR_CODE
+    Barcode.FORMAT_AZTEC -> TicketBarcodeFormat.AZTEC
+    Barcode.FORMAT_PDF417 -> TicketBarcodeFormat.PDF_417
+    Barcode.FORMAT_CODE_128 -> TicketBarcodeFormat.CODE_128
+    Barcode.FORMAT_CODE_39 -> TicketBarcodeFormat.CODE_39
+    Barcode.FORMAT_CODE_93 -> TicketBarcodeFormat.CODE_93
+    Barcode.FORMAT_EAN_13 -> TicketBarcodeFormat.EAN_13
+    Barcode.FORMAT_EAN_8 -> TicketBarcodeFormat.EAN_8
+    Barcode.FORMAT_UPC_A -> TicketBarcodeFormat.UPC_A
+    Barcode.FORMAT_UPC_E -> TicketBarcodeFormat.UPC_E
+    Barcode.FORMAT_ITF -> TicketBarcodeFormat.ITF
+    Barcode.FORMAT_CODABAR -> TicketBarcodeFormat.CODABAR
+    Barcode.FORMAT_DATA_MATRIX -> TicketBarcodeFormat.DATA_MATRIX
+    else -> TicketBarcodeFormat.QR_CODE
+}
+
+val TicketScanFormats: IntArray = intArrayOf(
+    Barcode.FORMAT_QR_CODE,
+    Barcode.FORMAT_AZTEC,
+    Barcode.FORMAT_PDF417,
+    Barcode.FORMAT_CODE_128,
+    Barcode.FORMAT_CODE_39,
+    Barcode.FORMAT_CODE_93,
+    Barcode.FORMAT_EAN_13,
+    Barcode.FORMAT_EAN_8,
+    Barcode.FORMAT_UPC_A,
+    Barcode.FORMAT_UPC_E,
+    Barcode.FORMAT_ITF,
+    Barcode.FORMAT_CODABAR,
+    Barcode.FORMAT_DATA_MATRIX,
+)

@@ -2,8 +2,12 @@ package com.erfangholami.solidshare.di
 
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.auth.AuthRepositoryImplementation
+import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
+import com.erfangholami.solidshare.data.repo.contacts.ContactsRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepositoryImplementation
+import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
+import com.erfangholami.solidshare.data.repo.tickets.TicketsRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
@@ -65,4 +69,16 @@ interface RepositoryModule {
     fun bindPublicProfileRepository(
         implementation: PublicProfileRepositoryImplementation,
     ): PublicProfileRepository
+
+    @Binds
+    @Singleton
+    fun bindContactsRepository(
+        implementation: ContactsRepositoryImplementation,
+    ): ContactsRepository
+
+    @Binds
+    @Singleton
+    fun bindTicketsRepository(
+        implementation: TicketsRepositoryImplementation,
+    ): TicketsRepository
 }

@@ -10,13 +10,19 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
+import com.erfangholami.solidshare.sync.SolidAccountManager
 import com.erfangholami.solidshare.worker.NotificationPollingWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 @HiltAndroidApp
 class SolidShareApplication : Application(), Configuration.Provider {
@@ -26,6 +32,14 @@ class SolidShareApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var workManager: Lazy<WorkManager>
+
+    @Inject
+    lateinit var authRepository: Lazy<AuthRepository>
+
+    @Inject
+    lateinit var solidAccountManager: Lazy<SolidAccountManager>
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()
@@ -37,6 +51,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
         NotificationHelper.createChannels(this)
         scheduleNotificationPolling()
         scheduleOutboxDrain()
+        reconcileSolidAccounts()
     }
 
     private fun scheduleNotificationPolling() {
@@ -65,5 +80,15 @@ class SolidShareApplication : Application(), Configuration.Provider {
             ExistingWorkPolicy.KEEP,
             request,
         )
+    }
+
+    private fun reconcileSolidAccounts() {
+        applicationScope.launch {
+            authRepository.get().loggedInProfilesFlow.collect { profiles ->
+                runCatching {
+                    solidAccountManager.get().reconcile(profiles.map { it.webId })
+                }
+            }
+        }
     }
 }

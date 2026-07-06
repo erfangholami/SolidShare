@@ -1,5 +1,17 @@
 package com.erfangholami.solidshare.presentation.components
 
+import com.erfangholami.solidshare.domain.model.AddressBook
+import com.erfangholami.solidshare.domain.model.ContactAddress
+import com.erfangholami.solidshare.domain.model.ContactAddressType
+import com.erfangholami.solidshare.domain.model.ContactDetail
+import com.erfangholami.solidshare.domain.model.ContactEmail
+import com.erfangholami.solidshare.domain.model.ContactEmailType
+import com.erfangholami.solidshare.domain.model.ContactGroup
+import com.erfangholami.solidshare.domain.model.ContactLinkType
+import com.erfangholami.solidshare.domain.model.ContactListEntry
+import com.erfangholami.solidshare.domain.model.ContactPhone
+import com.erfangholami.solidshare.domain.model.ContactPhoneType
+import com.erfangholami.solidshare.domain.model.ContactWebLink
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.NotificationItem
@@ -9,6 +21,14 @@ import com.erfangholami.solidshare.domain.model.ReceivedShare
 import com.erfangholami.solidshare.domain.model.ResourceType
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
+import com.erfangholami.solidshare.domain.model.Ticket
+import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
+import com.erfangholami.solidshare.domain.model.TicketCategory
+import com.erfangholami.solidshare.domain.model.TicketEventInfo
+import com.erfangholami.solidshare.domain.model.TicketSeatInfo
+import com.erfangholami.solidshare.domain.model.TicketSource
+import com.erfangholami.solidshare.domain.model.TicketSummaryItem
+import com.erfangholami.solidshare.domain.model.TicketVenue
 
 internal object PreviewSamples {
 
@@ -130,5 +150,119 @@ internal object PreviewSamples {
         summary = summary,
         publishedAt = publishedAt,
         requestUri = requestUri,
+    )
+
+    const val ADDRESS_BOOK = "https://alice.solidcommunity.net/contacts/book1/index.ttl#this"
+    const val CONTACT =
+        "https://alice.solidcommunity.net/contacts/book1/Person/p1/index.ttl#this"
+    const val TICKET = "https://alice.solidcommunity.net/tickets/t1.ttl#this"
+
+    fun addressBook(
+        uri: String = ADDRESS_BOOK,
+        title: String = "Contacts",
+        isPrivate: Boolean = true,
+        contactCount: Int = 4,
+    ): AddressBook = AddressBook(uri, title, isPrivate, contactCount)
+
+    fun addressBooks(): List<AddressBook> = listOf(
+        addressBook(),
+        addressBook(
+            uri = "https://alice.solidcommunity.net/contacts/book2/index.ttl#this",
+            title = "Work",
+            isPrivate = false,
+            contactCount = 2,
+        ),
+    )
+
+    fun contactEntry(
+        name: String = "Ben Miller",
+        uri: String = CONTACT,
+        bookUri: String = ADDRESS_BOOK,
+    ): ContactListEntry = ContactListEntry(uri, bookUri, name)
+
+    fun contactEntries(): List<ContactListEntry> = listOf(
+        "Alice Cooper", "Ben Miller", "Bram Stoker", "Carol Jones", "Dana White",
+    ).mapIndexed { index, name ->
+        contactEntry(
+            name = name,
+            uri = "https://alice.solidcommunity.net/contacts/book1/Person/p$index/index.ttl#this",
+        )
+    }
+
+    fun contactDetail(
+        uri: String = CONTACT,
+        fullName: String = "Ben Miller",
+    ): ContactDetail = ContactDetail(
+        uri = uri,
+        fullName = fullName,
+        givenName = "Ben",
+        familyName = "Miller",
+        nickname = "Benny",
+        phones = listOf(ContactPhone("+31 6 1234 5678", ContactPhoneType.CELL)),
+        emails = listOf(ContactEmail("ben@example.org", ContactEmailType.HOME)),
+        addresses = listOf(
+            ContactAddress(
+                street = "Kerkstraat 1",
+                locality = "Amsterdam",
+                postalCode = "1017GA",
+                countryName = "Netherlands",
+                type = ContactAddressType.HOME,
+            ),
+        ),
+        birthday = "1990-04-01",
+        organization = "Acme Co.",
+        organizationUnit = "Design",
+        jobTitle = "Designer",
+        note = "Met at FOSDEM",
+        links = listOf(ContactWebLink(ContactLinkType.WEB_ID, webIdOf("ben"))),
+    )
+
+    fun contactGroup(
+        uri: String = "https://alice.solidcommunity.net/contacts/book1/Group/friends.ttl",
+        name: String = "Friends",
+        memberUris: List<String> = listOf(CONTACT),
+    ): ContactGroup = ContactGroup(uri, name, memberUris)
+
+    fun ticketSummary(
+        uri: String = TICKET,
+        title: String = "Coldplay — Music of the Spheres",
+        category: TicketCategory = TicketCategory.EVENT,
+        eventStart: String? = "2026-07-14T19:30:00Z",
+        issuer: String? = "Ticketmaster",
+    ): TicketSummaryItem = TicketSummaryItem(
+        uri = uri,
+        title = title,
+        category = category,
+        eventStart = eventStart,
+        issuer = issuer,
+        validThrough = "2026-07-14T23:59:00Z",
+    )
+
+    fun ticket(
+        uri: String = TICKET,
+        title: String = "Coldplay — Music of the Spheres",
+    ): Ticket = Ticket(
+        uri = uri,
+        title = title,
+        description = "Gate opens 18:00",
+        number = "TKT-0042",
+        token = "c3RhZGl1bS10aWNrZXQ=",
+        barcodeFormat = TicketBarcodeFormat.QR_CODE,
+        category = TicketCategory.EVENT,
+        issuer = "Ticketmaster",
+        holder = "Alice Cooper",
+        seat = TicketSeatInfo(number = "27", row = "F", section = "B12"),
+        price = "89.50",
+        currency = "EUR",
+        event = TicketEventInfo(
+            name = "Music of the Spheres Tour",
+            start = "2026-07-14T19:30:00Z",
+            end = "2026-07-14T23:00:00Z",
+            venue = TicketVenue("Johan Cruijff ArenA", "Arena Boulevard 1, Amsterdam"),
+        ),
+        validFrom = "2026-07-14T17:00:00Z",
+        validThrough = "2026-07-14T23:59:00Z",
+        source = TicketSource.SCAN,
+        createdAt = "2026-07-02T09:15:00Z",
     )
 }

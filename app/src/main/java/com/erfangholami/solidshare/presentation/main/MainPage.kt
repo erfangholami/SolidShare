@@ -26,8 +26,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.presentation.navigation.ContactsRoute
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
+import com.erfangholami.solidshare.presentation.navigation.WalletRoute
 import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
 import com.erfangholami.solidshare.presentation.rememberIsOnline
 import kotlinx.coroutines.launch
@@ -143,7 +145,11 @@ fun MainPage(
                 .fillMaxSize(),
         ) {
             composable<MainNavItem.Home> {
-                Home()
+                Home(
+                    viewModel = hiltViewModel<HomeViewModel>(),
+                    onOpenContacts = { parentNavController.navigate(ContactsRoute) },
+                    onOpenWallet = { parentNavController.navigate(WalletRoute) },
+                )
             }
             composable<MainNavItem.Directory> {
                 Files(

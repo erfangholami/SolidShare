@@ -10,16 +10,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -38,6 +43,16 @@ fun PublicProfilePage(
     viewModel: PublicProfileViewModel,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val addingToContacts by viewModel.addingToContacts.collectAsStateWithLifecycle()
+    val message by viewModel.message.collectAsStateWithLifecycle()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.consumeMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -56,11 +71,27 @@ fun PublicProfilePage(
                         )
                     }
                 },
+                actions = {
+                    if (state is PublicProfileViewModel.UiState.Success) {
+                        IconButton(
+                            onClick = viewModel::addToContacts,
+                            enabled = !addingToContacts,
+                        ) {
+                            Icon(
+                                Icons.Filled.PersonAdd,
+                                contentDescription = stringResource(
+                                    R.string.contact_add_to_contacts,
+                                ),
+                            )
+                        }
+                    }
+                },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
                 ),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         Box(
             modifier = Modifier
