@@ -273,6 +273,8 @@
     <string name="make_offline_unavailable">Offline access isn\'t available yet</string>
     <string name="remove_offline_copy">Remove offline copy</string>
     <string name="available_offline">Available offline</string>
+    <string name="sync_pending">Waiting to sync</string>
+    <string name="sync_error">Sync failed</string>
     <string name="offline_banner">You\'re offline. Showing your last synced copy.</string>
     <string name="offline_banner_synced">You\'re offline. Last synced %1$s.</string>
     <string name="saved_for_offline">Saved for offline use</string>

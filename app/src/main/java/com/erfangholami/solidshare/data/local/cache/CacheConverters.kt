@@ -37,6 +37,18 @@ class CacheConverters {
     @TypeConverter
     fun nameToBlobState(value: String): BlobState = BlobState.valueOf(value)
 
+    @TypeConverter
+    fun opTypeToName(value: OpType): String = value.name
+
+    @TypeConverter
+    fun nameToOpType(value: String): OpType = OpType.valueOf(value)
+
+    @TypeConverter
+    fun opStatusToName(value: OpStatus): String = value.name
+
+    @TypeConverter
+    fun nameToOpStatus(value: String): OpStatus = OpStatus.valueOf(value)
+
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
     }

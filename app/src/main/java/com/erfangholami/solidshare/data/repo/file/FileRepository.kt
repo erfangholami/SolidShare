@@ -66,6 +66,14 @@ interface FileRepository {
         webId: String,
     ): Flow<List<String>>
 
+    fun observePendingUris(
+        webId: String,
+    ): Flow<List<String>>
+
+    fun observeErrorUris(
+        webId: String,
+    ): Flow<List<String>>
+
     suspend fun pinOffline(
         webId: String,
         fileUrl: String,

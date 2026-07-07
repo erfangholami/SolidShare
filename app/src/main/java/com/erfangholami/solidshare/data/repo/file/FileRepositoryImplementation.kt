@@ -266,6 +266,12 @@ class FileRepositoryImplementation @Inject constructor(
     override fun observeAvailableOffline(webId: String): Flow<List<String>> =
         blobDao.observeCompleteUris(webId, BlobState.COMPLETE)
 
+    override fun observePendingUris(webId: String): Flow<List<String>> =
+        resourceDao.observePendingUris(webId)
+
+    override fun observeErrorUris(webId: String): Flow<List<String>> =
+        resourceDao.observeErrorUris(webId)
+
     override suspend fun pinOffline(webId: String, fileUrl: String) {
         if (blobDao.find(webId, fileUrl) == null) downloadFile(webId, fileUrl)
         blobDao.setPinned(webId, fileUrl, true)

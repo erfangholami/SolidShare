@@ -16,6 +16,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.OfflinePin
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.SyncProblem
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -31,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContainerItem
@@ -39,10 +42,50 @@ import com.erfangholami.solidshare.presentation.components.EmptyState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 
+enum class ItemSyncBadge { NONE, OFFLINE, PENDING, ERROR }
+
+internal fun syncBadgeFor(
+    uri: String,
+    availableOffline: Set<String>,
+    pending: Set<String>,
+    errored: Set<String>,
+): ItemSyncBadge = when {
+    errored.contains(uri) -> ItemSyncBadge.ERROR
+    pending.contains(uri) -> ItemSyncBadge.PENDING
+    availableOffline.contains(uri) -> ItemSyncBadge.OFFLINE
+    else -> ItemSyncBadge.NONE
+}
+
+@Composable
+private fun SyncStatusIcon(badge: ItemSyncBadge, size: Dp, modifier: Modifier = Modifier) {
+    val icon = when (badge) {
+        ItemSyncBadge.OFFLINE -> Icons.Filled.OfflinePin
+        ItemSyncBadge.PENDING -> Icons.Filled.Sync
+        ItemSyncBadge.ERROR -> Icons.Filled.SyncProblem
+        ItemSyncBadge.NONE -> return
+    }
+    val tint = when (badge) {
+        ItemSyncBadge.ERROR -> MaterialTheme.colorScheme.error
+        ItemSyncBadge.OFFLINE -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val description = when (badge) {
+        ItemSyncBadge.OFFLINE -> R.string.available_offline
+        ItemSyncBadge.ERROR -> R.string.sync_error
+        else -> R.string.sync_pending
+    }
+    Icon(
+        imageVector = icon,
+        contentDescription = stringResource(description),
+        modifier = modifier.size(size),
+        tint = tint,
+    )
+}
+
 @Composable
 internal fun ContainerItemRow(
     item: ContainerItem,
-    isAvailableOffline: Boolean = false,
+    syncBadge: ItemSyncBadge = ItemSyncBadge.NONE,
     onClick: () -> Unit,
     onMoreOptions: () -> Unit,
 ) {
@@ -70,13 +113,8 @@ internal fun ContainerItemRow(
                 maxLines = 1,
             )
         }
-        if (isAvailableOffline) {
-            Icon(
-                imageVector = Icons.Filled.OfflinePin,
-                contentDescription = stringResource(R.string.available_offline),
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
+        if (syncBadge != ItemSyncBadge.NONE) {
+            SyncStatusIcon(badge = syncBadge, size = 18.dp)
             Spacer(Modifier.width(4.dp))
         }
         IconButton(onClick = onMoreOptions) {
@@ -92,7 +130,7 @@ internal fun ContainerItemRow(
 @Composable
 internal fun ContainerItemCard(
     item: ContainerItem,
-    isAvailableOffline: Boolean = false,
+    syncBadge: ItemSyncBadge = ItemSyncBadge.NONE,
     onClick: () -> Unit,
     onMoreOptions: () -> Unit,
 ) {
@@ -134,15 +172,13 @@ internal fun ContainerItemCard(
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                if (isAvailableOffline) {
-                    Icon(
-                        imageVector = Icons.Filled.OfflinePin,
-                        contentDescription = stringResource(R.string.available_offline),
+                if (syncBadge != ItemSyncBadge.NONE) {
+                    SyncStatusIcon(
+                        badge = syncBadge,
+                        size = 16.dp,
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(6.dp)
-                            .size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary,
+                            .padding(6.dp),
                     )
                 }
             }
@@ -191,7 +227,22 @@ private fun ContainerItemRowFilePreview() {
         Surface {
             ContainerItemRow(
                 item = PreviewSamples.file(name = "trip.jpg", resourceType = ResourceType.IMAGE),
-                isAvailableOffline = true,
+                syncBadge = ItemSyncBadge.OFFLINE,
+                onClick = {},
+                onMoreOptions = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Row Pending")
+@Composable
+private fun ContainerItemRowPendingPreview() {
+    AppTheme {
+        Surface {
+            ContainerItemRow(
+                item = PreviewSamples.file(name = "upload.png", resourceType = ResourceType.IMAGE),
+                syncBadge = ItemSyncBadge.PENDING,
                 onClick = {},
                 onMoreOptions = {},
             )

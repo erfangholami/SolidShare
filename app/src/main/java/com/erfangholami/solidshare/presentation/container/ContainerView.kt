@@ -116,6 +116,8 @@ data class ContainerViewState(
     val isOffline: Boolean = false,
     val lastSyncedAt: Long? = null,
     val availableOffline: Set<String> = emptySet(),
+    val pending: Set<String> = emptySet(),
+    val errored: Set<String> = emptySet(),
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -217,6 +219,8 @@ fun ContainerView(
                                         items = content.items,
                                         listState = listState,
                                         availableOffline = state.availableOffline,
+                                        pending = state.pending,
+                                        errored = state.errored,
                                         onItemClick = onItemClick,
                                         onItemMoreOptions = onItemMoreOptions,
                                     )
@@ -225,6 +229,8 @@ fun ContainerView(
                                         items = content.items,
                                         gridState = gridState,
                                         availableOffline = state.availableOffline,
+                                        pending = state.pending,
+                                        errored = state.errored,
                                         onItemClick = onItemClick,
                                         onItemMoreOptions = onItemMoreOptions,
                                     )
@@ -557,6 +563,8 @@ private fun ContainerItemsList(
     items: List<ContainerItem>,
     listState: LazyListState,
     availableOffline: Set<String>,
+    pending: Set<String>,
+    errored: Set<String>,
     onItemClick: (ContainerItem) -> Unit,
     onItemMoreOptions: (ContainerItem) -> Unit,
 ) {
@@ -568,7 +576,7 @@ private fun ContainerItemsList(
         items(items, key = { it.identifier }) { item ->
             ContainerItemRow(
                 item = item,
-                isAvailableOffline = availableOffline.contains(item.identifier),
+                syncBadge = syncBadgeFor(item.identifier, availableOffline, pending, errored),
                 onClick = { onItemClick(item) },
                 onMoreOptions = { onItemMoreOptions(item) },
             )
@@ -582,6 +590,8 @@ private fun ContainerItemsGrid(
     items: List<ContainerItem>,
     gridState: LazyGridState,
     availableOffline: Set<String>,
+    pending: Set<String>,
+    errored: Set<String>,
     onItemClick: (ContainerItem) -> Unit,
     onItemMoreOptions: (ContainerItem) -> Unit,
 ) {
@@ -596,7 +606,7 @@ private fun ContainerItemsGrid(
         items(items, key = { it.identifier }) { item ->
             ContainerItemCard(
                 item = item,
-                isAvailableOffline = availableOffline.contains(item.identifier),
+                syncBadge = syncBadgeFor(item.identifier, availableOffline, pending, errored),
                 onClick = { onItemClick(item) },
                 onMoreOptions = { onItemMoreOptions(item) },
             )
@@ -661,6 +671,8 @@ private fun previewState(
     canAdd: Boolean = true,
     isOffline: Boolean = false,
     availableOffline: Set<String> = emptySet(),
+    pending: Set<String> = emptySet(),
+    errored: Set<String> = emptySet(),
 ) = ContainerViewState(
     content = content,
     title = title,
@@ -669,6 +681,8 @@ private fun previewState(
     canAdd = canAdd,
     isOffline = isOffline,
     availableOffline = availableOffline,
+    pending = pending,
+    errored = errored,
 )
 
 @Composable
@@ -697,6 +711,20 @@ private fun PreviewContainerView(state: ContainerViewState, onBack: (() -> Unit)
         onBack = onBack,
         modifier = Modifier.fillMaxSize(),
     )
+}
+
+@Preview(name = "Pending sync", showBackground = true, widthDp = 360, heightDp = 640)
+@Composable
+private fun ContainerViewPendingPreview() {
+    ContainerViewPreviewHost {
+        PreviewContainerView(
+            previewState(
+                title = "Photos",
+                pending = setOf("https://alice.solidcommunity.net/files/trip.jpg"),
+                errored = setOf("https://alice.solidcommunity.net/files/notes.md"),
+            ),
+        )
+    }
 }
 
 @Preview(name = "Owner · pod root", showBackground = true, widthDp = 360, heightDp = 640)

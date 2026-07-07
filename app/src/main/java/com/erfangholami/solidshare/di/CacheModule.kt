@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.erfangholami.solidshare.data.local.cache.BlobDao
 import com.erfangholami.solidshare.data.local.cache.CacheKeyManager
+import com.erfangholami.solidshare.data.local.cache.OutboxDao
 import com.erfangholami.solidshare.data.local.cache.ResourceDao
 import com.erfangholami.solidshare.data.local.cache.SolidCacheDatabase
 import dagger.Module
@@ -40,6 +41,9 @@ object CacheModule {
 
     @Provides
     fun provideBlobDao(database: SolidCacheDatabase): BlobDao = database.blobDao()
+
+    @Provides
+    fun provideOutboxDao(database: SolidCacheDatabase): OutboxDao = database.outboxDao()
 
     private fun open(context: Context, passphrase: ByteArray): SolidCacheDatabase =
         Room.databaseBuilder(context, SolidCacheDatabase::class.java, DATABASE_NAME)

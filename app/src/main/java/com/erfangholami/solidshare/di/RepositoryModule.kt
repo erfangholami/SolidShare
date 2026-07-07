@@ -6,6 +6,8 @@ import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepositoryImplementation
+import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
+import com.erfangholami.solidshare.data.repo.outbox.OutboxRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.profile.PublicProfileRepository
 import com.erfangholami.solidshare.data.repo.profile.PublicProfileRepositoryImplementation
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
@@ -39,6 +41,12 @@ interface RepositoryModule {
     fun bindFileRepository(
         implementation: FileRepositoryImplementation,
     ): FileRepository
+
+    @Binds
+    @Singleton
+    fun bindOutboxRepository(
+        implementation: OutboxRepositoryImplementation,
+    ): OutboxRepository
 
     @Binds
     @Singleton

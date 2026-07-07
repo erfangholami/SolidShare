@@ -6,13 +6,12 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
-import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
@@ -20,7 +19,6 @@ import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
 import com.erfangholami.solidshare.util.NetworkMonitor
 import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.DownloadWorker
-import com.erfangholami.solidshare.worker.UploadWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -50,8 +48,8 @@ class ContainerViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val authRepository: AuthRepository,
     private val fileRepository: FileRepository,
-    private val sharingRepository: SharingRepository,
     private val networkMonitor: NetworkMonitor,
+    private val outboxRepository: OutboxRepository,
 ) : ViewModel() {
 
     sealed class UiState {
@@ -138,6 +136,20 @@ class ContainerViewModel @Inject constructor(
     val availableOffline: StateFlow<Set<String>> = _activeWebId
         .filterNotNull()
         .flatMapLatest { fileRepository.observeAvailableOffline(it) }
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val pendingUris: StateFlow<Set<String>> = _activeWebId
+        .filterNotNull()
+        .flatMapLatest { fileRepository.observePendingUris(it) }
+        .map { it.toSet() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val erroredUris: StateFlow<Set<String>> = _activeWebId
+        .filterNotNull()
+        .flatMapLatest { fileRepository.observeErrorUris(it) }
         .map { it.toSet() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
@@ -254,24 +266,12 @@ class ContainerViewModel @Inject constructor(
             }
             val webId = _activeWebId.value ?: return@launch
             val containerUrl = resolvedContainerUrl ?: return@launch
-            val request = OneTimeWorkRequestBuilder<UploadWorker>()
-                .setInputData(
-                    workDataOf(
-                        UploadWorker.KEY_WEB_ID to webId,
-                        UploadWorker.KEY_CONTAINER_URL to containerUrl,
-                        UploadWorker.KEY_FILE_URI to fileUri.toString(),
-                        UploadWorker.KEY_FILE_NAME to fileName,
-                        UploadWorker.KEY_MIME_TYPE to mimeType,
-                    ),
-                )
-                .build()
-            workManager.enqueue(request)
-
-            workManager.getWorkInfoByIdFlow(request.id).collect { info ->
-                if (info?.state == WorkInfo.State.SUCCEEDED) {
-                    load()
-                }
+            runCatching {
+                outboxRepository.enqueueUpload(webId, containerUrl, fileUri, fileName, mimeType)
+            }.onFailure {
+                _folderCreationError.emit(it.message ?: stringProvider.getString(R.string.error_unknown))
             }
+            reloadFromCache()
         }
     }
 
@@ -358,6 +358,17 @@ class ContainerViewModel @Inject constructor(
         }
     }
 
+    private fun reloadFromCache() {
+        viewModelScope.launch {
+            val webId = _activeWebId.value ?: return@launch
+            val url = resolvedContainerUrl ?: return@launch
+            rawItems = runCatching { fileRepository.getCachedContainer(webId, url) }
+                .getOrDefault(rawItems)
+            applySort()
+            computeFolderItemCounts(webId)
+        }
+    }
+
     private fun computeFolderItemCounts(webId: String) {
         val containers = rawItems.filter { it.isContainer }
         if (containers.isEmpty()) return
@@ -386,17 +397,14 @@ class ContainerViewModel @Inject constructor(
                 _folderCreationError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
                 return@launch
             }
-            _screenState.update { it.copy(isCreatingFolder = true) }
-            try {
-                val webId = _activeWebId.value ?: return@launch
-                val containerUrl = resolvedContainerUrl ?: return@launch
-                fileRepository.createFolder(webId, containerUrl, folderName)
-                load()
-            } catch (e: Exception) {
-                _folderCreationError.emit(e.message ?: stringProvider.getString(R.string.error_create_folder))
-            } finally {
-                _screenState.update { it.copy(isCreatingFolder = false) }
+            val webId = _activeWebId.value ?: return@launch
+            val containerUrl = resolvedContainerUrl ?: return@launch
+            runCatching {
+                outboxRepository.enqueueCreateFolder(webId, containerUrl, folderName)
+            }.onFailure {
+                _folderCreationError.emit(it.message ?: stringProvider.getString(R.string.error_create_folder))
             }
+            reloadFromCache()
         }
     }
 
@@ -461,21 +469,14 @@ class ContainerViewModel @Inject constructor(
                 _resourceDeletionError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
                 return@launch
             }
-            _screenState.update { it.copy(isDeletingResource = true) }
             dismissResourceActionsSheet()
-            try {
-                val webId = _activeWebId.value ?: return@launch
-                fileRepository.deleteResource(
-                    webId,
-                    selectedItem.identifier,
-                    selectedItem.isContainer,
-                )
-                load()
-            } catch (e: Exception) {
-                _resourceDeletionError.emit(e.message ?: stringProvider.getString(R.string.error_delete_resource))
-            } finally {
-                _screenState.update { it.copy(isDeletingResource = false) }
+            val webId = _activeWebId.value ?: return@launch
+            runCatching {
+                outboxRepository.enqueueDelete(webId, selectedItem.identifier, selectedItem.isContainer)
+            }.onFailure {
+                _resourceDeletionError.emit(it.message ?: stringProvider.getString(R.string.error_delete_resource))
             }
+            reloadFromCache()
         }
     }
 
@@ -487,21 +488,14 @@ class ContainerViewModel @Inject constructor(
                 _duplicateMessage.emit(stringProvider.getString(R.string.error_no_permission_for_action))
                 return@launch
             }
-            _screenState.update { it.copy(isDuplicating = true) }
-            try {
-                val webId = _activeWebId.value ?: return@launch
-                val created = fileRepository.duplicateResource(webId, item)
-                created.forEach { uri ->
-                    runCatching { sharingRepository.makePrivate(webId, uri) }
-                }
-                load()
+            val webId = _activeWebId.value ?: return@launch
+            runCatching {
+                outboxRepository.enqueueDuplicate(webId, item)
+            }.onSuccess {
+                reloadFromCache()
                 _duplicateMessage.emit(stringProvider.getString(R.string.resource_duplicated))
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                _duplicateMessage.emit(e.message ?: stringProvider.getString(R.string.error_duplicate))
-            } finally {
-                _screenState.update { it.copy(isDuplicating = false) }
+            }.onFailure {
+                _duplicateMessage.emit(it.message ?: stringProvider.getString(R.string.error_duplicate))
             }
         }
     }

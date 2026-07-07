@@ -57,6 +57,8 @@ fun Container(
     val isOnline by viewModel.isOnline.collectAsStateWithLifecycle()
     val isOfflineData by viewModel.isOfflineData.collectAsStateWithLifecycle()
     val lastSyncedAt by viewModel.lastSyncedAt.collectAsStateWithLifecycle()
+    val pendingUris by viewModel.pendingUris.collectAsStateWithLifecycle()
+    val erroredUris by viewModel.erroredUris.collectAsStateWithLifecycle()
     val isDownloading = screen.isDownloading
     val isCreatingFolder = screen.isCreatingFolder
     val isDeletingResource = screen.isDeletingResource
@@ -158,6 +160,8 @@ fun Container(
                 isOffline = !isOnline || isOfflineData,
                 lastSyncedAt = lastSyncedAt,
                 availableOffline = availableOffline,
+                pending = pendingUris,
+                errored = erroredUris,
             ),
             onItemClick = { item ->
                 if (item.isContainer) {
