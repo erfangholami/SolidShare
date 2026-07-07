@@ -23,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.rememberCoroutineScope
@@ -102,6 +103,13 @@ object ResourceActions {
         }
 }
 
+private val ONLINE_ONLY_ACTIONS = setOf(
+    ResourceAction.SHARE,
+    ResourceAction.MANAGE_ACCESS,
+    ResourceAction.DOWNLOAD,
+    ResourceAction.REMOVE_FROM_LIST,
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ResourceActionsSheet(
@@ -110,6 +118,7 @@ fun ResourceActionsSheet(
     actions: List<ResourceAction>,
     onDismiss: () -> Unit,
     onAction: (ResourceAction) -> Unit,
+    isOnline: Boolean = true,
 ) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
@@ -131,6 +140,14 @@ fun ResourceActionsSheet(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
             )
             HorizontalDivider()
+            if (!isOnline && actions.any { it in ONLINE_ONLY_ACTIONS }) {
+                Text(
+                    text = stringResource(R.string.offline_actions_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
+                )
+            }
             Spacer(Modifier.height(8.dp))
             actions.forEachIndexed { index, action ->
                 if (action.destructive && (index == 0 || !actions[index - 1].destructive)) {
@@ -139,6 +156,7 @@ fun ResourceActionsSheet(
                 SheetActionRow(
                     icon = action.icon,
                     label = stringResource(action.labelRes),
+                    enabled = isOnline || action !in ONLINE_ONLY_ACTIONS,
                     tint = if (action.destructive) {
                         MaterialTheme.colorScheme.error
                     } else {

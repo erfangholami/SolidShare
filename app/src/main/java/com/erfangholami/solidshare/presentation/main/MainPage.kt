@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -28,6 +29,8 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
 import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
+import com.erfangholami.solidshare.presentation.rememberIsOnline
+import kotlinx.coroutines.launch
 
 private const val RECEIVED_SHARE_MSG_KEY = "received_share_msg"
 
@@ -39,6 +42,9 @@ fun MainPage(
     val nestedNavController = rememberNavController()
     val shareViewModel = hiltViewModel<ShareViewModel>()
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+    val isOnline by rememberIsOnline()
+    val offlineScanMessage = stringResource(R.string.offline_scan_hint)
 
     val notificationPromptViewModel = hiltViewModel<NotificationPromptViewModel>()
     val shouldPromptNotifications by notificationPromptViewModel
@@ -118,7 +124,13 @@ fun MainPage(
                 items = bottomItems,
                 currentDestination = nestedEntry?.destination,
                 onItemClick = changeTab,
-                onAddClick = { parentNavController.navigate(ScanRoute) },
+                onAddClick = {
+                    if (isOnline) {
+                        parentNavController.navigate(ScanRoute)
+                    } else {
+                        scope.launch { snackbarHostState.showSnackbar(offlineScanMessage) }
+                    }
+                },
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },

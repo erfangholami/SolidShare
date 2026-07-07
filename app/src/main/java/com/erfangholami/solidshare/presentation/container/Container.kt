@@ -209,6 +209,7 @@ fun Container(
         showResourceActionsSheet -> {
             val actionItem = selectedItem!!
             ResourceActionsSheet(
+                isOnline = isOnline,
                 resourceUri = actionItem.identifier,
                 subtitle = actionItem.metaSubtitle(
                     actionItem.itemCount?.let { itemCountLabel(it) },

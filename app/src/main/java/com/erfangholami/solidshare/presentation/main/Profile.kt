@@ -65,6 +65,7 @@ import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import com.erfangholami.solidshare.presentation.components.AccountRow
 import com.erfangholami.solidshare.presentation.components.AddAccountRow
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
@@ -87,6 +88,7 @@ fun Profile(
     val activeWebId by viewModel.activeWebId.collectAsStateWithLifecycle()
     val publicProfile by viewModel.publicProfile.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
 
     var showAppearanceSheet by rememberSaveable { mutableStateOf(false) }
     var showAboutSheet by rememberSaveable { mutableStateOf(false) }
@@ -177,6 +179,7 @@ fun Profile(
                     onAddAccount = {
                         navController.navigate(AuthNavItem.Login(isAddingAccount = true))
                     },
+                    isOnline = isOnline,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
 
@@ -215,6 +218,7 @@ private fun AccountsCard(
     activeWebId: String?,
     onSelectAccount: (webId: String) -> Unit,
     onAddAccount: () -> Unit,
+    isOnline: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Surface(
@@ -243,7 +247,7 @@ private fun AccountsCard(
                 }
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
-            AddAccountRow(onClick = onAddAccount)
+            AddAccountRow(onClick = onAddAccount, enabled = isOnline)
         }
     }
 }
