@@ -281,6 +281,7 @@
     <string name="offline_banner_synced">You\'re offline. Last synced %1$s.</string>
     <string name="saved_for_offline">Saved for offline use</string>
     <string name="offline_copy_removed">Offline copy removed</string>
+    <string name="shared_with_offline">You\'re offline. Connect to see who has access.</string>
     <string name="open_in">Open in</string>
     <string name="open_in_unavailable">Open in isn\'t available yet</string>
     <string name="duplicating">Duplicating…</string>

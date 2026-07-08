@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.AddCircle
+import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -142,6 +143,14 @@ fun ManageSharingPage(
                                 .heightIn(min = 220.dp),
                             contentAlignment = Alignment.Center,
                         ) { CircularProgressIndicator() }
+
+                    ManageSharingViewModel.UiState.Offline ->
+                        ErrorState(
+                            message = stringResource(R.string.shared_with_offline),
+                            icon = Icons.Outlined.CloudOff,
+                            retryLabel = stringResource(R.string.retry),
+                            onRetry = viewModel::load,
+                        )
 
                     is ManageSharingViewModel.UiState.Error ->
                         ErrorState(

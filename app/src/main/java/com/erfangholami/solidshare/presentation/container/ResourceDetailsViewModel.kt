@@ -15,6 +15,7 @@ import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.navigation.ResourceDetailsRoute
 import com.erfangholami.solidshare.presentation.navigation.resourceDetailsTypeMap
+import com.erfangholami.solidshare.util.NetworkMonitor
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -31,10 +32,12 @@ class ResourceDetailsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val sharingRepository: SharingRepository,
     private val fileRepository: FileRepository,
+    private val networkMonitor: NetworkMonitor,
 ) : ViewModel() {
 
     sealed interface SharesState {
         data object Loading : SharesState
+        data object Offline : SharesState
 
         @Immutable
         data class Loaded(val shares: List<GivenShare>) : SharesState
@@ -87,6 +90,10 @@ class ResourceDetailsViewModel @Inject constructor(
     fun loadShares() {
         if (!canManageSharing) {
             _sharesState.value = SharesState.Loaded(emptyList())
+            return
+        }
+        if (!networkMonitor.currentlyOnline()) {
+            _sharesState.value = SharesState.Offline
             return
         }
         viewModelScope.launch {
