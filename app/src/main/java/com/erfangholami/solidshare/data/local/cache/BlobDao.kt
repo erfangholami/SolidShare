@@ -12,8 +12,8 @@ interface BlobDao {
     @Query("SELECT * FROM cached_blob WHERE webId = :webId AND uri = :uri LIMIT 1")
     suspend fun find(webId: String, uri: String): CachedBlobEntity?
 
-    @Query("SELECT uri FROM cached_blob WHERE webId = :webId AND state = :state")
-    fun observeCompleteUris(webId: String, state: BlobState): Flow<List<String>>
+    @Query("SELECT uri FROM cached_blob WHERE webId = :webId AND state = :state AND pinned = 1")
+    fun observeAvailableOfflineUris(webId: String, state: BlobState): Flow<List<String>>
 
     @Upsert
     suspend fun upsert(blob: CachedBlobEntity)

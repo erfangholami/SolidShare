@@ -264,7 +264,7 @@ class FileRepositoryImplementation @Inject constructor(
     }
 
     override fun observeAvailableOffline(webId: String): Flow<List<String>> =
-        blobDao.observeCompleteUris(webId, BlobState.COMPLETE)
+        blobDao.observeAvailableOfflineUris(webId, BlobState.COMPLETE)
 
     override fun observePendingUris(webId: String): Flow<List<String>> =
         resourceDao.observePendingUris(webId)

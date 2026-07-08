@@ -69,6 +69,12 @@ interface ResourceDao {
     @Query("DELETE FROM cached_resource WHERE webId = :webId")
     suspend fun purgeForWebId(webId: String)
 
+    @Query(
+        "SELECT identifier FROM cached_resource WHERE webId = :webId " +
+            "AND parentContainerUri = :parentUri AND syncState != 'SYNCED'",
+    )
+    suspend fun pendingIdentifiersIn(webId: String, parentUri: String): List<String>
+
     @Transaction
     suspend fun replaceContainer(
         webId: String,
@@ -79,7 +85,9 @@ interface ResourceDao {
             deleteAllInContainer(webId, parentUri)
             return
         }
-        upsertAll(items)
+        val pending = pendingIdentifiersIn(webId, parentUri).toSet()
+        val incoming = items.filter { it.identifier !in pending }
+        if (incoming.isNotEmpty()) upsertAll(incoming)
         deleteMissing(webId, parentUri, items.map { it.identifier })
     }
 }

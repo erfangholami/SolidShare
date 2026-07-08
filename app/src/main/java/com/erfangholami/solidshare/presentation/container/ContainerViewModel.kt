@@ -340,9 +340,10 @@ class ContainerViewModel @Inject constructor(
                 }
 
                 _isOfflineData.value = false
-                rawItems = fetched
-                applySort()
                 runCatching { fileRepository.cacheContainer(webId, url, fetched) }
+                rawItems = runCatching { fileRepository.getCachedContainer(webId, url) }
+                    .getOrDefault(fetched)
+                applySort()
                 _lastSyncedAt.value = System.currentTimeMillis()
                 computeFolderItemCounts(webId)
             } catch (e: CancellationException) {
