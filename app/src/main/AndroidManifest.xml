@@ -47,15 +47,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data
-                    android:host="com.erfangholami.solidshare"
-                    android:path="/oauth2redirect"
-                    android:scheme="https" />
-            </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
                     android:host="solidshare.app"
                     android:pathPrefix="/s"
                     android:scheme="https" />
@@ -85,6 +76,21 @@
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/vnd.apple.pkpass" />
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name="net.openid.appauth.RedirectUriReceiverActivity"
+            android:exported="true"
+            tools:node="replace">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:host="solidshare.app"
+                    android:path="/oauth2redirect"
+                    android:scheme="https" />
             </intent-filter>
         </activity>
 
