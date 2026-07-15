@@ -396,6 +396,7 @@
 
     <!-- Home hub -->
     <string name="home_greeting">Hi %1$s</string>
+    <string name="home_welcome">Welcome</string>
     <string name="home_hub_caption">Your data, on your pod</string>
     <string name="home_card_contacts_title">Contacts</string>
     <string name="home_card_contacts_subtitle">Your address book, synced with this device</string>

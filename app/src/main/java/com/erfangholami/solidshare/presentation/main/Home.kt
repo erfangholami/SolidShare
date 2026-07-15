@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.presentation.main
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -71,10 +73,26 @@ fun HomeContent(
         topBar = {
             TopAppBar(
                 title = {
-                    Text(
-                        stringResource(R.string.home),
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Image(
+                            painter = painterResource(R.drawable.logo),
+                            contentDescription = null,
+                            modifier = Modifier.size(36.dp),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Column {
+                            Text(
+                                text = stringResource(R.string.app_name),
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.home_hub_caption),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
@@ -129,16 +147,10 @@ private fun HomeGreeting(profile: PublicProfile?) {
                 text = if (displayName != null) {
                     stringResource(R.string.home_greeting, displayName)
                 } else {
-                    stringResource(R.string.app_name)
+                    stringResource(R.string.home_welcome)
                 },
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold,
-            )
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = stringResource(R.string.home_hub_caption),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
         ProfileAvatar(
