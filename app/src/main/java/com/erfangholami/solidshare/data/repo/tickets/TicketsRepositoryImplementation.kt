@@ -5,10 +5,14 @@ import com.erfangholami.androidsolidservices.api.datamodule.tickets.SolidTickets
 import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.data.passimport.GoogleWalletParser
 import com.erfangholami.solidshare.data.passimport.PkpassParser
+import com.erfangholami.solidshare.data.passimport.TicketFileSniffer
+import com.erfangholami.solidshare.data.passimport.TicketFileType
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.domain.model.Ticket
+import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketFile
+import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import javax.inject.Inject
 
@@ -61,10 +65,42 @@ class TicketsRepositoryImplementation @Inject constructor(
     override fun parseTicketQr(raw: String): TicketDraft? =
         TicketQrCodec.parse(raw) ?: GoogleWalletParser.parse(raw)
 
-    override fun parsePassFile(bytes: ByteArray): Pair<TicketDraft, TicketFile>? =
-        PkpassParser.parse(bytes)?.let { draft ->
-            draft to TicketFile(PkpassParser.MIME_TYPE, bytes)
-        }
+    override fun parseTicketFile(
+        bytes: ByteArray,
+        fileName: String?,
+    ): Pair<TicketDraft, TicketFile>? = when (TicketFileSniffer.detect(bytes)) {
+        TicketFileType.PKPASS ->
+            PkpassParser.parse(bytes)?.let { it to TicketFile(PkpassParser.MIME_TYPE, bytes) }
+
+        TicketFileType.PKPASSES ->
+            TicketFileSniffer.firstPassOfBundle(bytes)
+                ?.let { PkpassParser.parse(it) }
+                ?.let { it to TicketFile(PKPASSES_MIME_TYPE, bytes) }
+
+        TicketFileType.PDF ->
+            fileDraft(fileName, TicketSource.PDF) to TicketFile("application/pdf", bytes)
+
+        TicketFileType.IMAGE ->
+            fileDraft(fileName, TicketSource.IMAGE) to
+                TicketFile(TicketFileSniffer.imageMimeType(bytes), bytes)
+
+        TicketFileType.UNKNOWN -> null
+    }
+
+    /**
+     * A best-effort draft for a file we can capture but not yet read (a PDF or image): the original
+     * is kept as the artifact and the user completes the details in the edit form. Rich extraction
+     * (barcode + OCR) fills these in a later pass.
+     */
+    private fun fileDraft(fileName: String?, source: TicketSource): TicketDraft = TicketDraft(
+        title = fileName?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotBlank() }.orEmpty(),
+        category = TicketCategory.GENERIC,
+        source = source,
+    )
 
     private fun <T : Parcelable> SolidResult<T>.unwrap(): T = getOrThrow()
+
+    private companion object {
+        const val PKPASSES_MIME_TYPE = "application/vnd.apple.pkpasses"
+    }
 }

@@ -9,7 +9,7 @@ enum class TicketBarcodeFormat {
     EAN_13, EAN_8, UPC_A, UPC_E, ITF, CODABAR, DATA_MATRIX, NONE,
 }
 
-enum class TicketSource { MANUAL, SCAN, PKPASS, GOOGLE_WALLET }
+enum class TicketSource { MANUAL, SCAN, PKPASS, GOOGLE_WALLET, PDF, IMAGE, LINK }
 
 data class TicketSummaryItem(
     val uri: String,

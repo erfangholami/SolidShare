@@ -25,5 +25,11 @@ interface TicketsRepository {
 
     fun parseTicketQr(raw: String): TicketDraft?
 
-    fun parsePassFile(bytes: ByteArray): Pair<TicketDraft, TicketFile>?
+    /**
+     * Detects the file type of [bytes] (regardless of the declared MIME type) and turns it into a
+     * ticket draft plus the original file to keep as the artifact. Handles Apple `.pkpass` and
+     * `.pkpasses` bundles, and captures PDFs and images as a minimal draft with the file attached;
+     * returns `null` for content that is not a recognised ticket file.
+     */
+    fun parseTicketFile(bytes: ByteArray, fileName: String? = null): Pair<TicketDraft, TicketFile>?
 }

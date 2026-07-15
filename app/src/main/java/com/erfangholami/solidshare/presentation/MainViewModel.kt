@@ -38,8 +38,15 @@ class MainViewModel @Inject constructor(
     val pendingTicketDraft: StateFlow<TicketDraft?> = _pendingTicketDraft.asStateFlow()
 
     fun handleDeepLink(intent: Intent?) {
-        val data = intent?.data ?: return
-        val raw = data.toString()
+        val raw = intent?.data?.toString() ?: return
+        parseRawLink(raw)
+    }
+
+    fun handleSharedText(text: String) {
+        parseRawLink(text.trim())
+    }
+
+    private fun parseRawLink(raw: String) {
         sharingRepository.parseDeepLink(raw)?.let {
             _pendingShareLink.value = it
             return
@@ -49,8 +56,8 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun handlePassFile(bytes: ByteArray) {
-        val parsed = ticketsRepository.parsePassFile(bytes) ?: return
+    fun handleTicketFile(bytes: ByteArray, fileName: String? = null) {
+        val parsed = ticketsRepository.parseTicketFile(bytes, fileName) ?: return
         val (draft, artifact) = parsed
         ticketImportHolder.stash(artifact)
         _pendingTicketDraft.value = draft

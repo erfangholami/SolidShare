@@ -39,8 +39,8 @@ class WalletViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
-    fun importPass(bytes: ByteArray, onDraft: (TicketDraft) -> Unit) {
-        val parsed = ticketsRepository.parsePassFile(bytes)
+    fun importPass(bytes: ByteArray, fileName: String? = null, onDraft: (TicketDraft) -> Unit) {
+        val parsed = ticketsRepository.parseTicketFile(bytes, fileName)
         if (parsed == null) {
             _message.value = stringProvider.getString(R.string.wallet_import_unreadable)
             return

@@ -1,5 +1,8 @@
 package com.erfangholami.solidshare.presentation.wallet
 
+import android.content.Context
+import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -94,7 +97,7 @@ fun WalletPage(
                     }.getOrNull()
                 }
                 if (bytes != null) {
-                    viewModel.importPass(bytes) { draft ->
+                    viewModel.importPass(bytes, ticketFileName(context, uri)) { draft ->
                         navController.navigate(TicketEditRoute(draft = draft))
                     }
                 }
@@ -209,6 +212,9 @@ fun WalletPage(
                     importLauncher.launch(
                         arrayOf(
                             "application/vnd.apple.pkpass",
+                            "application/vnd.apple.pkpasses",
+                            "application/pdf",
+                            "image/*",
                             "application/zip",
                             "application/octet-stream",
                         ),
@@ -349,4 +355,18 @@ private fun TicketListDarkPreview() {
             onTicketClick = {},
         )
     }
+}
+
+private fun ticketFileName(context: Context, uri: Uri): String? {
+    if (uri.scheme == "content") {
+        runCatching {
+            context.contentResolver
+                .query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                ?.use { cursor ->
+                    val index = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (cursor.moveToFirst() && index >= 0) return cursor.getString(index)
+                }
+        }
+    }
+    return uri.lastPathSegment
 }
