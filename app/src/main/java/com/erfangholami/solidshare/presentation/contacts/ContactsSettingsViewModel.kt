@@ -1,18 +1,19 @@
 package com.erfangholami.solidshare.presentation.contacts
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkManager
+import androidx.work.workDataOf
 import com.erfangholami.solidshare.R
-import com.erfangholami.solidshare.data.device.DeviceContactsSource
-import com.erfangholami.solidshare.data.local.ContactsSyncPrefs
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
-import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.sync.SolidAccountManager
-import com.erfangholami.solidshare.sync.SolidAccounts
 import com.erfangholami.solidshare.util.StringProvider
-import com.erfangholami.solidshare.util.VCardReader
-import com.erfangholami.solidshare.util.VCardWriter
+import com.erfangholami.solidshare.worker.ContactsDeviceImportWorker
+import com.erfangholami.solidshare.worker.ContactsExportWorker
+import com.erfangholami.solidshare.worker.ContactsImportWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -24,23 +25,15 @@ import kotlinx.coroutines.launch
 class ContactsSettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
-    private val deviceContactsSource: DeviceContactsSource,
-    private val contactsSyncPrefs: ContactsSyncPrefs,
     private val solidAccountManager: SolidAccountManager,
+    private val workManager: WorkManager,
     private val stringProvider: StringProvider,
 ) : ViewModel() {
 
-    data class GoogleAccountRow(
-        val accountName: String,
-        val contactCount: Int,
-        val enabled: Boolean,
-    )
-
     data class UiState(
-        val loadingAccounts: Boolean = true,
-        val googleAccounts: List<GoogleAccountRow> = emptyList(),
+        val mergeCount: Int = 0,
+        val contactCount: Int = 0,
         val busy: Boolean = false,
-        val progress: Pair<Int, Int>? = null,
     )
 
     private val _state = MutableStateFlow(UiState())
@@ -49,48 +42,44 @@ class ContactsSettingsViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
-    fun loadAccounts() {
+    fun deleteAllContacts() {
         viewModelScope.launch {
-            _state.update { it.copy(loadingAccounts = true) }
+            val count = _state.value.contactCount
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
-                val enabled = contactsSyncPrefs.enabledGoogleAccounts(webId)
-                deviceContactsSource.listAccounts(SolidAccounts.ACCOUNT_TYPE)
-                    .filter { it.accountType == GOOGLE_ACCOUNT_TYPE }
-                    .mapNotNull { account ->
-                        account.accountName?.let { name ->
-                            GoogleAccountRow(
-                                accountName = name,
-                                contactCount = account.contacts.size,
-                                enabled = name in enabled,
-                            )
-                        }
-                    }
-            }.onSuccess { rows ->
-                _state.update { it.copy(loadingAccounts = false, googleAccounts = rows) }
+                contactsRepository.queueDeleteAll(webId)
+                solidAccountManager.requestSync(webId)
+            }.onSuccess {
+                _message.value = stringProvider.getString(R.string.contacts_delete_all_done, count)
             }.onFailure {
-                _state.update { state -> state.copy(loadingAccounts = false) }
+                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
             }
+            _state.update { it.copy(mergeCount = 0, contactCount = 0) }
         }
     }
 
-    fun onGoogleAccountToggled(accountName: String, enabled: Boolean) {
+    fun refresh() {
         viewModelScope.launch {
-            runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
-                contactsSyncPrefs.setGoogleAccountEnabled(webId, accountName, enabled)
-                if (enabled) {
-                    solidAccountManager.requestSync(webId)
-                    _message.value = stringProvider.getString(R.string.contacts_sync_requested)
-                }
-            }
-            _state.update { state ->
-                state.copy(
-                    googleAccounts = state.googleAccounts.map { row ->
-                        if (row.accountName == accountName) row.copy(enabled = enabled) else row
-                    },
-                )
-            }
+            val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
+            val contactCount = runCatching {
+                contactsRepository.getOverview(webId).entries.size
+            }.getOrDefault(0)
+            _state.update { it.copy(contactCount = contactCount) }
+            val mergeCount = runCatching {
+                contactsRepository.findMergeSuggestions(webId).size
+            }.getOrDefault(0)
+            _state.update { it.copy(mergeCount = mergeCount) }
+        }
+    }
+
+    fun importDeviceContacts() {
+        viewModelScope.launch {
+            val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
+            val request = OneTimeWorkRequestBuilder<ContactsDeviceImportWorker>()
+                .setInputData(workDataOf(ContactsDeviceImportWorker.KEY_WEB_ID to webId))
+                .build()
+            workManager.enqueue(request)
+            _message.value = stringProvider.getString(R.string.contacts_device_import_started)
         }
     }
 
@@ -104,119 +93,39 @@ class ContactsSettingsViewModel @Inject constructor(
         }
     }
 
-    fun importVcf(text: String) {
+    fun startImport(uri: Uri) {
         viewModelScope.launch {
-            val cards = runCatching { VCardReader.parse(text) }.getOrDefault(emptyList())
-            if (cards.isEmpty()) {
-                _message.value = stringProvider.getString(R.string.contacts_vcf_invalid)
-                return@launch
-            }
-            _state.update { it.copy(busy = true, progress = 0 to cards.size) }
-            runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
-                val bookUri = contactsRepository.ensureDefaultAddressBook(webId)
-                val existingKeys = runCatching {
-                    contactsRepository.getAllContacts(webId, bookUri)
-                }.getOrDefault(emptyList()).map { it.dedupeKey() }.toMutableSet()
-                var imported = 0
-                var skipped = 0
-                cards.forEachIndexed { index, card ->
-                    val key = dedupeKey(
-                        card.draft.fullName ?: listOfNotNull(
-                            card.draft.givenName,
-                            card.draft.familyName,
-                        ).joinToString(" "),
-                        card.draft.phones.firstOrNull()?.number,
-                        card.draft.emails.firstOrNull()?.address,
-                    )
-                    if (key in existingKeys) {
-                        skipped++
-                    } else {
-                        val created = contactsRepository.createContact(webId, bookUri, card.draft)
-                        if (card.photo != null) {
-                            runCatching {
-                                contactsRepository.setContactPhoto(
-                                    webId,
-                                    created.uri,
-                                    card.photo,
-                                    card.photoMime ?: "image/jpeg",
-                                )
-                            }
-                        }
-                        existingKeys.add(key)
-                        imported++
-                    }
-                    _state.update { it.copy(progress = (index + 1) to cards.size) }
-                }
-                solidAccountManager.requestSync(webId)
-                imported to skipped
-            }.onSuccess { (imported, skipped) ->
-                _state.update { it.copy(busy = false, progress = null) }
-                _message.value = stringProvider.getString(
-                    R.string.contacts_import_done,
-                    imported,
-                    skipped,
+            val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
+            val request = OneTimeWorkRequestBuilder<ContactsImportWorker>()
+                .setInputData(
+                    workDataOf(
+                        ContactsImportWorker.KEY_WEB_ID to webId,
+                        ContactsImportWorker.KEY_SOURCE_URI to uri.toString(),
+                    ),
                 )
-            }.onFailure {
-                _state.update { it.copy(busy = false, progress = null) }
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
-            }
+                .build()
+            workManager.enqueue(request)
+            _message.value = stringProvider.getString(R.string.contacts_import_started)
         }
     }
 
-    fun buildExport(onReady: (String) -> Unit) {
+    fun startExport(uri: Uri) {
         viewModelScope.launch {
-            _state.update { it.copy(busy = true) }
-            runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
-                val overview = contactsRepository.getOverview(webId)
-                val contacts = overview.books.flatMap { book ->
-                    runCatching {
-                        contactsRepository.getAllContacts(webId, book.uri)
-                    }.getOrDefault(emptyList())
-                }
-                val withPhotos = contacts.map { contact ->
-                    val photo = contact.photoUri?.let { uri ->
-                        runCatching { contactsRepository.getContactPhoto(webId, uri) }.getOrNull()
-                    }
-                    contact to photo
-                }
-                VCardWriter.write(withPhotos)
-            }.onSuccess { text ->
-                _state.update { it.copy(busy = false) }
-                onReady(text)
-            }.onFailure {
-                _state.update { it.copy(busy = false) }
-                _message.value = stringProvider.getString(R.string.contacts_export_failed)
-            }
+            val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
+            val request = OneTimeWorkRequestBuilder<ContactsExportWorker>()
+                .setInputData(
+                    workDataOf(
+                        ContactsExportWorker.KEY_WEB_ID to webId,
+                        ContactsExportWorker.KEY_DEST_URI to uri.toString(),
+                    ),
+                )
+                .build()
+            workManager.enqueue(request)
+            _message.value = stringProvider.getString(R.string.contacts_export_started)
         }
-    }
-
-    fun notifyExportSaved() {
-        _message.value = stringProvider.getString(R.string.contacts_export_saved)
-    }
-
-    fun notifyExportFailed() {
-        _message.value = stringProvider.getString(R.string.contacts_export_failed)
     }
 
     fun consumeMessage() {
         _message.value = null
-    }
-
-    private fun ContactDetail.dedupeKey(): String =
-        dedupeKey(fullName, phones.firstOrNull()?.number, emails.firstOrNull()?.address)
-
-    private fun dedupeKey(name: String?, phone: String?, email: String?): String {
-        val normalizedPhone = phone?.filter { it.isDigit() }.orEmpty()
-        return listOf(
-            name.orEmpty().trim().lowercase(),
-            normalizedPhone,
-            email.orEmpty().trim().lowercase(),
-        ).joinToString("|")
-    }
-
-    companion object {
-        private const val GOOGLE_ACCOUNT_TYPE = "com.google"
     }
 }
