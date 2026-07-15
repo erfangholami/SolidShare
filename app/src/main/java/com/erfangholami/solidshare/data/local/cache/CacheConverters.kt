@@ -49,6 +49,12 @@ class CacheConverters {
     @TypeConverter
     fun nameToOpStatus(value: String): OpStatus = OpStatus.valueOf(value)
 
+    @TypeConverter
+    fun contactOpTypeToName(value: ContactOpType): String = value.name
+
+    @TypeConverter
+    fun nameToContactOpType(value: String): ContactOpType = ContactOpType.valueOf(value)
+
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
     }
