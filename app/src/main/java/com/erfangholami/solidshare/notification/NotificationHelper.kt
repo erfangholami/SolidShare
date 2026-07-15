@@ -28,6 +28,9 @@ object NotificationHelper {
     private const val CHANNEL_SHARING_REQUESTS = "channel_sharing_requests"
     private const val CHANNEL_SHARING_ACTIVITY = "channel_sharing_activity"
 
+    private const val CHANNEL_CONTACTS_PROGRESS = "channel_contacts_progress"
+    private const val CHANNEL_CONTACTS = "channel_contacts"
+
     const val NOTIFICATION_ID_DOWNLOAD_PROGRESS = 1001
     const val NOTIFICATION_ID_UPLOAD_PROGRESS = 1002
 
@@ -35,6 +38,13 @@ object NotificationHelper {
     const val NOTIFICATION_ID_UPLOAD_COMPLETE = 1004
 
     const val NOTIFICATION_ID_SHARING = 2001
+
+    const val NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS = 3001
+    const val NOTIFICATION_ID_CONTACTS_IMPORT_COMPLETE = 3002
+    const val NOTIFICATION_ID_CONTACTS_EXPORT_PROGRESS = 3003
+    const val NOTIFICATION_ID_CONTACTS_EXPORT_COMPLETE = 3004
+
+    private const val CONTACTS_CONTENT_REQUEST_CODE = 3100
 
     private const val SHARING_CONTENT_REQUEST_CODE = 2100
 
@@ -74,6 +84,75 @@ object NotificationHelper {
             description = "Updates about resources shared with you"
         }
         manager.createNotificationChannel(activityChannel)
+
+        val contactsProgressChannel = NotificationChannel(
+            CHANNEL_CONTACTS_PROGRESS,
+            "Contacts sync progress",
+            NotificationManager.IMPORTANCE_LOW,
+        ).apply {
+            description = "Shows progress for contact import and export"
+            setShowBadge(false)
+        }
+        manager.createNotificationChannel(contactsProgressChannel)
+
+        val contactsChannel = NotificationChannel(
+            CHANNEL_CONTACTS,
+            "Contacts",
+            NotificationManager.IMPORTANCE_DEFAULT,
+        ).apply {
+            description = "Contact import, export and duplicate updates"
+        }
+        manager.createNotificationChannel(contactsChannel)
+    }
+
+    fun buildContactsProgressNotification(
+        context: Context,
+        title: String,
+        text: String,
+        current: Int,
+        total: Int,
+    ): Notification {
+        val indeterminate = total <= 0
+        return NotificationCompat.Builder(context, CHANNEL_CONTACTS_PROGRESS)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setSmallIcon(R.drawable.ic_solid)
+            .setColor(BRAND_COLOR)
+            .setProgress(if (indeterminate) 0 else total, if (indeterminate) 0 else current, indeterminate)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setSilent(true)
+            .build()
+    }
+
+    fun buildContactsCompleteNotification(
+        context: Context,
+        title: String,
+        text: String,
+        openContacts: Boolean,
+    ): Notification {
+        val builder = NotificationCompat.Builder(context, CHANNEL_CONTACTS)
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_solid)
+            .setColor(BRAND_COLOR)
+            .setAutoCancel(true)
+        if (openContacts) {
+            val intent = Intent(context, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+                putExtra(MainActivity.EXTRA_OPEN_CONTACTS, true)
+            }
+            builder.setContentIntent(
+                PendingIntent.getActivity(
+                    context,
+                    CONTACTS_CONTENT_REQUEST_CODE,
+                    intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }
+        return builder.build()
     }
 
     fun buildSharingNotification(
