@@ -10,13 +10,10 @@ import android.net.Uri
 import android.provider.ContactsContract
 import androidx.core.content.ContextCompat
 import com.erfangholami.solidshare.data.device.DeviceContactsSource
-import com.erfangholami.solidshare.data.local.ContactsSyncPrefs
-import com.erfangholami.solidshare.data.local.GoogleMappingEntry
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.ContactAddress
 import com.erfangholami.solidshare.domain.model.ContactAddressType
 import com.erfangholami.solidshare.domain.model.ContactDetail
-import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactEmailType
 import com.erfangholami.solidshare.domain.model.ContactGroup
 import com.erfangholami.solidshare.domain.model.ContactPhoneType
@@ -30,138 +27,23 @@ class ContactsSyncEngine @Inject constructor(
     @param:ApplicationContext private val context: Context,
     private val contactsRepository: ContactsRepository,
     private val deviceContactsSource: DeviceContactsSource,
-    private val contactsSyncPrefs: ContactsSyncPrefs,
 ) {
 
     suspend fun sync(webId: String) {
-        if (!hasContactsPermissions()) return
+        if (!hasPermission(Manifest.permission.READ_CONTACTS) ||
+            !hasPermission(Manifest.permission.WRITE_CONTACTS)
+        ) {
+            return
+        }
         val account = Account(webId, SolidAccounts.ACCOUNT_TYPE)
         ensureAccountSettings(account)
-        googlePass(webId)
         uploadPhase(webId, account)
         downloadPhase(webId, account)
     }
 
-    private fun hasContactsPermissions(): Boolean =
-        ContextCompat.checkSelfPermission(context, Manifest.permission.READ_CONTACTS) ==
-                PackageManager.PERMISSION_GRANTED &&
-                ContextCompat.checkSelfPermission(context, Manifest.permission.WRITE_CONTACTS) ==
+    private fun hasPermission(permission: String): Boolean =
+        ContextCompat.checkSelfPermission(context, permission) ==
                 PackageManager.PERMISSION_GRANTED
-
-    private suspend fun googlePass(webId: String) {
-        val enabledAccounts = contactsSyncPrefs.enabledGoogleAccounts(webId)
-        if (enabledAccounts.isEmpty()) return
-        val bookUri = runCatching {
-            contactsRepository.ensureDefaultAddressBook(webId)
-        }.getOrNull() ?: return
-        val podContacts = runCatching {
-            contactsRepository.getAllContacts(webId, bookUri)
-        }.getOrNull() ?: return
-        val podByUri = podContacts.associateBy { it.uri }.toMutableMap()
-        val podByDedupeKey = podContacts.associateBy { it.dedupeKey() }.toMutableMap()
-
-        enabledAccounts.forEach { accountName ->
-            val mapping = contactsSyncPrefs.getMapping(webId, accountName).toMutableMap()
-            val deviceIds = runCatching {
-                deviceContactsSource.listRawContactIds(GOOGLE_ACCOUNT_TYPE, accountName)
-            }.getOrDefault(emptyList())
-
-            deviceIds.forEach { rawId ->
-                val data = runCatching {
-                    deviceContactsSource.loadContact(rawId)
-                }.getOrNull() ?: return@forEach
-                if (data.draft.isBlankIdentity()) return@forEach
-                val fieldsHash = draftHash(data.draft)
-                val photoHash = data.photo?.let { md5(it) }
-                val entry = mapping[rawId]
-
-                when {
-                    entry == null -> {
-                        val existing = podByDedupeKey[data.draft.dedupeKey()]
-                        if (existing != null) {
-                            mapping[rawId] = GoogleMappingEntry(
-                                podUri = existing.uri,
-                                fieldsHash = fieldsHash,
-                                photoHash = photoHash,
-                            )
-                        } else {
-                            runCatching {
-                                val created =
-                                    contactsRepository.createContact(webId, bookUri, data.draft)
-                                pushPhoto(webId, created.uri, data.photo, data.photoMime)
-                                mapping[rawId] = GoogleMappingEntry(
-                                    podUri = created.uri,
-                                    fieldsHash = fieldsHash,
-                                    photoHash = photoHash,
-                                )
-                                podByUri[created.uri] = created
-                                podByDedupeKey[created.dedupeKey()] = created
-                            }
-                        }
-                    }
-
-                    entry.podUri !in podByUri -> {
-                        runCatching {
-                            val created =
-                                contactsRepository.createContact(webId, bookUri, data.draft)
-                            pushPhoto(webId, created.uri, data.photo, data.photoMime)
-                            mapping[rawId] = GoogleMappingEntry(
-                                podUri = created.uri,
-                                fieldsHash = fieldsHash,
-                                photoHash = photoHash,
-                            )
-                            podByUri[created.uri] = created
-                            podByDedupeKey[created.dedupeKey()] = created
-                        }
-                    }
-
-                    else -> {
-                        if (entry.fieldsHash != fieldsHash) {
-                            runCatching {
-                                val updated = contactsRepository.updateContact(
-                                    webId,
-                                    bookUri,
-                                    entry.podUri,
-                                    data.draft,
-                                )
-                                podByUri[updated.uri] = updated
-                                mapping[rawId] =
-                                    requireNotNull(mapping[rawId]).copy(fieldsHash = fieldsHash)
-                            }
-                        }
-                        if (requireNotNull(mapping[rawId]).photoHash != photoHash) {
-                            runCatching {
-                                if (data.photo != null) {
-                                    contactsRepository.setContactPhoto(
-                                        webId,
-                                        entry.podUri,
-                                        data.photo,
-                                        data.photoMime ?: "image/jpeg",
-                                    )
-                                } else {
-                                    contactsRepository.removeContactPhoto(webId, entry.podUri)
-                                }
-                                mapping[rawId] =
-                                    requireNotNull(mapping[rawId]).copy(photoHash = photoHash)
-                            }
-                        }
-                    }
-                }
-            }
-
-            val removedIds = mapping.keys - deviceIds.toSet()
-            removedIds.forEach { rawId ->
-                val entry = mapping[rawId] ?: return@forEach
-                runCatching {
-                    contactsRepository.deleteContact(webId, bookUri, entry.podUri)
-                }
-                podByUri.remove(entry.podUri)
-                mapping.remove(rawId)
-            }
-
-            runCatching { contactsSyncPrefs.setMapping(webId, accountName, mapping) }
-        }
-    }
 
     private suspend fun pushPhoto(
         webId: String,
@@ -974,55 +856,6 @@ class ContactsSyncEngine @Inject constructor(
         return "${contactUri.substring(0, personIndex + 1)}index.ttl#this"
     }
 
-    private fun ContactDetail.dedupeKey(): String =
-        dedupeKey(fullName, phones.firstOrNull()?.number, emails.firstOrNull()?.address)
-
-    private fun ContactDraft.dedupeKey(): String = dedupeKey(
-        fullName ?: listOfNotNull(givenName, familyName).joinToString(" "),
-        phones.firstOrNull()?.number,
-        emails.firstOrNull()?.address,
-    )
-
-    private fun dedupeKey(name: String?, phone: String?, email: String?): String {
-        val normalizedPhone = phone?.filter { it.isDigit() }.orEmpty()
-        return listOf(
-            name.orEmpty().trim().lowercase(),
-            normalizedPhone,
-            email.orEmpty().trim().lowercase(),
-        ).joinToString("|")
-    }
-
-    private fun ContactDraft.isBlankIdentity(): Boolean =
-        fullName.isNullOrBlank() && givenName.isNullOrBlank() && familyName.isNullOrBlank() &&
-                phones.isEmpty() && emails.isEmpty()
-
-    private fun draftHash(draft: ContactDraft): String {
-        val canonical = buildString {
-            append(draft.fullName.orEmpty()).append('|')
-            append(draft.givenName.orEmpty()).append('|')
-            append(draft.familyName.orEmpty()).append('|')
-            append(draft.middleName.orEmpty()).append('|')
-            append(draft.namePrefix.orEmpty()).append('|')
-            append(draft.nameSuffix.orEmpty()).append('|')
-            append(draft.nickname.orEmpty()).append('|')
-            append(
-                draft.phones.map { "${it.type}:${it.number}" }.sorted().joinToString(","),
-            ).append('|')
-            append(
-                draft.emails.map { "${it.type}:${it.address}" }.sorted().joinToString(","),
-            ).append('|')
-            append(draft.addresses.map { addressKey(it) }.sorted().joinToString(",")).append('|')
-            append(draft.birthday.orEmpty()).append('|')
-            append(draft.anniversary.orEmpty()).append('|')
-            append(draft.organization.orEmpty()).append('|')
-            append(draft.organizationUnit.orEmpty()).append('|')
-            append(draft.jobTitle.orEmpty()).append('|')
-            append(draft.note.orEmpty()).append('|')
-            append(draft.links.map { "${it.type}:${it.value}" }.sorted().joinToString(","))
-        }
-        return md5(canonical.toByteArray(Charsets.UTF_8))
-    }
-
     private fun fieldsHash(contact: ContactDetail, membershipUris: List<String>): String {
         val canonical = buildString {
             append(contact.fullName).append('|')
@@ -1069,8 +902,4 @@ class ContactsSyncEngine @Inject constructor(
     private fun md5(bytes: ByteArray): String =
         MessageDigest.getInstance("MD5").digest(bytes)
             .joinToString("") { "%02x".format(it) }
-
-    companion object {
-        private const val GOOGLE_ACCOUNT_TYPE = "com.google"
-    }
 }

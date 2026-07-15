@@ -25,9 +25,16 @@ class ContactsSyncAdapter(
         provider: ContentProviderClient,
         syncResult: SyncResult,
     ) {
-        runBlocking {
-            runCatching { syncEngine.sync(account.name) }
-                .onFailure { syncResult.stats.numIoExceptions++ }
+        try {
+            runBlocking {
+                runCatching { syncEngine.sync(account.name) }
+                    .onFailure { syncResult.stats.numIoExceptions++ }
+            }
+        } catch (e: InterruptedException) {
+            Thread.currentThread().interrupt()
+            syncResult.stats.numIoExceptions++
+        } catch (e: Exception) {
+            syncResult.stats.numIoExceptions++
         }
     }
 }

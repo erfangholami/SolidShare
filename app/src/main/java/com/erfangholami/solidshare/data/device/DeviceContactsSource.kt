@@ -67,16 +67,48 @@ class DeviceContactsSource @Inject constructor(
             }.sortedByDescending { it.contacts.size }
         }
 
-    suspend fun listRawContactIds(accountType: String, accountName: String): List<Long> =
+    suspend fun listImportableRawContactIds(excludeAccountType: String): List<Long> =
         withContext(Dispatchers.IO) {
             val ids = mutableListOf<Long>()
             context.contentResolver.query(
                 ContactsContract.RawContacts.CONTENT_URI,
                 arrayOf(ContactsContract.RawContacts._ID),
-                "${ContactsContract.RawContacts.ACCOUNT_TYPE} = ? AND " +
-                        "${ContactsContract.RawContacts.ACCOUNT_NAME} = ? AND " +
-                        "${ContactsContract.RawContacts.DELETED} = 0",
-                arrayOf(accountType, accountName),
+                "${ContactsContract.RawContacts.DELETED} = 0 AND " +
+                        "(${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL OR " +
+                        "${ContactsContract.RawContacts.ACCOUNT_TYPE} != ?)",
+                arrayOf(excludeAccountType),
+                null,
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    ids.add(cursor.getLong(0))
+                }
+            }
+            ids
+        }
+
+    suspend fun listRawContactIds(accountType: String?, accountName: String?): List<Long> =
+        withContext(Dispatchers.IO) {
+            val ids = mutableListOf<Long>()
+            val conditions = mutableListOf<String>()
+            val args = mutableListOf<String>()
+            if (accountType == null) {
+                conditions.add("${ContactsContract.RawContacts.ACCOUNT_TYPE} IS NULL")
+            } else {
+                conditions.add("${ContactsContract.RawContacts.ACCOUNT_TYPE} = ?")
+                args.add(accountType)
+            }
+            if (accountName == null) {
+                conditions.add("${ContactsContract.RawContacts.ACCOUNT_NAME} IS NULL")
+            } else {
+                conditions.add("${ContactsContract.RawContacts.ACCOUNT_NAME} = ?")
+                args.add(accountName)
+            }
+            conditions.add("${ContactsContract.RawContacts.DELETED} = 0")
+            context.contentResolver.query(
+                ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(ContactsContract.RawContacts._ID),
+                conditions.joinToString(" AND "),
+                args.toTypedArray(),
                 null,
             )?.use { cursor ->
                 while (cursor.moveToNext()) {

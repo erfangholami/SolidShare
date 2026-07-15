@@ -23,22 +23,21 @@ class SolidAccountManager @Inject constructor(
         existing
             .filter { it.name !in webIds }
             .forEach { accountManager.removeAccountExplicitly(it) }
-        webIds
-            .filter { webId -> existing.none { it.name == webId } }
-            .forEach { webId ->
-                val account = Account(webId, SolidAccounts.ACCOUNT_TYPE)
-                if (accountManager.addAccountExplicitly(account, null, null)) {
-                    ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
-                    ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
-                    ContentResolver.addPeriodicSync(
-                        account,
-                        ContactsContract.AUTHORITY,
-                        Bundle.EMPTY,
-                        TimeUnit.HOURS.toSeconds(4),
-                    )
-                    requestSync(webId)
-                }
+        webIds.forEach { webId ->
+            val account = Account(webId, SolidAccounts.ACCOUNT_TYPE)
+            val present = existing.any { it.name == webId } ||
+                    accountManager.addAccountExplicitly(account, null, null)
+            if (present) {
+                ContentResolver.setIsSyncable(account, ContactsContract.AUTHORITY, 1)
+                ContentResolver.setSyncAutomatically(account, ContactsContract.AUTHORITY, true)
+                ContentResolver.addPeriodicSync(
+                    account,
+                    ContactsContract.AUTHORITY,
+                    Bundle.EMPTY,
+                    TimeUnit.HOURS.toSeconds(4),
+                )
             }
+        }
     }
 
     fun requestSync(webId: String) {
