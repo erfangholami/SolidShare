@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -15,12 +16,14 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import com.erfangholami.solidshare.presentation.navigation.AppNavHost
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -100,7 +103,14 @@ class MainActivity : ComponentActivity() {
                 contentResolver.openInputStream(uri)?.use { it.readBytes() }
             }.getOrNull() ?: return@launch
             if (bytes.size > MAX_TICKET_FILE_BYTES) return@launch
-            viewModel.handleTicketFile(bytes, fileName = displayName(uri))
+            val recognized = viewModel.handleTicketFile(bytes, fileName = displayName(uri))
+            if (!recognized) withContext(Dispatchers.Main) {
+                Toast.makeText(
+                    this@MainActivity,
+                    getString(R.string.wallet_import_unreadable),
+                    Toast.LENGTH_SHORT,
+                ).show()
+            }
         }
     }
 

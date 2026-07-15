@@ -74,6 +74,8 @@
                 <data android:mimeType="application/vnd.apple.pkpasses" />
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="image/*" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
@@ -83,6 +85,8 @@
                 <data android:mimeType="application/pdf" />
                 <data android:mimeType="image/*" />
                 <data android:mimeType="text/plain" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
 

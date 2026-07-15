@@ -56,11 +56,11 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun handleTicketFile(bytes: ByteArray, fileName: String? = null) {
-        val parsed = ticketsRepository.parseTicketFile(bytes, fileName) ?: return
-        val (draft, artifact) = parsed
+    fun handleTicketFile(bytes: ByteArray, fileName: String? = null): Boolean {
+        val (draft, artifact) = ticketsRepository.parseTicketFile(bytes, fileName) ?: return false
         ticketImportHolder.stash(artifact)
         _pendingTicketDraft.value = draft
+        return true
     }
 
     fun consumePendingShareLink() {
