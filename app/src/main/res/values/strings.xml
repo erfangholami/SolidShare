@@ -407,8 +407,11 @@
     <string name="contacts_default_book_title">Contacts</string>
     <string name="contacts_search_hint">Search contacts</string>
     <string name="contacts_empty_title">No contacts yet</string>
-    <string name="contacts_empty_subtitle">Turn on Google sync or import a .vcf file in the contacts settings.</string>
+    <string name="contacts_empty_subtitle">Turn on device sync or import a .vcf file in the contacts settings.</string>
+    <string name="contacts_no_matches">No contacts match your search</string>
     <string name="contacts_all_books">All</string>
+    <string name="contacts_refresh_failed">Couldn\'t refresh contacts — showing your last synced copy</string>
+    <string name="contacts_books_unreadable">Couldn\'t read your address book from the pod</string>
     <string name="contact_not_found">This contact is gone</string>
 
     <!-- Contact details -->
@@ -433,29 +436,53 @@
     <string name="contact_view_profile">View Solid profile</string>
     <string name="contact_delete_title">Delete contact</string>
     <string name="contact_delete_message">"%1$s" will be permanently deleted from your pod and this device.</string>
-    <string name="contact_delete_google_message">"%1$s" syncs from Google, so it will reappear on the next sync unless you also delete it in your Google contacts.</string>
     <string name="contact_link_type_homepage">Homepage</string>
     <string name="contact_link_type_webid">WebID</string>
     <string name="contact_link_type_publicid">Public ID</string>
-    <string name="contact_synced_from_google">Synced from Google · %1$s</string>
 
     <!-- Contacts settings -->
     <string name="contacts_settings_title">Contacts settings</string>
-    <string name="contacts_settings_google_section">Sync with Google</string>
-    <string name="contacts_settings_google_description">Contacts from the selected Google accounts are copied to your pod and kept up to date — changes and deletions in Google follow automatically.</string>
-    <string name="contacts_settings_google_empty">No Google accounts with contacts were found on this device.</string>
-    <string name="contacts_settings_google_count">%1$d contacts</string>
+    <string name="contacts_settings_device_section">Device contacts</string>
+    <string name="contacts_settings_device_description">Bring the contacts from your phone and Google accounts into your pod. This is a one-time copy — your phone and Google contacts are never changed.</string>
+    <string name="contacts_settings_device_import">Import phone &amp; Google contacts</string>
+    <string name="contacts_settings_device_import_subtitle">Copy device contacts into your pod (one time)</string>
+    <string name="contacts_device_import_notification_title">Importing device contacts</string>
+    <string name="contacts_device_import_started">Import started — you\'ll get a notification when it finishes</string>
+    <string name="contacts_device_import_empty">No device contacts found to import</string>
+    <string name="contacts_delete_all">Delete all contacts</string>
+    <string name="contacts_delete_all_subtitle">Remove every contact from this pod</string>
+    <string name="contacts_delete_all_message">This permanently deletes every contact from this pod. This can\'t be undone.</string>
+    <string name="contacts_delete_all_done">Deleted %1$d contacts</string>
     <string name="contacts_settings_files_section">Files</string>
     <string name="contacts_settings_import_vcf">Import from .vcf file</string>
     <string name="contacts_settings_import_vcf_subtitle">Copy contacts from a vCard file to your pod</string>
     <string name="contacts_settings_export_vcf">Export to .vcf file</string>
     <string name="contacts_settings_export_vcf_subtitle">Save all pod contacts as a vCard file</string>
+    <string name="contacts_settings_export_empty">No contacts on this pod to export</string>
     <string name="contacts_settings_mirror_info">Your pod contacts also appear in this phone\'s Contacts app under your Solid account, one account per logged-in WebID. Signing out removes them from the device.</string>
     <string name="contacts_vcf_invalid">No contacts found in that file</string>
     <string name="contacts_import_progress">Importing %1$d of %2$d…</string>
+    <string name="contacts_import_notification_title">Importing contacts</string>
+    <string name="contacts_import_complete_title">Import complete</string>
+    <string name="contacts_import_started">Import started — you\'ll get a notification when it finishes</string>
     <string name="contacts_import_done">%1$d imported, %2$d already existed</string>
+    <string name="contacts_export_notification_title">Exporting contacts</string>
+    <string name="contacts_export_complete_title">Export complete</string>
+    <string name="contacts_export_progress">Exporting %1$d of %2$d…</string>
+    <string name="contacts_export_started">Export started — you\'ll get a notification when it finishes</string>
     <string name="contacts_export_saved">Contacts exported</string>
     <string name="contacts_export_failed">Couldn\'t export contacts</string>
+    <string name="contacts_merge_title">Review duplicates</string>
+    <string name="contacts_merge_found">%1$d possible duplicates to review</string>
+    <string name="contacts_merge_review_action">Review</string>
+    <string name="contacts_merge_empty_title">No duplicates</string>
+    <string name="contacts_merge_empty_subtitle">We didn\'t find any contacts that look like the same person.</string>
+    <string name="contacts_merge_card_subtitle">%1$d contacts look like the same person</string>
+    <string name="contacts_merge_survivor">Kept</string>
+    <string name="contacts_merge_action">Merge</string>
+    <string name="contacts_merge_dismiss">Not duplicates</string>
+    <string name="contacts_merge_done">Contacts merged</string>
+    <string name="contacts_merge_untitled">Unnamed contact</string>
     <string name="contacts_permission_title">Contacts access</string>
     <string name="contacts_permission_rationale">Solid Share needs access to your contacts to sync them with your pod and keep your pod contacts available across the device.</string>
     <string name="contacts_permission_settings">Contacts access is turned off. Open Settings and allow contacts for Solid Share.</string>
@@ -471,7 +498,7 @@
     <string name="contact_add_added">Added to your contacts</string>
     <string name="contact_add_already_exists">Already in your contacts</string>
     <string name="contact_add_already_exists_named">%1$s is already in your contacts</string>
-    <string name="contact_add_own_profile">This is one of your own accounts</string>
+    <string name="contact_add_own_profile">This is the account you\'re using</string>
 
     <!-- Share from contacts -->
     <string name="share_pick_from_contacts">Choose from contacts</string>

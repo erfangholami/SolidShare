@@ -11,6 +11,8 @@ import com.erfangholami.solidshare.sync.SolidAccountManager
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -31,6 +33,7 @@ class ContactsViewModel @Inject constructor(
         val entries: List<ContactListEntry> = emptyList(),
         val query: String = "",
         val selectedBookUri: String? = null,
+        val mergeCount: Int = 0,
     ) {
         val filteredEntries: List<ContactListEntry>
             get() = entries
@@ -44,32 +47,82 @@ class ContactsViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
+    private var observeJob: Job? = null
+
+    private var observedWebId: String? = null
+
     fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
-            runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
-                solidAccountManager.requestSync(webId)
-                contactsRepository.getOverview(webId)
-            }.onSuccess { overview ->
+            val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: run {
                 _state.update {
                     it.copy(
                         loading = false,
-                        books = overview.books,
-                        entries = overview.entries,
-                        selectedBookUri = it.selectedBookUri
-                            ?.takeIf { selected -> overview.books.any { b -> b.uri == selected } },
+                        error = stringProvider.getString(R.string.error_no_active_user),
                     )
                 }
-            }.onFailure { error ->
+                return@launch
+            }
+            if (observedWebId != webId) {
+                observedWebId = webId
+                observeJob?.cancel()
                 _state.update {
                     it.copy(
+                        loading = true,
+                        error = null,
+                        books = emptyList(),
+                        entries = emptyList(),
+                        selectedBookUri = null,
+                    )
+                }
+                observeJob = viewModelScope.launch {
+                    contactsRepository.observeContacts(webId).collect { entries ->
+                        _state.update {
+                            it.copy(
+                                entries = entries,
+                                loading = it.loading && entries.isEmpty(),
+                                error = if (entries.isEmpty()) it.error else null,
+                            )
+                        }
+                    }
+                }
+            }
+            refresh(webId)
+        }
+    }
+
+    private suspend fun refresh(webId: String) {
+        solidAccountManager.requestSync(webId)
+        try {
+            val overview = contactsRepository.refreshContacts(webId)
+            _state.update { it.copy(loading = false, error = null, books = overview.books) }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            val hasCachedEntries = _state.value.entries.isNotEmpty()
+            _state.update { current ->
+                if (hasCachedEntries) {
+                    current.copy(loading = false)
+                } else {
+                    current.copy(
                         loading = false,
-                        error = error.message
-                            ?: stringProvider.getString(R.string.error_something_went_wrong),
+                        error = e.message ?: stringProvider.getString(R.string.error_unknown),
                     )
                 }
             }
+            if (hasCachedEntries) {
+                _message.value = stringProvider.getString(R.string.contacts_refresh_failed)
+            }
+        }
+        refreshMergeCount()
+    }
+
+    private fun refreshMergeCount() {
+        viewModelScope.launch {
+            val count = runCatching {
+                val webId = requireNotNull(authRepository.getActiveWebId())
+                contactsRepository.findMergeSuggestions(webId).size
+            }.getOrDefault(0)
+            _state.update { it.copy(mergeCount = count) }
         }
     }
 

@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.presentation.contacts
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -11,12 +12,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Contacts
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,14 +30,18 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,6 +50,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ContactListEntry
+import com.erfangholami.solidshare.presentation.components.BannerTone
+import com.erfangholami.solidshare.presentation.components.DismissibleBanner
 import com.erfangholami.solidshare.presentation.components.EmptyState
 import com.erfangholami.solidshare.presentation.components.EntityRow
 import com.erfangholami.solidshare.presentation.components.ErrorState
@@ -52,6 +59,7 @@ import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.navigation.ContactDetailRoute
+import com.erfangholami.solidshare.presentation.navigation.ContactsMergeRoute
 import com.erfangholami.solidshare.presentation.navigation.ContactsSettingsRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 
@@ -133,7 +141,7 @@ fun ContactsPage(
                     onContactClick = { entry ->
                         navController.navigate(ContactDetailRoute(entry.bookUri, entry.uri))
                     },
-                    onOpenSettings = { navController.navigate(ContactsSettingsRoute) },
+                    onReviewDuplicates = { navController.navigate(ContactsMergeRoute) },
                 )
             }
         }
@@ -146,9 +154,38 @@ private fun ContactsContent(
     onQueryChange: (String) -> Unit,
     onBookSelected: (String?) -> Unit,
     onContactClick: (ContactListEntry) -> Unit,
-    onOpenSettings: () -> Unit,
+    onReviewDuplicates: () -> Unit,
 ) {
+    if (state.entries.isEmpty()) {
+        EmptyState(
+            title = stringResource(R.string.contacts_empty_title),
+            subtitle = stringResource(R.string.contacts_empty_subtitle),
+            illustration = {
+                Image(
+                    painter = painterResource(R.drawable.empty_container),
+                    contentDescription = null,
+                    modifier = Modifier.size(width = 132.dp, height = 107.dp),
+                )
+            },
+            modifier = Modifier.fillMaxSize(),
+        )
+        return
+    }
+    var bannerHidden by remember { mutableStateOf(false) }
     Column(modifier = Modifier.fillMaxSize()) {
+        if (state.mergeCount > 0 && !bannerHidden) {
+            DismissibleBanner(
+                message = stringResource(R.string.contacts_merge_found, state.mergeCount),
+                tone = BannerTone.INFO,
+                onDismiss = { bannerHidden = true },
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                action = {
+                    TextButton(onClick = onReviewDuplicates) {
+                        Text(stringResource(R.string.contacts_merge_review_action))
+                    }
+                },
+            )
+        }
         OutlinedTextField(
             value = state.query,
             onValueChange = onQueryChange,
@@ -184,11 +221,8 @@ private fun ContactsContent(
         val filtered = state.filteredEntries
         if (filtered.isEmpty()) {
             EmptyState(
-                title = stringResource(R.string.contacts_empty_title),
-                subtitle = stringResource(R.string.contacts_empty_subtitle),
-                icon = Icons.Filled.Contacts,
-                actionLabel = stringResource(R.string.contacts_settings_title),
-                onAction = onOpenSettings,
+                title = stringResource(R.string.contacts_no_matches),
+                icon = Icons.Filled.Search,
                 modifier = Modifier.fillMaxSize(),
             )
         } else {
@@ -238,7 +272,7 @@ private fun ContactsContentPreview() {
             onQueryChange = {},
             onBookSelected = {},
             onContactClick = {},
-            onOpenSettings = {},
+            onReviewDuplicates = {},
         )
     }
 }
@@ -256,7 +290,7 @@ private fun ContactsContentDarkPreview() {
             onQueryChange = {},
             onBookSelected = {},
             onContactClick = {},
-            onOpenSettings = {},
+            onReviewDuplicates = {},
         )
     }
 }

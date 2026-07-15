@@ -29,6 +29,8 @@ import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.presentation.contacts.ContactDetailPage
 import com.erfangholami.solidshare.presentation.contacts.ContactDetailViewModel
+import com.erfangholami.solidshare.presentation.contacts.ContactsMergePage
+import com.erfangholami.solidshare.presentation.contacts.ContactsMergeViewModel
 import com.erfangholami.solidshare.presentation.contacts.ContactsPage
 import com.erfangholami.solidshare.presentation.contacts.ContactsSettingsPage
 import com.erfangholami.solidshare.presentation.contacts.ContactsSettingsViewModel
@@ -163,6 +165,16 @@ fun NavGraphBuilder.contactsGraph(navController: NavController) {
         },
     ) {
         ContactsSettingsPage(navController, hiltViewModel<ContactsSettingsViewModel>())
+    }
+    composable<ContactsMergeRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        ContactsMergePage(navController, hiltViewModel<ContactsMergeViewModel>())
     }
 }
 
@@ -410,6 +422,9 @@ object ContactsRoute
 
 @Serializable
 object ContactsSettingsRoute
+
+@Serializable
+object ContactsMergeRoute
 
 @Serializable
 data class ContactDetailRoute(

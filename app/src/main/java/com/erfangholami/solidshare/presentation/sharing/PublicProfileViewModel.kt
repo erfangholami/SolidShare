@@ -21,7 +21,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -74,10 +73,7 @@ class PublicProfileViewModel @Inject constructor(
             _addingToContacts.value = true
             runCatching {
                 val ownerWebId = requireNotNull(authRepository.getActiveWebId())
-                val ownWebIds = runCatching {
-                    authRepository.loggedInProfilesFlow.first().map { it.webId }
-                }.getOrDefault(listOf(ownerWebId))
-                if (webId in ownWebIds) {
+                if (webId == ownerWebId) {
                     stringProvider.getString(R.string.contact_add_own_profile)
                 } else {
                     val match = contactsRepository.findContactByWebId(ownerWebId, webId)
