@@ -3,10 +3,18 @@ package com.erfangholami.solidshare.data.repo.contacts
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactGroup
+import com.erfangholami.solidshare.domain.model.ContactListEntry
 import com.erfangholami.solidshare.domain.model.ContactMatchResult
+import com.erfangholami.solidshare.domain.model.ContactRef
 import com.erfangholami.solidshare.domain.model.ContactsOverview
+import com.erfangholami.solidshare.domain.model.MergeSuggestion
+import kotlinx.coroutines.flow.Flow
 
 interface ContactsRepository {
+
+    fun observeContacts(webId: String): Flow<List<ContactListEntry>>
+
+    suspend fun refreshContacts(webId: String): ContactsOverview
 
     suspend fun getOverview(webId: String): ContactsOverview
 
@@ -32,6 +40,18 @@ interface ContactsRepository {
 
     suspend fun deleteContact(webId: String, bookUri: String, contactUri: String)
 
+    suspend fun deleteAllContacts(webId: String): Int
+
+    suspend fun queueDelete(webId: String, ref: ContactRef)
+
+    suspend fun queueMerge(webId: String, survivor: ContactRef, losers: List<ContactRef>)
+
+    suspend fun queueDeleteAll(webId: String)
+
+    suspend fun drainContactOutbox(webId: String): Boolean
+
+    suspend fun clearCacheForWebId(webId: String)
+
     suspend fun setContactPhoto(
         webId: String,
         contactUri: String,
@@ -44,6 +64,14 @@ interface ContactsRepository {
     suspend fun getContactPhoto(webId: String, photoUri: String): ByteArray
 
     suspend fun findContactByWebId(webId: String, targetWebId: String): ContactMatchResult
+
+    suspend fun mergeContacts(
+        webId: String,
+        survivor: ContactRef,
+        losers: List<ContactRef>,
+    ): ContactDetail
+
+    suspend fun findMergeSuggestions(webId: String): List<MergeSuggestion>
 
     suspend fun getGroups(webId: String, bookUri: String): List<ContactGroup>
 

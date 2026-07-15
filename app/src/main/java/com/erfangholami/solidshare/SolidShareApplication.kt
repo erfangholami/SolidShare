@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
 import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.worker.ContactOutboxWorker
 import com.erfangholami.solidshare.worker.NotificationPollingWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
 import dagger.Lazy
@@ -51,6 +52,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
         NotificationHelper.createChannels(this)
         scheduleNotificationPolling()
         scheduleOutboxDrain()
+        ContactOutboxWorker.enqueue(workManager.get())
         reconcileSolidAccounts()
     }
 
