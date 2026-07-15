@@ -2,8 +2,7 @@ package com.erfangholami.solidshare.data.repo.tickets
 
 import android.os.Parcelable
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.SolidTicketsDataModule
-import com.erfangholami.androidsolidservices.shared.result.DataModuleResult
-import com.erfangholami.androidsolidservices.shared.result.getOrThrow
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.data.passimport.GoogleWalletParser
 import com.erfangholami.solidshare.data.passimport.PkpassParser
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
@@ -19,10 +18,10 @@ class TicketsRepositoryImplementation @Inject constructor(
 ) : TicketsRepository {
 
     override suspend fun getTickets(webId: String): List<TicketSummaryItem> =
-        ticketsDataModule.getTickets(webId).unwrap().tickets.map { it.toDomain() }
+        ticketsDataModule.tickets.list(webId).unwrap().tickets.map { it.toDomain() }
 
     override suspend fun getTicket(webId: String, ticketUri: String): Ticket =
-        ticketsDataModule.getTicket(webId, ticketUri).unwrap().toDomain()
+        ticketsDataModule.tickets.get(webId, ticketUri).unwrap().toDomain()
 
     override suspend fun createTicket(
         webId: String,
@@ -31,11 +30,11 @@ class TicketsRepositoryImplementation @Inject constructor(
     ): Ticket {
         val storage = authRepository.getStorages(webId).firstOrNull()
             ?: throw IllegalStateException("No storage found for $webId")
-        return ticketsDataModule
-            .createTicket(
+        return ticketsDataModule.tickets
+            .create(
                 ownerWebId = webId,
-                storage = storage,
                 newTicket = draft.toLib(),
+                storage = storage,
                 artifact = artifact?.bytes,
                 artifactContentType = artifact?.contentType,
             )
@@ -48,14 +47,14 @@ class TicketsRepositoryImplementation @Inject constructor(
         ticketUri: String,
         draft: TicketDraft,
     ): Ticket =
-        ticketsDataModule.updateTicket(webId, ticketUri, draft.toLib()).unwrap().toDomain()
+        ticketsDataModule.tickets.update(webId, ticketUri, draft.toLib()).unwrap().toDomain()
 
     override suspend fun deleteTicket(webId: String, ticketUri: String) {
-        ticketsDataModule.deleteTicket(webId, ticketUri).unwrap()
+        ticketsDataModule.tickets.delete(webId, ticketUri).unwrap()
     }
 
     override suspend fun getTicketArtifact(webId: String, artifactUri: String): TicketFile {
-        val artifact = ticketsDataModule.getTicketArtifact(webId, artifactUri).unwrap()
+        val artifact = ticketsDataModule.tickets.getArtifact(webId, artifactUri).unwrap()
         return TicketFile(artifact.contentType, artifact.bytes)
     }
 
@@ -67,5 +66,5 @@ class TicketsRepositoryImplementation @Inject constructor(
             draft to TicketFile(PkpassParser.MIME_TYPE, bytes)
         }
 
-    private fun <T : Parcelable> DataModuleResult<T>.unwrap(): T = getOrThrow()
+    private fun <T : Parcelable> SolidResult<T>.unwrap(): T = getOrThrow()
 }

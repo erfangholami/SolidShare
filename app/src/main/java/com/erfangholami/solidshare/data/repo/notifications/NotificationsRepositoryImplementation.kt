@@ -1,7 +1,7 @@
 package com.erfangholami.solidshare.data.repo.notifications
 
 import com.erfangholami.androidsolidservices.api.notifications.NotificationsManager
-import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.data.repo.sharing.ReceivedSharesSignal
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.data.repo.sharing.toDomain
@@ -124,10 +124,9 @@ class NotificationsRepositoryImplementation @Inject constructor(
         notificationsManager.sendReject(ownerWebId, requesterWebId, resourceUri, reason).unwrap()
     }
 
-    private fun <T> SolidNetworkResponse<T>.unwrap(): T = when (this) {
-        is SolidNetworkResponse.Success -> data
-        is SolidNetworkResponse.Error -> throw Exception("HTTP $errorCode: $errorMessage")
-        is SolidNetworkResponse.Exception -> throw exception
+    private fun <T> SolidResult<T>.unwrap(): T = when (this) {
+        is SolidResult.Success -> value
+        is SolidResult.Failure -> throw error.asException()
     }
 
     private companion object {

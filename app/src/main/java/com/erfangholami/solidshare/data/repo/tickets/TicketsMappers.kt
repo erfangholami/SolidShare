@@ -11,9 +11,12 @@ import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.domain.model.TicketVenue
 import com.erfangholami.androidsolidservices.shared.model.tickets.NewTicket as LibNewTicket
 import com.erfangholami.androidsolidservices.shared.model.tickets.Ticket as LibTicket
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketBarcode as LibBarcode
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketBarcodeFormat as LibBarcodeFormat
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketCategory as LibCategory
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketEvent as LibEvent
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketOrganization as LibOrganization
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketPerson as LibPerson
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketPlace as LibPlace
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSeat as LibSeat
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSource as LibSource
@@ -33,12 +36,12 @@ fun LibTicket.toDomain(): Ticket = Ticket(
     title = title,
     description = description,
     number = ticketNumber,
-    token = ticketToken,
-    barcodeFormat = barcodeFormat.toDomain(),
+    token = primaryBarcode?.payload,
+    barcodeFormat = primaryBarcode?.symbology?.toDomain() ?: TicketBarcodeFormat.NONE,
     category = category.toDomain(),
-    issuer = issuerName,
-    holder = underName,
-    seat = seat?.let { TicketSeatInfo(it.seatNumber, it.seatRow, it.seatSection) },
+    issuer = issuer?.name ?: organizationName,
+    holder = holder?.name,
+    seat = seats.firstOrNull()?.let { TicketSeatInfo(it.seatNumber, it.seatRow, it.seatSection) },
     price = totalPrice,
     currency = priceCurrency,
     dateIssued = dateIssued,
@@ -55,13 +58,15 @@ fun TicketDraft.toLib(): LibNewTicket = LibNewTicket(
     title = title.trim(),
     description = description?.takeIf { it.isNotBlank() },
     ticketNumber = number?.takeIf { it.isNotBlank() },
-    ticketToken = token?.takeIf { it.isNotBlank() },
-    barcodeFormat = barcodeFormat.toLib(),
+    barcodes = token?.takeIf { it.isNotBlank() }
+        ?.let { listOf(LibBarcode(payload = it, symbology = barcodeFormat.toLib())) }
+        ?: emptyList(),
     category = category.toLib(),
-    issuerName = issuer?.takeIf { it.isNotBlank() },
-    underName = holder?.takeIf { it.isNotBlank() },
-    seat = seat?.takeIf { it.number != null || it.row != null || it.section != null }
-        ?.let { LibSeat(it.number, it.row, it.section) },
+    issuer = issuer?.takeIf { it.isNotBlank() }?.let { LibOrganization(name = it) },
+    holder = holder?.takeIf { it.isNotBlank() }?.let { LibPerson(name = it) },
+    seats = seat?.takeIf { it.number != null || it.row != null || it.section != null }
+        ?.let { listOf(LibSeat(it.number, it.row, it.section)) }
+        ?: emptyList(),
     totalPrice = price?.takeIf { it.isNotBlank() },
     priceCurrency = currency?.takeIf { it.isNotBlank() },
     dateIssued = dateIssued?.takeIf { it.isNotBlank() },
@@ -105,13 +110,24 @@ private fun TicketEventInfo.toLib(): LibEvent? {
         startDate = start?.takeIf { it.isNotBlank() },
         endDate = end?.takeIf { it.isNotBlank() },
         location = venue?.takeIf { it.name != null || it.address != null }
-            ?.let { LibPlace(it.name, it.address) },
+            ?.let { LibPlace(name = it.name, address = it.address) },
     )
 }
 
-fun LibCategory.toDomain(): TicketCategory = TicketCategory.valueOf(name)
+// The library's enums are supersets of the app's (it added categories like BOAT/LODGING and
+// sources like BCBP/UIC that the app UI doesn't model yet), so a library value the app lacks
+// degrades to a sensible default rather than throwing. The reverse is always safe.
+fun LibCategory.toDomain(): TicketCategory =
+    runCatching { TicketCategory.valueOf(name) }.getOrDefault(TicketCategory.GENERIC)
+
 fun TicketCategory.toLib(): LibCategory = LibCategory.valueOf(name)
-fun LibBarcodeFormat.toDomain(): TicketBarcodeFormat = TicketBarcodeFormat.valueOf(name)
+
+fun LibBarcodeFormat.toDomain(): TicketBarcodeFormat =
+    runCatching { TicketBarcodeFormat.valueOf(name) }.getOrDefault(TicketBarcodeFormat.NONE)
+
 fun TicketBarcodeFormat.toLib(): LibBarcodeFormat = LibBarcodeFormat.valueOf(name)
-fun LibSource.toDomain(): TicketSource = TicketSource.valueOf(name)
+
+fun LibSource.toDomain(): TicketSource =
+    runCatching { TicketSource.valueOf(name) }.getOrDefault(TicketSource.MANUAL)
+
 fun TicketSource.toLib(): LibSource = LibSource.valueOf(name)

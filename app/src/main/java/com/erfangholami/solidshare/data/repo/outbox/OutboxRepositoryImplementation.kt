@@ -9,10 +9,11 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.resource.SolidResourceManager
 import com.erfangholami.androidsolidservices.shared.http.HTTPAcceptType.OCTET_STREAM
-import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
+import com.erfangholami.androidsolidservices.shared.result.SolidError
+import com.erfangholami.androidsolidservices.shared.result.SolidErrorCode
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidContainer
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidNonRDFResource
-import com.erfangholami.androidsolidservices.shared.util.encodeUriString
 import com.erfangholami.solidshare.data.local.cache.BlobDao
 import com.erfangholami.solidshare.data.local.cache.BlobState
 import com.erfangholami.solidshare.data.local.cache.CacheKeyManager
@@ -35,7 +36,6 @@ import com.erfangholami.solidshare.worker.OutboxWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import java.io.File
-import java.net.URI
 import java.security.MessageDigest
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -264,8 +264,8 @@ class OutboxRepositoryImplementation @Inject constructor(
                 requireCreated(
                     resourceManager.createInContainer(
                         op.webId,
-                        encodeUriString(op.parentContainerUri),
-                        SolidNonRDFResource(encodeUriString(op.targetUri), op.mimeType ?: OCTET_STREAM, stream),
+                        op.parentContainerUri,
+                        SolidNonRDFResource(op.targetUri, op.mimeType ?: OCTET_STREAM, stream),
                     ),
                 )
             }
@@ -280,27 +280,30 @@ class OutboxRepositoryImplementation @Inject constructor(
         requireCreated(
             resourceManager.createInContainer(
                 op.webId,
-                encodeUriString(op.parentContainerUri),
-                SolidContainer(encodeUriString(op.targetUri)),
+                op.parentContainerUri,
+                SolidContainer(op.targetUri),
             ),
         )
         resourceDao.updateSyncState(op.webId, op.targetUri, SyncState.SYNCED)
     }
 
     private suspend fun executeDelete(op: OutboxOpEntity) {
-        when (val response = resourceManager.delete(op.webId, encodeUriString(op.targetUri))) {
-            is SolidNetworkResponse.Success -> removeResource(op.webId, op.targetUri)
-            is SolidNetworkResponse.Error ->
-                if (response.errorCode == HTTP_NOT_FOUND) {
-                    removeResource(op.webId, op.targetUri)
-                } else {
-                    throw OutboxException(
-                        "HTTP ${response.errorCode}",
-                        terminal = isTerminalCode(response.errorCode),
-                    )
-                }
+        when (val response = resourceManager.delete(op.webId, op.targetUri)) {
+            is SolidResult.Success -> removeResource(op.webId, op.targetUri)
+            is SolidResult.Failure -> {
+                val error = response.error
+                when {
+                    error.code == SolidErrorCode.NOT_FOUND ->
+                        removeResource(op.webId, op.targetUri)
 
-            is SolidNetworkResponse.Exception -> throw response.exception
+                    error.httpStatus != null -> throw OutboxException(
+                        "HTTP ${error.httpStatus}",
+                        terminal = isTerminalCode(error),
+                    )
+
+                    else -> throw error.asException()
+                }
+            }
         }
     }
 
@@ -329,13 +332,17 @@ class OutboxRepositoryImplementation @Inject constructor(
         resourceDao.updateSyncState(op.webId, op.targetUri, SyncState.SYNCED)
     }
 
-    private fun requireCreated(response: SolidNetworkResponse<URI?>) {
+    private fun requireCreated(response: SolidResult<String?>) {
         when (response) {
-            is SolidNetworkResponse.Success -> Unit
-            is SolidNetworkResponse.Error ->
-                throw OutboxException("HTTP ${response.errorCode}", terminal = isTerminalCode(response.errorCode))
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Success -> Unit
+            is SolidResult.Failure -> {
+                val error = response.error
+                if (error.httpStatus != null) {
+                    throw OutboxException("HTTP ${error.httpStatus}", terminal = isTerminalCode(error))
+                } else {
+                    throw error.asException()
+                }
+            }
         }
     }
 
@@ -393,12 +400,12 @@ class OutboxRepositoryImplementation @Inject constructor(
         }
     }
 
-    private fun isTerminalCode(code: Int): Boolean = code in TERMINAL_CODES
+    private fun isTerminalCode(error: SolidError): Boolean =
+        error.httpStatus?.let { it in TERMINAL_CODES } ?: false
 
     private companion object {
         const val BLOB_DIR = "blob_cache"
         const val OPEN_DIR = "open"
-        const val HTTP_NOT_FOUND = 404
         const val BASE_BACKOFF_MS = 2_000L
         const val MAX_BACKOFF_SHIFT = 10
         const val MAX_BACKOFF_MS = 30 * 60 * 1_000L

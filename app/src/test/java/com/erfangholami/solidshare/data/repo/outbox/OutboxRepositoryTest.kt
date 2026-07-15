@@ -5,7 +5,8 @@ import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
 import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.resource.SolidResourceManager
-import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
+import com.erfangholami.androidsolidservices.shared.result.SolidError
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.androidsolidservices.shared.model.resource.Resource
 import com.erfangholami.solidshare.data.local.cache.BlobDao
 import com.erfangholami.solidshare.data.local.cache.BlobState
@@ -47,7 +48,6 @@ import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
-import java.net.URI
 
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -128,7 +128,7 @@ class OutboxRepositoryTest {
     @Test
     fun drainUpload_transientError_keepsPendingAndSchedulesRetry() = runTest {
         coEvery { resourceManager.createInContainer(any(), any(), any()) } returns
-            SolidNetworkResponse.Exception(IOException("network down"))
+            SolidResult.Failure(SolidError.fromThrowable(IOException("network down")))
         repo.enqueueUpload(TEST_WEB_ID, TEST_CONTAINER, source("hi"), "photo.jpg", "image/jpeg")
 
         repo.drain()
@@ -142,7 +142,7 @@ class OutboxRepositoryTest {
     @Test
     fun drainUpload_terminalError_marksResourceErrored() = runTest {
         coEvery { resourceManager.createInContainer(any(), any(), any()) } returns
-            SolidNetworkResponse.Error(403, "Forbidden")
+            SolidResult.Failure(SolidError.fromHttp(403, "Forbidden"))
         repo.enqueueUpload(TEST_WEB_ID, TEST_CONTAINER, source("hi"), "photo.jpg", "image/jpeg")
 
         repo.drain()
@@ -224,7 +224,7 @@ class OutboxRepositoryTest {
         assertEquals(SyncState.PENDING_DELETE, resourceDao.findByIdentifier(TEST_WEB_ID, uri)!!.syncState)
         assertEquals(OpType.DELETE, pending()!!.type)
 
-        coEvery { resourceManager.delete(any(), any()) } returns SolidNetworkResponse.Success(true)
+        coEvery { resourceManager.delete(any(), any()) } returns SolidResult.Success(true)
         repo.drain()
 
         assertNull(resourceDao.findByIdentifier(TEST_WEB_ID, uri))
@@ -251,7 +251,7 @@ class OutboxRepositoryTest {
         resourceDao.upsert(resourceEntity("gone.txt", syncState = SyncState.SYNCED))
         val uri = TEST_CONTAINER + "gone.txt"
         repo.enqueueDelete(TEST_WEB_ID, uri, isContainer = false)
-        coEvery { resourceManager.delete(any(), any()) } returns SolidNetworkResponse.Error(404, "Not Found")
+        coEvery { resourceManager.delete(any(), any()) } returns SolidResult.Failure(SolidError.fromHttp(404, "Not Found"))
 
         repo.drain()
 
@@ -264,7 +264,7 @@ class OutboxRepositoryTest {
         resourceDao.upsert(resourceEntity("locked.txt", syncState = SyncState.SYNCED))
         val uri = TEST_CONTAINER + "locked.txt"
         repo.enqueueDelete(TEST_WEB_ID, uri, isContainer = false)
-        coEvery { resourceManager.delete(any(), any()) } returns SolidNetworkResponse.Error(403, "Forbidden")
+        coEvery { resourceManager.delete(any(), any()) } returns SolidResult.Failure(SolidError.fromHttp(403, "Forbidden"))
 
         repo.drain()
 
@@ -319,7 +319,7 @@ class OutboxRepositoryTest {
 
     private suspend fun pending() = outboxDao.nextActionable(Long.MAX_VALUE)
 
-    private fun success(): SolidNetworkResponse<URI?> = SolidNetworkResponse.Success(null)
+    private fun success(): SolidResult<String?> = SolidResult.Success(null)
 
     /**
      * A minimal stateful stand-in for the pod: createInContainer records the created resource URI,
@@ -329,12 +329,12 @@ class OutboxRepositoryTest {
     private fun fakeServer(): MutableSet<String> {
         val created = mutableSetOf<String>()
         coEvery { resourceManager.createInContainer(any(), any(), any()) } answers {
-            created.add(thirdArg<Resource>().getIdentifier().toString())
-            SolidNetworkResponse.Success(null)
+            created.add(thirdArg<Resource>().getIdentifier())
+            SolidResult.Success(null)
         }
         coEvery { resourceManager.delete(any(), any()) } answers {
-            created.remove(secondArg<URI>().toString())
-            SolidNetworkResponse.Success(true)
+            created.remove(secondArg<String>())
+            SolidResult.Success(true)
         }
         return created
     }

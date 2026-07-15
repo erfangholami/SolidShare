@@ -9,13 +9,14 @@ import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import com.erfangholami.androidsolidservices.api.resource.SolidResourceManager
 import com.erfangholami.androidsolidservices.shared.http.HTTPAcceptType.OCTET_STREAM
-import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
+import com.erfangholami.androidsolidservices.shared.result.SolidError
+import com.erfangholami.androidsolidservices.shared.result.SolidErrorCode
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.androidsolidservices.shared.model.access.WacAllow
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidContainer
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidMetadata
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidNonRDFResource
 import com.erfangholami.androidsolidservices.shared.model.resource.SolidRDFResource
-import com.erfangholami.androidsolidservices.shared.util.encodeUriString
 import com.erfangholami.androidsolidservices.shared.util.getContentLength
 import com.erfangholami.androidsolidservices.shared.util.getETag
 import com.erfangholami.solidshare.data.local.cache.BlobDao
@@ -114,13 +115,10 @@ class FileRepositoryImplementation @Inject constructor(
         includeItemAccess: Boolean,
     ): List<ContainerItem> {
         val response =
-            resourceManager.read(webId, encodeUriString(containerUrl), SolidContainer::class.java)
+            resourceManager.read(webId, containerUrl, SolidContainer::class.java)
         val refs = when (response) {
-            is SolidNetworkResponse.Success -> response.data.getContained()
-            is SolidNetworkResponse.Error ->
-                throw accessAwareError(response.errorCode, response.errorMessage, containerUrl)
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Success -> response.value.getContained()
+            is SolidResult.Failure -> throw accessAwareError(response.error, containerUrl)
         }
 
         return coroutineScope {
@@ -137,9 +135,9 @@ class FileRepositoryImplementation @Inject constructor(
 
                     val metadata =
                         if (isContainer && !includeItemAccess) null else gate.withPermit {
-                            runCatching { resourceManager.head(webId, encodeUriString(identifier)) }
+                            runCatching { resourceManager.head(webId, identifier) }
                                 .getOrNull()
-                                ?.let { res -> if (res is SolidNetworkResponse.Success) res.data else null }
+                                ?.let { res -> if (res is SolidResult.Success) res.value else null }
                         }
 
                     val mimeType =
@@ -179,9 +177,9 @@ class FileRepositoryImplementation @Inject constructor(
     ): Int {
         val container = (resourceManager.read(
             webId,
-            encodeUriString(containerUrl),
+            containerUrl,
             SolidContainer::class.java,
-        ) as? SolidNetworkResponse.Success)?.data ?: return 0
+        ) as? SolidResult.Success)?.value ?: return 0
         return container.getContained().size
     }
 
@@ -189,10 +187,10 @@ class FileRepositoryImplementation @Inject constructor(
         webId: String,
         resourceUri: String,
     ): ResourceMeta {
-        val uri = encodeUriString(resourceUri)
+        val uri = resourceUri
         if (resourceUri.endsWith("/")) {
             val container = (resourceManager.read(webId, uri, SolidContainer::class.java)
-                    as? SolidNetworkResponse.Success)?.data
+                    as? SolidResult.Success)?.value
             return ResourceMeta(
                 sizeBytes = null,
                 lastModified = container?.getLastModified(),
@@ -200,7 +198,7 @@ class FileRepositoryImplementation @Inject constructor(
             )
         }
         val metadata = (resourceManager.head(webId, uri)
-                as? SolidNetworkResponse.Success)?.data
+                as? SolidResult.Success)?.value
         return ResourceMeta(
             sizeBytes = metadata?.contentLength?.takeIf { it >= 0 },
             lastModified = metadata?.lastModified?.let(::parseHttpDateMillis),
@@ -212,9 +210,9 @@ class FileRepositoryImplementation @Inject constructor(
         if (!item.isContainer && !isRdfMimeType(item.mimeType)) return null
         return (resourceManager.read(
             webId,
-            encodeUriString(item.identifier),
+            item.identifier,
             SolidRDFResource::class.java,
-        ) as? SolidNetworkResponse.Success)?.data?.getCreatedTime()
+        ) as? SolidResult.Success)?.value?.getCreatedTime()
     }
 
     private fun isRdfMimeType(mimeType: String?): Boolean {
@@ -237,10 +235,10 @@ class FileRepositoryImplementation @Inject constructor(
             }
         }
         val response =
-            resourceManager.read(webId, encodeUriString(fileUrl), SolidNonRDFResource::class.java)
+            resourceManager.read(webId, fileUrl, SolidNonRDFResource::class.java)
         return when (response) {
-            is SolidNetworkResponse.Success -> {
-                val resource = response.data
+            is SolidResult.Success -> {
+                val resource = response.value
                 val rawContentType = resource.getContentType().substringBefore(';').trim()
                 val filename = fileNameFor(fileUrl)
                 val mimeType = rawContentType.ifBlank {
@@ -256,10 +254,7 @@ class FileRepositoryImplementation @Inject constructor(
                 DownloadedFile(path = openFile.absolutePath, mimeType = mimeType, etag = etag)
             }
 
-            is SolidNetworkResponse.Error ->
-                throw accessAwareError(response.errorCode, response.errorMessage, fileUrl)
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Failure -> throw accessAwareError(response.error, fileUrl)
         }
     }
 
@@ -356,14 +351,11 @@ class FileRepositoryImplementation @Inject constructor(
             .joinToString("") { "%02x".format(it.toInt() and 0xFF) }
 
     override suspend fun probeAccess(webId: String, resourceUri: String): ResourceAccess {
-        return when (val response = resourceManager.head(webId, encodeUriString(resourceUri))) {
-            is SolidNetworkResponse.Success ->
-                response.data.wacAllow?.toResourceAccess() ?: ResourceAccess.READ_ONLY
+        return when (val response = resourceManager.head(webId, resourceUri)) {
+            is SolidResult.Success ->
+                response.value.wacAllow?.toResourceAccess() ?: ResourceAccess.READ_ONLY
 
-            is SolidNetworkResponse.Error ->
-                throw accessAwareError(response.errorCode, response.errorMessage, resourceUri)
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Failure -> throw accessAwareError(response.error, resourceUri)
         }
     }
 
@@ -376,11 +368,11 @@ class FileRepositoryImplementation @Inject constructor(
     ): Uri {
         onProgress(0)
         val response =
-            resourceManager.read(webId, encodeUriString(fileUrl), SolidNonRDFResource::class.java)
+            resourceManager.read(webId, fileUrl, SolidNonRDFResource::class.java)
 
         return when (response) {
-            is SolidNetworkResponse.Success -> {
-                val resource = response.data
+            is SolidResult.Success -> {
+                val resource = response.value
                 val contentLength = resource.getHeaders().getContentLength()
 
                 onProgress(50)
@@ -420,10 +412,7 @@ class FileRepositoryImplementation @Inject constructor(
                 destUri
             }
 
-            is SolidNetworkResponse.Error ->
-                throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Failure -> throw response.error.asException()
         }
     }
 
@@ -455,7 +444,7 @@ class FileRepositoryImplementation @Inject constructor(
 
         val fileUrl = containerUrl.trimEnd('/') + "/$fileName"
         val resource = SolidNonRDFResource(
-            encodeUriString(fileUrl),
+            fileUrl,
             mimeType,
             inputStream,
         )
@@ -463,42 +452,33 @@ class FileRepositoryImplementation @Inject constructor(
 
         when (
             val response =
-                resourceManager.createInContainer(webId, encodeUriString(containerUrl), resource)
+                resourceManager.createInContainer(webId, containerUrl, resource)
         ) {
-            is SolidNetworkResponse.Success -> {
+            is SolidResult.Success -> {
                 removeBlob(webId, fileUrl)
                 onProgress(100)
             }
-            is SolidNetworkResponse.Error ->
-                throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Failure -> throw response.error.asException()
         }
     }
 
     override suspend fun createFolder(webId: String, containerUrl: String, folderName: String) {
-        val folderUri = encodeUriString(containerUrl.trimEnd('/') + "/${folderName.trim()}/")
+        val folderUri = containerUrl.trimEnd('/') + "/${folderName.trim()}/"
         val container = SolidContainer(folderUri)
         when (
             val response =
-                resourceManager.createInContainer(webId, encodeUriString(containerUrl), container)
+                resourceManager.createInContainer(webId, containerUrl, container)
         ) {
-            is SolidNetworkResponse.Success -> Unit
-            is SolidNetworkResponse.Error ->
-                throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Success -> Unit
+            is SolidResult.Failure -> throw response.error.asException()
         }
     }
 
     override suspend fun deleteResource(webId: String, resourceUrl: String, isContainer: Boolean) {
-        val resourceUri = encodeUriString(resourceUrl)
+        val resourceUri = resourceUrl
         when (val response = resourceManager.delete(webId, resourceUri)) {
-            is SolidNetworkResponse.Success -> removeBlob(webId, resourceUrl)
-            is SolidNetworkResponse.Error ->
-                throw Exception("HTTP ${response.errorCode}: ${response.errorMessage}")
-
-            is SolidNetworkResponse.Exception -> throw response.exception
+            is SolidResult.Success -> removeBlob(webId, resourceUrl)
+            is SolidResult.Failure -> throw response.error.asException()
         }
     }
 
@@ -567,16 +547,17 @@ class FileRepositoryImplementation @Inject constructor(
     ): Boolean {
         if (!networkMonitor.currentlyOnline()) return true
         if (cachedEtag == null) return false
-        val metadata = runCatching { resourceManager.head(webId, encodeUriString(fileUrl)) }
+        val metadata = runCatching { resourceManager.head(webId, fileUrl) }
             .getOrNull() ?: return true
-        val currentEtag = (metadata as? SolidNetworkResponse.Success<SolidMetadata>)?.data?.etag
+        val currentEtag = (metadata as? SolidResult.Success<SolidMetadata>)?.value?.etag
             ?: return true
         return cachedEtag == currentEtag
     }
 
-    private fun accessAwareError(code: Int, message: String, resourceUri: String): Throwable =
-        if (code == 401 || code == 403) ResourceAccessException.AccessDenied(resourceUri)
-        else Exception("HTTP $code: $message")
+    private fun accessAwareError(error: SolidError, resourceUri: String): Throwable =
+        if (error.code == SolidErrorCode.UNAUTHORIZED || error.code == SolidErrorCode.FORBIDDEN)
+            ResourceAccessException.AccessDenied(resourceUri)
+        else error.asException()
 
     private fun WacAllow.toResourceAccess(): ResourceAccess = ResourceAccess(
         canWrite = canWrite(),

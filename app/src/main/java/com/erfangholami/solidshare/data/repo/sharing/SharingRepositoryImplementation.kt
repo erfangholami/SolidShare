@@ -1,7 +1,8 @@
 package com.erfangholami.solidshare.data.repo.sharing
 
 import com.erfangholami.androidsolidservices.api.sharing.SharingManager
-import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
+import com.erfangholami.androidsolidservices.shared.result.SolidError
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.domain.model.AccessGrant
 import com.erfangholami.solidshare.domain.model.CatalogEntry
 import com.erfangholami.solidshare.domain.model.GivenShare
@@ -160,9 +161,21 @@ class SharingRepositoryImplementation @Inject constructor(
     override fun bareUrlFor(resourceUri: String): String =
         sharingManager.getShareBareUrl(resourceUri)
 
-    private fun <T> SolidNetworkResponse<T>.unwrap(): T = when (this) {
-        is SolidNetworkResponse.Success -> data
-        is SolidNetworkResponse.Error -> throw SharingError.Unknown("HTTP $errorCode: $errorMessage")
-        is SolidNetworkResponse.Exception -> throw exception.toSharingError()
+    private fun <T> SolidResult<T>.unwrap(): T = when (this) {
+        is SolidResult.Success -> value
+        is SolidResult.Failure -> throw error.toSharingError()
+    }
+
+    private fun SolidError.toSharingError(): SharingError = when (this) {
+        is SolidError.AccessDenied -> SharingError.AccessDenied(resourceUri, ownerWebId)
+        is SolidError.StaleAcl -> SharingError.StaleAcl()
+        is SolidError.AccessIndeterminate -> SharingError.AccessIndeterminate()
+        is SolidError.NoInbox -> SharingError.NoInbox()
+        is SolidError.InboxUnauthorized -> SharingError.InboxUnauthorized()
+        is SolidError.InboxForbidden -> SharingError.InboxForbidden()
+        is SolidError.NotificationDelivery -> SharingError.NotificationDelivery()
+        is SolidError.ImpersonationDetected -> SharingError.ImpersonationDetected()
+        is SolidError.UnsupportedAuthBackend -> SharingError.UnsupportedAuthBackend()
+        else -> SharingError.Unknown(message)
     }
 }

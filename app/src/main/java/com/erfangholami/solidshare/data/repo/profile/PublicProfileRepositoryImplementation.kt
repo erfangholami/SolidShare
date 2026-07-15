@@ -1,8 +1,8 @@
 package com.erfangholami.solidshare.data.repo.profile
 
 import com.erfangholami.androidsolidservices.api.resource.SolidResourceManager
-import com.erfangholami.androidsolidservices.shared.http.SolidNetworkResponse
-import com.erfangholami.androidsolidservices.shared.model.profile.Profile
+import com.erfangholami.androidsolidservices.shared.result.SolidResult
+import com.erfangholami.androidsolidservices.shared.model.profile.SolidAccount
 import com.erfangholami.androidsolidservices.shared.model.profile.WebId
 import com.erfangholami.androidsolidservices.shared.rdf.patch.N3Patch
 import com.erfangholami.androidsolidservices.shared.vocab.FOAF
@@ -11,7 +11,6 @@ import com.erfangholami.solidshare.domain.model.ProfileEdits
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.net.URI
 import javax.inject.Inject
 
 private const val MAX_EXTENDED_PROFILES = 3
@@ -29,7 +28,6 @@ class PublicProfileRepositoryImplementation @Inject constructor(
         var profile = mapWebId(realWebId, docUrl, primary)
         if (profile.lacksName()) {
             val extended = (primary.getRelatedResources() + primary.getPrimaryTopicDocuments())
-                .map { it.toString() }
                 .filter { it.substringBefore("#") != docUrl }
                 .distinct()
                 .take(MAX_EXTENDED_PROFILES)
@@ -42,7 +40,7 @@ class PublicProfileRepositoryImplementation @Inject constructor(
         profile
     }
 
-    override fun fromProfile(profile: Profile): PublicProfile? {
+    override fun fromProfile(profile: SolidAccount): PublicProfile? {
         val webIdString = profile.userInfo?.webId ?: return null
         val webId = profile.webId ?: return PublicProfile(
             webId = webIdString,
@@ -65,11 +63,10 @@ class PublicProfileRepositoryImplementation @Inject constructor(
         edits: ProfileEdits,
     ): Result<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            val docUri = URI.create(webId.substringBefore("#"))
+            val docUri = webId.substringBefore("#")
             val original = when (val r = resourceManager.read(webId, docUri, WebId::class.java)) {
-                is SolidNetworkResponse.Success -> r.data
-                is SolidNetworkResponse.Error -> error("HTTP ${r.errorCode}: ${r.errorMessage}")
-                is SolidNetworkResponse.Exception -> throw r.exception
+                is SolidResult.Success -> r.value
+                is SolidResult.Failure -> throw r.error.asException()
             }
             val updated = WebId(original.getIdentifier(), original.getAllQuads()).apply {
                 setLiteral(webId, FOAF.NAME, edits.name)
@@ -84,9 +81,8 @@ class PublicProfileRepositoryImplementation @Inject constructor(
             val patch = runCatching { N3Patch.fromDiff(original, updated) }.getOrNull()
                 ?: return@runCatching
             when (val r = resourceManager.patch(webId, docUri, patch, ifMatch = null)) {
-                is SolidNetworkResponse.Success -> Unit
-                is SolidNetworkResponse.Error -> error("HTTP ${r.errorCode}: ${r.errorMessage}")
-                is SolidNetworkResponse.Exception -> throw r.exception
+                is SolidResult.Success -> Unit
+                is SolidResult.Failure -> throw r.error.asException()
             }
         }
     }
@@ -98,10 +94,9 @@ class PublicProfileRepositoryImplementation @Inject constructor(
     }
 
     private suspend fun readPublicWebId(url: String): WebId =
-        when (val r = resourceManager.readPublic(URI.create(url), WebId::class.java)) {
-            is SolidNetworkResponse.Success -> r.data
-            is SolidNetworkResponse.Error -> error("HTTP ${r.errorCode}: ${r.errorMessage}")
-            is SolidNetworkResponse.Exception -> throw r.exception
+        when (val r = resourceManager.readPublic(url, WebId::class.java)) {
+            is SolidResult.Success -> r.value
+            is SolidResult.Failure -> throw r.error.asException()
         }
 
     private fun mapWebId(displayWebId: String, docUrl: String, webId: WebId): PublicProfile =
