@@ -36,12 +36,31 @@ fun rememberPermissionGate(
     settingsText: String,
     onDenied: (() -> Unit)? = null,
     onComplete: (() -> Unit)? = null,
+): PermissionGate = rememberPermissionGate(
+    permissions = listOf(permission),
+    required = required,
+    rationaleTitle = rationaleTitle,
+    rationaleText = rationaleText,
+    settingsText = settingsText,
+    onDenied = onDenied,
+    onComplete = onComplete,
+)
+
+@Composable
+fun rememberPermissionGate(
+    permissions: List<String>,
+    required: Boolean,
+    rationaleTitle: String,
+    rationaleText: String,
+    settingsText: String,
+    onDenied: (() -> Unit)? = null,
+    onComplete: (() -> Unit)? = null,
 ): PermissionGate {
     val context = LocalContext.current
     val activity = remember(context) { context.findActivity() }
 
     var granted by remember {
-        mutableStateOf(!required || isPermissionGranted(context, permission))
+        mutableStateOf(!required || permissions.all { isPermissionGranted(context, it) })
     }
     var permanentlyDenied by remember { mutableStateOf(false) }
     var showRationale by remember { mutableStateOf(false) }
@@ -49,17 +68,20 @@ fun rememberPermissionGate(
     var pendingAction by remember { mutableStateOf<(() -> Unit)?>(null) }
 
     val launcher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
+        ActivityResultContracts.RequestMultiplePermissions(),
     ) { result ->
-        granted = result
-        if (result) {
+        val allGranted = permissions.all { result[it] == true }
+        granted = allGranted
+        if (allGranted) {
             val action = pendingAction
             pendingAction = null
             action?.invoke()
         } else {
             pendingAction = null
             permanentlyDenied = activity != null &&
-                    !ActivityCompat.shouldShowRequestPermissionRationale(activity, permission)
+                    permissions.any {
+                        !ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+                    }
             onDenied?.invoke()
         }
         onComplete?.invoke()
@@ -69,7 +91,7 @@ fun rememberPermissionGate(
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME && required) {
-                val current = isPermissionGranted(context, permission)
+                val current = permissions.all { isPermissionGranted(context, it) }
                 granted = current
                 if (current) permanentlyDenied = false
             }
@@ -84,7 +106,7 @@ fun rememberPermissionGate(
             text = rationaleText,
             onConfirm = {
                 showRationale = false
-                launcher.launch(permission)
+                launcher.launch(permissions.toTypedArray())
             },
             onDismiss = {
                 showRationale = false
@@ -106,7 +128,7 @@ fun rememberPermissionGate(
             onDismiss = {
                 showSettings = false
                 pendingAction = null
-                val current = isPermissionGranted(context, permission)
+                val current = permissions.all { isPermissionGranted(context, it) }
                 granted = current
                 if (current) permanentlyDenied = false
                 onComplete?.invoke()
