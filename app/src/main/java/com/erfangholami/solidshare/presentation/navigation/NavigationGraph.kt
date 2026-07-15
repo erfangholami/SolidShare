@@ -75,6 +75,8 @@ fun AppNavHost(
     navController: NavHostController = rememberNavController(),
     openNotifications: Boolean = false,
     onOpenNotificationsHandled: () -> Unit = {},
+    openContacts: Boolean = false,
+    onOpenContactsHandled: () -> Unit = {},
     pendingShareLink: ParsedShareLink? = null,
     onShareLinkHandled: () -> Unit = {},
     pendingTicketDraft: TicketDraft? = null,
@@ -87,6 +89,14 @@ fun AppNavHost(
         }
         navController.navigate(NotificationsRoute)
         onOpenNotificationsHandled()
+    }
+    LaunchedEffect(openContacts) {
+        if (!openContacts) return@LaunchedEffect
+        if (navController.currentDestination?.isOnMain() != true) {
+            navController.currentBackStackEntryFlow.first { it.destination.isOnMain() }
+        }
+        navController.navigate(ContactsRoute)
+        onOpenContactsHandled()
     }
     LaunchedEffect(pendingShareLink) {
         val link = pendingShareLink ?: return@LaunchedEffect

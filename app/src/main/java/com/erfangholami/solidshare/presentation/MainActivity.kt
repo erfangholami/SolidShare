@@ -27,6 +27,7 @@ class MainActivity : ComponentActivity() {
     private val viewModel: MainViewModel by viewModels()
 
     private var openNotifications by mutableStateOf(false)
+    private var openContacts by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,6 +37,9 @@ class MainActivity : ComponentActivity() {
         handleIncomingPass(intent)
         if (intent?.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false) == true) {
             openNotifications = true
+        }
+        if (intent?.getBooleanExtra(EXTRA_OPEN_CONTACTS, false) == true) {
+            openContacts = true
         }
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -50,6 +54,8 @@ class MainActivity : ComponentActivity() {
                 AppNavHost(
                     openNotifications = openNotifications,
                     onOpenNotificationsHandled = { openNotifications = false },
+                    openContacts = openContacts,
+                    onOpenContactsHandled = { openContacts = false },
                     pendingShareLink = pendingShareLink,
                     onShareLinkHandled = { viewModel.consumePendingShareLink() },
                     pendingTicketDraft = pendingTicketDraft,
@@ -65,6 +71,9 @@ class MainActivity : ComponentActivity() {
         handleIncomingPass(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
             openNotifications = true
+        }
+        if (intent.getBooleanExtra(EXTRA_OPEN_CONTACTS, false)) {
+            openContacts = true
         }
     }
 
@@ -92,6 +101,7 @@ class MainActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
+        const val EXTRA_OPEN_CONTACTS = "open_contacts"
         private const val PKPASS_MIME_TYPE = "application/vnd.apple.pkpass"
     }
 }
