@@ -183,7 +183,6 @@ fun ContactDetailPage(
                     contact = state.contact!!,
                     photo = state.photo,
                     memberGroups = state.memberGroups,
-                    googleAccount = state.googleAccount,
                     onOpenProfile = { webId ->
                         navController.navigate(PublicProfileRoute(webId))
                     },
@@ -202,8 +201,7 @@ fun ContactDetailPage(
             text = {
                 Text(
                     stringResource(
-                        if (state.googleAccount != null) R.string.contact_delete_google_message
-                        else R.string.contact_delete_message,
+                        R.string.contact_delete_message,
                         state.contact?.fullName.orEmpty(),
                     ),
                 )
@@ -237,7 +235,6 @@ private fun ContactDetailContent(
     photo: ImageBitmap?,
     memberGroups: List<ContactGroup>,
     onOpenProfile: (String) -> Unit,
-    googleAccount: String? = null,
 ) {
     val context = LocalContext.current
     Column(
@@ -292,14 +289,6 @@ private fun ContactDetailContent(
                 Text(
                     text = orgLine,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            googleAccount?.let {
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = stringResource(R.string.contact_synced_from_google, it),
-                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

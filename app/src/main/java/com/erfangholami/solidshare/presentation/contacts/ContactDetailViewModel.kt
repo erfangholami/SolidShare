@@ -8,11 +8,11 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
-import com.erfangholami.solidshare.data.local.ContactsSyncPrefs
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactGroup
+import com.erfangholami.solidshare.domain.model.ContactRef
 import com.erfangholami.solidshare.presentation.navigation.ContactDetailRoute
 import com.erfangholami.solidshare.sync.SolidAccountManager
 import com.erfangholami.solidshare.util.StringProvider
@@ -28,7 +28,6 @@ class ContactDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
-    private val contactsSyncPrefs: ContactsSyncPrefs,
     private val solidAccountManager: SolidAccountManager,
     private val stringProvider: StringProvider,
 ) : ViewModel() {
@@ -39,7 +38,6 @@ class ContactDetailViewModel @Inject constructor(
         val contact: ContactDetail? = null,
         val memberGroups: List<ContactGroup> = emptyList(),
         val photo: ImageBitmap? = null,
-        val googleAccount: String? = null,
         val busy: Boolean = false,
     )
 
@@ -47,7 +45,6 @@ class ContactDetailViewModel @Inject constructor(
         val contact: ContactDetail,
         val groups: List<ContactGroup>,
         val photo: ImageBitmap?,
-        val googleAccount: String?,
     )
 
     private val route = savedStateHandle.toRoute<ContactDetailRoute>()
@@ -76,10 +73,7 @@ class ContactDetailViewModel @Inject constructor(
                         BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap()
                     }.getOrNull()
                 }
-                val googleAccount = runCatching {
-                    contactsSyncPrefs.trackedGoogleAccount(webId, contactUri)
-                }.getOrNull()
-                Loaded(contact, groups, photo, googleAccount)
+                Loaded(contact, groups, photo)
             }.onSuccess { loaded ->
                 _state.update {
                     it.copy(
@@ -87,7 +81,6 @@ class ContactDetailViewModel @Inject constructor(
                         contact = loaded.contact,
                         memberGroups = loaded.groups,
                         photo = loaded.photo,
-                        googleAccount = loaded.googleAccount,
                     )
                 }
             }.onFailure { error ->
@@ -104,16 +97,13 @@ class ContactDetailViewModel @Inject constructor(
 
     fun delete(onDeleted: () -> Unit) {
         viewModelScope.launch {
-            _state.update { it.copy(busy = true) }
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
-                contactsRepository.deleteContact(webId, bookUri, contactUri)
+                contactsRepository.queueDelete(webId, ContactRef(bookUri, contactUri))
                 solidAccountManager.requestSync(webId)
             }.onSuccess {
-                _state.update { it.copy(busy = false) }
                 onDeleted()
             }.onFailure {
-                _state.update { it.copy(busy = false) }
                 _message.value = stringProvider.getString(R.string.error_something_went_wrong)
             }
         }
