@@ -539,6 +539,14 @@
     <string name="ticket_field_gate">Gate</string>
     <string name="ticket_field_terminal">Terminal</string>
     <string name="ticket_field_platform">Platform</string>
+    <string name="ticket_field_carrier">Carrier</string>
+    <string name="ticket_field_service_number">Flight / service number</string>
+    <string name="ticket_field_from">From</string>
+    <string name="ticket_field_from_code">From code</string>
+    <string name="ticket_field_to">To</string>
+    <string name="ticket_field_to_code">To code</string>
+    <string name="ticket_field_departure">Departure</string>
+    <string name="ticket_field_arrival">Arrival</string>
     <string name="ticket_import_title">Add ticket</string>
     <string name="ticket_import_loading">Reading your ticket…</string>
     <string name="ticket_import_none">No ticket found</string>

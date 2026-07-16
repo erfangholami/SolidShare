@@ -51,6 +51,9 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
+import com.erfangholami.solidshare.domain.model.TransportMode
+import com.erfangholami.solidshare.domain.model.TicketStop
+import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketVenue
@@ -173,6 +176,9 @@ fun TicketEditPage(
                                 viewModel.onDraftChange(draft.copy(barcodeFormat = it))
                             },
                         )
+                    }
+                    if (draft.category.isTravel() || draft.journey != null) {
+                        JourneyFields(draft = draft, onChange = viewModel::onDraftChange)
                     }
                     OutlinedTextField(
                         value = draft.event?.name.orEmpty(),
@@ -328,6 +334,116 @@ fun TicketEditPage(
             }
         }
     }
+}
+
+@Composable
+private fun JourneyFields(draft: TicketDraft, onChange: (TicketDraft) -> Unit) {
+    val journey = draft.journey
+    OutlinedTextField(
+        value = journey?.carrier.orEmpty(),
+        onValueChange = { value -> onChange(draft.withJourney { it.copy(carrier = value) }) },
+        label = { Text(stringResource(R.string.ticket_field_carrier)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = journey?.serviceNumber.orEmpty(),
+        onValueChange = { value -> onChange(draft.withJourney { it.copy(serviceNumber = value) }) },
+        label = { Text(stringResource(R.string.ticket_field_service_number)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = journey?.from?.code.orEmpty(),
+        onValueChange = { value -> onChange(draft.withFromStop { it.copy(code = value) }) },
+        label = { Text(stringResource(R.string.ticket_field_from_code)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = journey?.from?.name.orEmpty(),
+        onValueChange = { value -> onChange(draft.withFromStop { it.copy(name = value) }) },
+        label = { Text(stringResource(R.string.ticket_field_from)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    DateTimeField(
+        label = stringResource(R.string.ticket_field_departure),
+        iso = journey?.from?.time,
+        onChange = { value -> onChange(draft.withFromStop { it.copy(time = value) }) },
+    )
+    OutlinedTextField(
+        value = journey?.to?.code.orEmpty(),
+        onValueChange = { value -> onChange(draft.withToStop { it.copy(code = value) }) },
+        label = { Text(stringResource(R.string.ticket_field_to_code)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    OutlinedTextField(
+        value = journey?.to?.name.orEmpty(),
+        onValueChange = { value -> onChange(draft.withToStop { it.copy(name = value) }) },
+        label = { Text(stringResource(R.string.ticket_field_to)) },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+    )
+    DateTimeField(
+        label = stringResource(R.string.ticket_field_arrival),
+        iso = journey?.to?.time,
+        onChange = { value -> onChange(draft.withToStop { it.copy(time = value) }) },
+    )
+}
+
+private fun TicketCategory.isTravel(): Boolean = this in setOf(
+    TicketCategory.FLIGHT,
+    TicketCategory.TRAIN,
+    TicketCategory.BUS,
+)
+
+private fun TicketCategory.toMode(): TransportMode = when (this) {
+    TicketCategory.TRAIN -> TransportMode.TRAIN
+    TicketCategory.BUS -> TransportMode.BUS
+    else -> TransportMode.FLIGHT
+}
+
+private fun TicketDraft.withJourney(transform: (TicketJourney) -> TicketJourney): TicketDraft {
+    val mode = journey?.mode ?: category.toMode()
+    return copy(journey = transform(journey ?: TicketJourney(mode = mode)).normalized())
+}
+
+private fun TicketDraft.withFromStop(transform: (TicketStop) -> TicketStop): TicketDraft =
+    withJourney { it.copy(from = transform(it.from ?: TicketStop())) }
+
+private fun TicketDraft.withToStop(transform: (TicketStop) -> TicketStop): TicketDraft =
+    withJourney { it.copy(to = transform(it.to ?: TicketStop())) }
+
+private fun TicketJourney.normalized(): TicketJourney? {
+    val cleaned = copy(
+        carrier = carrier?.ifBlank { null },
+        serviceNumber = serviceNumber?.ifBlank { null },
+        from = from?.normalizedStop(),
+        to = to?.normalizedStop(),
+        duration = duration?.ifBlank { null },
+    )
+    val empty = cleaned.carrier == null && cleaned.serviceNumber == null &&
+        cleaned.from == null && cleaned.to == null && cleaned.duration == null
+    return if (empty) null else cleaned
+}
+
+private fun TicketStop.normalizedStop(): TicketStop? {
+    val cleaned = TicketStop(
+        name = name?.ifBlank { null },
+        code = code?.ifBlank { null },
+        cityName = cityName?.ifBlank { null },
+        time = time?.ifBlank { null },
+        terminal = terminal?.ifBlank { null },
+        gate = gate?.ifBlank { null },
+        platform = platform?.ifBlank { null },
+    )
+    val empty = listOf(
+        cleaned.name, cleaned.code, cleaned.cityName, cleaned.time,
+        cleaned.terminal, cleaned.gate, cleaned.platform,
+    ).all { it == null }
+    return if (empty) null else cleaned
 }
 
 private fun TicketDraft.withEvent(
