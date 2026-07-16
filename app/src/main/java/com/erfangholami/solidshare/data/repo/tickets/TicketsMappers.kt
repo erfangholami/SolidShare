@@ -5,22 +5,28 @@ import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
+import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketSource
+import com.erfangholami.solidshare.domain.model.TicketStop
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.domain.model.TicketVenue
+import com.erfangholami.solidshare.domain.model.TransportMode
 import com.erfangholami.androidsolidservices.shared.model.tickets.NewTicket as LibNewTicket
 import com.erfangholami.androidsolidservices.shared.model.tickets.Ticket as LibTicket
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketBarcode as LibBarcode
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketBarcodeFormat as LibBarcodeFormat
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketCategory as LibCategory
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketEvent as LibEvent
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketJourney as LibJourney
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketOrganization as LibOrganization
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketPerson as LibPerson
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketPlace as LibPlace
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSeat as LibSeat
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSource as LibSource
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketStop as LibStop
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSummary as LibSummary
+import com.erfangholami.androidsolidservices.shared.model.tickets.TransportMode as LibTransportMode
 
 fun LibSummary.toDomain(): TicketSummaryItem = TicketSummaryItem(
     uri = uri,
@@ -46,6 +52,7 @@ fun LibTicket.toDomain(): Ticket = Ticket(
     currency = priceCurrency,
     dateIssued = dateIssued,
     event = event?.toDomain(),
+    journey = journey?.toDomain(),
     validFrom = validFrom,
     validThrough = validThrough,
     source = source.toDomain(),
@@ -71,6 +78,7 @@ fun TicketDraft.toLib(): LibNewTicket = LibNewTicket(
     priceCurrency = currency?.takeIf { it.isNotBlank() },
     dateIssued = dateIssued?.takeIf { it.isNotBlank() },
     event = event?.toLib(),
+    journey = journey?.toLib(),
     validFrom = validFrom?.takeIf { it.isNotBlank() },
     validThrough = validThrough?.takeIf { it.isNotBlank() },
     source = source.toLib(),
@@ -90,6 +98,7 @@ fun Ticket.toDraft(): TicketDraft = TicketDraft(
     currency = currency,
     dateIssued = dateIssued,
     event = event,
+    journey = journey,
     validFrom = validFrom,
     validThrough = validThrough,
     source = source,
@@ -114,9 +123,49 @@ private fun TicketEventInfo.toLib(): LibEvent? {
     )
 }
 
-// The library's enums are supersets of the app's (it added categories like BOAT/LODGING and
-// sources like BCBP/UIC that the app UI doesn't model yet), so a library value the app lacks
-// degrades to a sensible default rather than throwing. The reverse is always safe.
+private fun LibJourney.toDomain(): TicketJourney = TicketJourney(
+    mode = runCatching { TransportMode.valueOf(mode.name) }.getOrDefault(TransportMode.FLIGHT),
+    carrier = carrierName,
+    serviceNumber = serviceNumber,
+    from = departure?.toDomainStop(departureTime),
+    to = arrival?.toDomainStop(arrivalTime),
+    duration = duration,
+)
+
+private fun LibStop.toDomainStop(time: String?): TicketStop = TicketStop(
+    name = name,
+    code = iataCode ?: code,
+    cityName = cityName,
+    time = time,
+    terminal = terminal,
+    gate = gate,
+    platform = platform,
+)
+
+private fun TicketJourney.toLib(): LibJourney {
+    val air = mode == TransportMode.FLIGHT
+    return LibJourney(
+        mode = LibTransportMode.valueOf(mode.name),
+        carrierName = carrier?.takeIf { it.isNotBlank() },
+        serviceNumber = serviceNumber?.takeIf { it.isNotBlank() },
+        departure = from?.toLibStop(air),
+        arrival = to?.toLibStop(air),
+        departureTime = from?.time?.takeIf { it.isNotBlank() },
+        arrivalTime = to?.time?.takeIf { it.isNotBlank() },
+        duration = duration?.takeIf { it.isNotBlank() },
+    )
+}
+
+private fun TicketStop.toLibStop(air: Boolean): LibStop = LibStop(
+    name = name,
+    iataCode = code?.takeIf { air },
+    code = code?.takeIf { !air },
+    cityName = cityName,
+    terminal = terminal,
+    gate = gate,
+    platform = platform,
+)
+
 fun LibCategory.toDomain(): TicketCategory =
     runCatching { TicketCategory.valueOf(name) }.getOrDefault(TicketCategory.GENERIC)
 

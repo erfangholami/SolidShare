@@ -9,7 +9,9 @@ enum class TicketBarcodeFormat {
     EAN_13, EAN_8, UPC_A, UPC_E, ITF, CODABAR, DATA_MATRIX, NONE,
 }
 
-enum class TicketSource { MANUAL, SCAN, PKPASS, GOOGLE_WALLET, PDF, IMAGE, LINK }
+enum class TicketSource { MANUAL, SCAN, PKPASS, GOOGLE_WALLET, PDF, IMAGE, LINK, BCBP, UIC }
+
+enum class TransportMode { FLIGHT, TRAIN, BUS, BOAT }
 
 data class TicketSummaryItem(
     val uri: String,
@@ -41,6 +43,27 @@ data class TicketEventInfo(
     val venue: TicketVenue? = null,
 )
 
+@Serializable
+data class TicketStop(
+    val name: String? = null,
+    val code: String? = null,
+    val cityName: String? = null,
+    val time: String? = null,
+    val terminal: String? = null,
+    val gate: String? = null,
+    val platform: String? = null,
+)
+
+@Serializable
+data class TicketJourney(
+    val mode: TransportMode,
+    val carrier: String? = null,
+    val serviceNumber: String? = null,
+    val from: TicketStop? = null,
+    val to: TicketStop? = null,
+    val duration: String? = null,
+)
+
 data class Ticket(
     val uri: String,
     val title: String,
@@ -56,6 +79,7 @@ data class Ticket(
     val currency: String? = null,
     val dateIssued: String? = null,
     val event: TicketEventInfo? = null,
+    val journey: TicketJourney? = null,
     val validFrom: String? = null,
     val validThrough: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
@@ -79,6 +103,7 @@ data class TicketDraft(
     val currency: String? = null,
     val dateIssued: String? = null,
     val event: TicketEventInfo? = null,
+    val journey: TicketJourney? = null,
     val validFrom: String? = null,
     val validThrough: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
