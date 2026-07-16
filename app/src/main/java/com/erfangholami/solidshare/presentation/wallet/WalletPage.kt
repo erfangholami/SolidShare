@@ -24,7 +24,6 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
@@ -68,7 +67,6 @@ import com.erfangholami.solidshare.presentation.components.SheetActionRow
 import com.erfangholami.solidshare.presentation.navigation.TicketDetailRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketImportRoute
-import com.erfangholami.solidshare.presentation.navigation.TicketScanRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -197,14 +195,6 @@ fun WalletPage(
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp),
             )
             SheetActionRow(
-                icon = Icons.Filled.QrCodeScanner,
-                label = stringResource(R.string.wallet_add_scan),
-                onClick = {
-                    showAddSheet = false
-                    navController.navigate(TicketScanRoute)
-                },
-            )
-            SheetActionRow(
                 icon = Icons.Filled.UploadFile,
                 label = stringResource(R.string.wallet_add_import),
                 onClick = {
@@ -213,8 +203,6 @@ fun WalletPage(
                         arrayOf(
                             "application/vnd.apple.pkpass",
                             "application/vnd.apple.pkpasses",
-                            "application/pdf",
-                            "image/*",
                             "application/zip",
                             "application/octet-stream",
                         ),

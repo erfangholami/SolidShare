@@ -64,8 +64,6 @@ import com.erfangholami.solidshare.presentation.wallet.TicketEditPage
 import com.erfangholami.solidshare.presentation.wallet.TicketEditViewModel
 import com.erfangholami.solidshare.presentation.wallet.TicketImportPage
 import com.erfangholami.solidshare.presentation.wallet.TicketImportViewModel
-import com.erfangholami.solidshare.presentation.wallet.TicketScanPage
-import com.erfangholami.solidshare.presentation.wallet.TicketScanViewModel
 import com.erfangholami.solidshare.presentation.wallet.WalletPage
 import com.erfangholami.solidshare.presentation.wallet.WalletViewModel
 import kotlinx.coroutines.flow.first
@@ -231,9 +229,6 @@ fun NavGraphBuilder.walletGraph(navController: NavController) {
         },
     ) {
         TicketImportPage(navController, hiltViewModel<TicketImportViewModel>())
-    }
-    composable<TicketScanRoute> {
-        TicketScanPage(navController, hiltViewModel<TicketScanViewModel>())
     }
 }
 
@@ -468,9 +463,6 @@ data class TicketEditRoute(
 
 @Serializable
 object TicketImportRoute
-
-@Serializable
-object TicketScanRoute
 
 @Serializable
 object OnBoarding

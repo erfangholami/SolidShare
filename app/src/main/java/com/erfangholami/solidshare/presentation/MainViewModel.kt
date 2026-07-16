@@ -3,7 +3,6 @@ package com.erfangholami.solidshare.presentation
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.erfangholami.solidshare.data.passimport.TicketLinkFetcher
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
@@ -46,10 +45,6 @@ class MainViewModel @Inject constructor(
         parseRawLink(raw)
     }
 
-    fun handleSharedText(text: String) {
-        parseRawLink(text.trim())
-    }
-
     private fun parseRawLink(raw: String) {
         sharingRepository.parseDeepLink(raw)?.let {
             _pendingShareLink.value = it
@@ -57,11 +52,6 @@ class MainViewModel @Inject constructor(
         }
         ticketsRepository.parseTicketQr(raw)?.let {
             _pendingTicketDraft.value = it
-            return
-        }
-        TicketLinkFetcher.firstHttpsUrl(raw)?.let {
-            ticketImportHolder.stashLink(it)
-            _pendingImport.value = true
         }
     }
 

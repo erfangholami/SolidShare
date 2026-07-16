@@ -72,8 +72,6 @@
                 <data android:scheme="file" />
                 <data android:mimeType="application/vnd.apple.pkpass" />
                 <data android:mimeType="application/vnd.apple.pkpasses" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="image/*" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
@@ -82,9 +80,6 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="application/vnd.apple.pkpass" />
                 <data android:mimeType="application/vnd.apple.pkpasses" />
-                <data android:mimeType="application/pdf" />
-                <data android:mimeType="image/*" />
-                <data android:mimeType="text/plain" />
                 <data android:mimeType="application/zip" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>

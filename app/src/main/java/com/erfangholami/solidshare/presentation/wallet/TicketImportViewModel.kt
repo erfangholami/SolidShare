@@ -4,8 +4,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.passimport.PassImages
-import com.erfangholami.solidshare.data.passimport.PkpassImages
-import com.erfangholami.solidshare.data.passimport.TicketLinkFetcher
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.TicketDraft
@@ -23,13 +21,12 @@ class TicketImportViewModel @Inject constructor(
     private val ticketsRepository: TicketsRepository,
     private val importHolder: TicketImportHolder,
     private val stringProvider: StringProvider,
-    private val linkFetcher: TicketLinkFetcher,
 ) : ViewModel() {
 
     sealed interface ImportState {
         data object Loading : ImportState
         data class Found(val draft: TicketDraft) : ImportState
-        data class NotFound(val linkFailed: Boolean = false) : ImportState
+        data object NotFound : ImportState
     }
 
     private val _state = MutableStateFlow<ImportState>(ImportState.Loading)
@@ -52,28 +49,22 @@ class TicketImportViewModel @Inject constructor(
         started = true
         val pending = importHolder.consumeImport()
         if (pending == null) {
-            _state.value = ImportState.NotFound()
+            _state.value = ImportState.NotFound
             return
         }
         viewModelScope.launch {
             _state.value = ImportState.Loading
-            _state.value = when (pending) {
-                is PendingImport.File -> parsed(pending.bytes, pending.fileName)
-                is PendingImport.Link ->
-                    linkFetcher.fetch(pending.url)
-                        ?.let { parsed(it.bytes, it.fileName) }
-                        ?: ImportState.NotFound(linkFailed = true)
-            }
+            _state.value = parsed(pending.bytes, pending.fileName)
         }
     }
 
     private suspend fun parsed(bytes: ByteArray, fileName: String?): ImportState {
         val result = runCatching {
             ticketsRepository.parseTicketFile(bytes, fileName)
-        }.getOrNull() ?: return ImportState.NotFound()
-        artifact = result.second
-        _visuals.value = runCatching { PkpassImages.forTicketFile(bytes) }.getOrNull()
-        return ImportState.Found(result.first)
+        }.getOrNull() ?: return ImportState.NotFound
+        artifact = result.artifact
+        _visuals.value = result.visuals
+        return ImportState.Found(result.draft)
     }
 
     fun add(onAdded: () -> Unit) {

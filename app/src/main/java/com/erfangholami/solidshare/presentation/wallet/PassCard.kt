@@ -57,6 +57,7 @@ import com.erfangholami.solidshare.domain.model.TicketVenue
 import com.erfangholami.solidshare.domain.model.TransportMode
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 
@@ -555,6 +556,7 @@ private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("
 internal fun shortTime(iso: String?): String? {
     iso ?: return null
     runCatching { OffsetDateTime.parse(iso).format(timeFormatter) }.getOrNull()?.let { return it }
+    runCatching { LocalDateTime.parse(iso).format(timeFormatter) }.getOrNull()?.let { return it }
     runCatching { LocalDate.parse(iso).format(dateFormatter) }.getOrNull()?.let { return it }
     return iso.takeIf { DISPLAY_TIME.matches(it.trim()) }?.trim()
 }
@@ -564,12 +566,14 @@ private val DISPLAY_TIME = Regex("""\d{1,2}:\d{2}( ?[APap][Mm])?""")
 internal fun shortDate(iso: String?): String? {
     iso ?: return null
     runCatching { OffsetDateTime.parse(iso).format(dateFormatter) }.getOrNull()?.let { return it }
+    runCatching { LocalDateTime.parse(iso).format(dateFormatter) }.getOrNull()?.let { return it }
     return runCatching { LocalDate.parse(iso).format(dateFormatter) }.getOrNull()
 }
 
 internal fun shortDateTime(iso: String?): String? {
     iso ?: return null
     runCatching { OffsetDateTime.parse(iso).format(dateTimeFormatter) }.getOrNull()?.let { return it }
+    runCatching { LocalDateTime.parse(iso).format(dateTimeFormatter) }.getOrNull()?.let { return it }
     return runCatching { LocalDate.parse(iso).format(dateFormatter) }.getOrNull()
 }
 

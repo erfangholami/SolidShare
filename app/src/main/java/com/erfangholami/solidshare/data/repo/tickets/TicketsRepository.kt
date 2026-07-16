@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.data.repo.tickets
 
+import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketFile
@@ -25,5 +26,11 @@ interface TicketsRepository {
 
     fun parseTicketQr(raw: String): TicketDraft?
 
-    suspend fun parseTicketFile(bytes: ByteArray, fileName: String? = null): Pair<TicketDraft, TicketFile>?
+    suspend fun parseTicketFile(bytes: ByteArray, fileName: String? = null): ParsedTicketFile?
 }
+
+data class ParsedTicketFile(
+    val draft: TicketDraft,
+    val artifact: TicketFile,
+    val visuals: PassImages? = null,
+)

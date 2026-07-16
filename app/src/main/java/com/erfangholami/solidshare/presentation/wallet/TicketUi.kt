@@ -30,6 +30,7 @@ import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -88,7 +89,10 @@ fun formatTicketDate(iso: String?): String? {
     return runCatching {
         if (iso.contains('T')) {
             val instant = runCatching { Instant.parse(iso) }
-                .getOrElse { OffsetDateTime.parse(iso).toInstant() }
+                .getOrElse {
+                    runCatching { OffsetDateTime.parse(iso).toInstant() }
+                        .getOrElse { LocalDateTime.parse(iso).atZone(ZoneId.systemDefault()).toInstant() }
+                }
             DateTimeFormatter.ofPattern("EEE d MMM yyyy · HH:mm", Locale.getDefault())
                 .withZone(ZoneId.systemDefault())
                 .format(instant)
@@ -111,8 +115,12 @@ fun ticketInstantOrNull(iso: String?): Instant? {
     return runCatching { Instant.parse(iso) }.getOrElse {
         runCatching { OffsetDateTime.parse(iso).toInstant() }.getOrElse {
             runCatching {
-                LocalDate.parse(iso).atStartOfDay(ZoneId.systemDefault()).toInstant()
-            }.getOrNull()
+                LocalDateTime.parse(iso).atZone(ZoneId.systemDefault()).toInstant()
+            }.getOrElse {
+                runCatching {
+                    LocalDate.parse(iso).atStartOfDay(ZoneId.systemDefault()).toInstant()
+                }.getOrNull()
+            }
         }
     }
 }

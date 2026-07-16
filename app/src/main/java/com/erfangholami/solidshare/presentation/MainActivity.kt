@@ -85,7 +85,6 @@ class MainActivity : ComponentActivity() {
     private fun handleIncomingTicket(intent: Intent?) {
         intent ?: return
         if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
-            intent.getStringExtra(Intent.EXTRA_TEXT)?.let { viewModel.handleSharedText(it) }
             return
         }
         val uri = when (intent.action) {

@@ -514,7 +514,6 @@
     <string name="wallet_empty_title">Your wallet is empty</string>
     <string name="wallet_empty_subtitle">Add tickets and passes by scanning their barcode, importing a pass file, or entering them by hand.</string>
     <string name="wallet_add_ticket">Add ticket</string>
-    <string name="wallet_add_scan">Scan barcode</string>
     <string name="wallet_add_import">Import pass file</string>
     <string name="wallet_add_manual">Enter manually</string>
     <string name="wallet_import_unreadable">Couldn\'t read that pass file</string>
@@ -551,8 +550,6 @@
     <string name="ticket_import_loading">Reading your ticket…</string>
     <string name="ticket_import_none">No ticket found</string>
     <string name="ticket_import_none_subtitle">We couldn\'t find a ticket, boarding pass or card in this file.</string>
-    <string name="ticket_import_link_failed">Couldn\'t open the link</string>
-    <string name="ticket_import_link_failed_subtitle">The link couldn\'t be downloaded. Check your connection and try again.</string>
     <string name="wallet_expired_badge">Expired</string>
     <string name="pass_field_date">Date</string>
     <string name="pass_field_seat">Seat</string>
@@ -603,8 +600,5 @@
     <string name="ticket_category_generic">Pass</string>
 
     <!-- Ticket scanning -->
-    <string name="scan_ticket_title">Scan ticket</string>
-    <string name="scan_ticket_subtitle">Point the camera at the ticket\'s barcode — QR, Aztec, PDF417 and most 1D codes are supported. You can also paste the code below.</string>
-    <string name="scan_ticket_submit">Add ticket</string>
 
 </resources>
