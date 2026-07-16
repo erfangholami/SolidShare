@@ -37,6 +37,9 @@ class MainViewModel @Inject constructor(
     private val _pendingTicketDraft = MutableStateFlow<TicketDraft?>(null)
     val pendingTicketDraft: StateFlow<TicketDraft?> = _pendingTicketDraft.asStateFlow()
 
+    private val _pendingImport = MutableStateFlow(false)
+    val pendingImport: StateFlow<Boolean> = _pendingImport.asStateFlow()
+
     fun handleDeepLink(intent: Intent?) {
         val raw = intent?.data?.toString() ?: return
         parseRawLink(raw)
@@ -56,11 +59,9 @@ class MainViewModel @Inject constructor(
         }
     }
 
-    fun handleTicketFile(bytes: ByteArray, fileName: String? = null): Boolean {
-        val (draft, artifact) = ticketsRepository.parseTicketFile(bytes, fileName) ?: return false
-        ticketImportHolder.stash(artifact)
-        _pendingTicketDraft.value = draft
-        return true
+    fun handleTicketFile(bytes: ByteArray, fileName: String? = null) {
+        ticketImportHolder.stashImport(bytes, fileName)
+        _pendingImport.value = true
     }
 
     fun consumePendingShareLink() {
@@ -69,5 +70,9 @@ class MainViewModel @Inject constructor(
 
     fun consumePendingTicketDraft() {
         _pendingTicketDraft.value = null
+    }
+
+    fun consumePendingImport() {
+        _pendingImport.value = false
     }
 }

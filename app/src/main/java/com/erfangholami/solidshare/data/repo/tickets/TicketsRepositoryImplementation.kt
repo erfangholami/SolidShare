@@ -3,12 +3,17 @@ package com.erfangholami.solidshare.data.repo.tickets
 import android.os.Parcelable
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.SolidTicketsDataModule
 import com.erfangholami.androidsolidservices.shared.result.SolidResult
+import com.erfangholami.solidshare.data.passimport.BarcodeHit
+import com.erfangholami.solidshare.data.passimport.BcbpParser
+import com.erfangholami.solidshare.data.passimport.Extraction
 import com.erfangholami.solidshare.data.passimport.GoogleWalletParser
 import com.erfangholami.solidshare.data.passimport.PkpassParser
+import com.erfangholami.solidshare.data.passimport.TicketFileExtractor
 import com.erfangholami.solidshare.data.passimport.TicketFileSniffer
 import com.erfangholami.solidshare.data.passimport.TicketFileType
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.domain.model.Ticket
+import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketFile
@@ -19,6 +24,7 @@ import javax.inject.Inject
 class TicketsRepositoryImplementation @Inject constructor(
     private val ticketsDataModule: SolidTicketsDataModule,
     private val authRepository: AuthRepository,
+    private val fileExtractor: TicketFileExtractor,
 ) : TicketsRepository {
 
     override suspend fun getTickets(webId: String): List<TicketSummaryItem> =
@@ -65,10 +71,10 @@ class TicketsRepositoryImplementation @Inject constructor(
     override fun parseTicketQr(raw: String): TicketDraft? =
         TicketQrCodec.parse(raw) ?: GoogleWalletParser.parse(raw)
 
-    override fun parseTicketFile(
+    override suspend fun parseTicketFile(
         bytes: ByteArray,
         fileName: String?,
-    ): Pair<TicketDraft, TicketFile>? = when (TicketFileSniffer.detect(bytes)) {
+    ): Pair<TicketDraft, TicketFile>? = when (val type = TicketFileSniffer.detect(bytes)) {
         TicketFileType.PKPASS ->
             PkpassParser.parse(bytes)?.let { it to TicketFile(PkpassParser.MIME_TYPE, bytes) }
 
@@ -78,22 +84,44 @@ class TicketsRepositoryImplementation @Inject constructor(
                 ?.let { it to TicketFile(PKPASSES_MIME_TYPE, bytes) }
 
         TicketFileType.PDF ->
-            fileDraft(fileName, TicketSource.PDF) to TicketFile("application/pdf", bytes)
+            draftFromExtraction(fileExtractor.extract(bytes, type), fileName, TicketSource.PDF) to
+                TicketFile("application/pdf", bytes)
 
         TicketFileType.IMAGE ->
-            fileDraft(fileName, TicketSource.IMAGE) to
+            draftFromExtraction(fileExtractor.extract(bytes, type), fileName, TicketSource.IMAGE) to
                 TicketFile(TicketFileSniffer.imageMimeType(bytes), bytes)
 
         TicketFileType.UNKNOWN -> null
     }
 
-    /**
-     * A best-effort draft for a file we can capture but not yet read (a PDF or image): the original
-     * is kept as the artifact and the user completes the details in the edit form. Rich extraction
-     * (barcode + OCR) fills these in a later pass.
-     */
-    private fun fileDraft(fileName: String?, source: TicketSource): TicketDraft = TicketDraft(
+    private fun draftFromExtraction(
+        extraction: Extraction,
+        fileName: String?,
+        source: TicketSource,
+    ): TicketDraft {
+        val base = extraction.barcode?.let { barcode ->
+            BcbpParser.parse(barcode.payload)?.copy(token = barcode.payload, barcodeFormat = barcode.format)
+        } ?: fileDraft(fileName, source, extraction.barcode)
+        return enrichWithOcr(base, extraction.text)
+    }
+
+    private fun enrichWithOcr(draft: TicketDraft, text: String?): TicketDraft {
+        if (text.isNullOrBlank()) return draft
+        val firstLine = text.lineSequence().map { it.trim() }.firstOrNull { it.length in 2..80 }
+        return draft.copy(
+            title = draft.title.ifBlank { firstLine.orEmpty() },
+            description = draft.description ?: text.take(OCR_DESCRIPTION_LIMIT),
+        )
+    }
+
+    private fun fileDraft(
+        fileName: String?,
+        source: TicketSource,
+        barcode: BarcodeHit?,
+    ): TicketDraft = TicketDraft(
         title = fileName?.substringBeforeLast('.')?.trim()?.takeIf { it.isNotBlank() }.orEmpty(),
+        token = barcode?.payload,
+        barcodeFormat = barcode?.format ?: TicketBarcodeFormat.NONE,
         category = TicketCategory.GENERIC,
         source = source,
     )
@@ -102,5 +130,6 @@ class TicketsRepositoryImplementation @Inject constructor(
 
     private companion object {
         const val PKPASSES_MIME_TYPE = "application/vnd.apple.pkpasses"
+        const val OCR_DESCRIPTION_LIMIT = 1000
     }
 }

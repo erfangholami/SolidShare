@@ -536,6 +536,17 @@
     <string name="ticket_field_seat_section">Section</string>
     <string name="ticket_field_seat_row">Row</string>
     <string name="ticket_field_seat_number">Seat</string>
+    <string name="ticket_field_gate">Gate</string>
+    <string name="ticket_field_terminal">Terminal</string>
+    <string name="ticket_field_platform">Platform</string>
+    <string name="ticket_import_title">Add ticket</string>
+    <string name="ticket_import_loading">Reading your ticket…</string>
+    <string name="ticket_import_none">No ticket found</string>
+    <string name="ticket_import_none_subtitle">We couldn\'t find a ticket, boarding pass or card in this file.</string>
+    <string name="ticket_import_add">Add</string>
+    <string name="ticket_untitled">Untitled ticket</string>
+    <string name="action_close">Close</string>
+    <string name="action_edit">Edit</string>
     <string name="ticket_field_number">Ticket number</string>
     <string name="ticket_field_holder">Ticket holder</string>
     <string name="ticket_field_issuer">Issuer</string>

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
-import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -39,15 +38,8 @@ class WalletViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
-    fun importPass(bytes: ByteArray, fileName: String? = null, onDraft: (TicketDraft) -> Unit) {
-        val parsed = ticketsRepository.parseTicketFile(bytes, fileName)
-        if (parsed == null) {
-            _message.value = stringProvider.getString(R.string.wallet_import_unreadable)
-            return
-        }
-        val (draft, artifact) = parsed
-        importHolder.stash(artifact)
-        onDraft(draft)
+    fun prepareImport(bytes: ByteArray, fileName: String? = null) {
+        importHolder.stashImport(bytes, fileName)
     }
 
     fun consumeMessage() {

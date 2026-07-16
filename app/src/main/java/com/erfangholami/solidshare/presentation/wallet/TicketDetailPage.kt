@@ -415,7 +415,7 @@ private fun TicketDetailContent(ticket: Ticket) {
 }
 
 @Composable
-private fun TicketBarcode(
+internal fun TicketBarcode(
     token: String,
     format: TicketBarcodeFormat,
 ) {

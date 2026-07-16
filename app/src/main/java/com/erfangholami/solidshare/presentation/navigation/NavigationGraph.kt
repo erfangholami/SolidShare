@@ -62,6 +62,8 @@ import com.erfangholami.solidshare.presentation.wallet.TicketDetailPage
 import com.erfangholami.solidshare.presentation.wallet.TicketDetailViewModel
 import com.erfangholami.solidshare.presentation.wallet.TicketEditPage
 import com.erfangholami.solidshare.presentation.wallet.TicketEditViewModel
+import com.erfangholami.solidshare.presentation.wallet.TicketImportPage
+import com.erfangholami.solidshare.presentation.wallet.TicketImportViewModel
 import com.erfangholami.solidshare.presentation.wallet.TicketScanPage
 import com.erfangholami.solidshare.presentation.wallet.TicketScanViewModel
 import com.erfangholami.solidshare.presentation.wallet.WalletPage
@@ -83,6 +85,8 @@ fun AppNavHost(
     onShareLinkHandled: () -> Unit = {},
     pendingTicketDraft: TicketDraft? = null,
     onTicketDraftHandled: () -> Unit = {},
+    pendingImport: Boolean = false,
+    onImportHandled: () -> Unit = {},
 ) {
     LaunchedEffect(openNotifications) {
         if (!openNotifications) return@LaunchedEffect
@@ -115,6 +119,14 @@ fun AppNavHost(
         }
         navController.navigate(TicketEditRoute(draft = draft))
         onTicketDraftHandled()
+    }
+    LaunchedEffect(pendingImport) {
+        if (!pendingImport) return@LaunchedEffect
+        if (navController.currentDestination?.isOnMain() != true) {
+            navController.currentBackStackEntryFlow.first { it.destination.isOnMain() }
+        }
+        navController.navigate(TicketImportRoute)
+        onImportHandled()
     }
     NavHost(
         modifier = modifier,
@@ -209,6 +221,16 @@ fun NavGraphBuilder.walletGraph(navController: NavController) {
         },
     ) {
         TicketEditPage(navController, hiltViewModel<TicketEditViewModel>())
+    }
+    composable<TicketImportRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        TicketImportPage(navController, hiltViewModel<TicketImportViewModel>())
     }
     composable<TicketScanRoute> {
         TicketScanPage(navController, hiltViewModel<TicketScanViewModel>())
@@ -443,6 +465,9 @@ data class TicketEditRoute(
     val ticketUri: String? = null,
     val draft: TicketDraft = TicketDraft(),
 )
+
+@Serializable
+object TicketImportRoute
 
 @Serializable
 object TicketScanRoute

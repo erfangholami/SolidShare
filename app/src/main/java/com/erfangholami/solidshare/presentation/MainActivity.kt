@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,7 +15,6 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
-import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import com.erfangholami.solidshare.presentation.navigation.AppNavHost
 import com.erfangholami.solidshare.presentation.theme.AppTheme
@@ -49,6 +47,7 @@ class MainActivity : ComponentActivity() {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             val pendingShareLink by viewModel.pendingShareLink.collectAsStateWithLifecycle()
             val pendingTicketDraft by viewModel.pendingTicketDraft.collectAsStateWithLifecycle()
+            val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -64,6 +63,8 @@ class MainActivity : ComponentActivity() {
                     onShareLinkHandled = { viewModel.consumePendingShareLink() },
                     pendingTicketDraft = pendingTicketDraft,
                     onTicketDraftHandled = { viewModel.consumePendingTicketDraft() },
+                    pendingImport = pendingImport,
+                    onImportHandled = { viewModel.consumePendingImport() },
                 )
             }
         }
@@ -83,7 +84,6 @@ class MainActivity : ComponentActivity() {
 
     private fun handleIncomingTicket(intent: Intent?) {
         intent ?: return
-        // A shared link (e.g. a ticket or "Add to Google Wallet" URL) arrives as SEND text.
         if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
             intent.getStringExtra(Intent.EXTRA_TEXT)?.let { viewModel.handleSharedText(it) }
             return
@@ -103,13 +103,8 @@ class MainActivity : ComponentActivity() {
                 contentResolver.openInputStream(uri)?.use { it.readBytes() }
             }.getOrNull() ?: return@launch
             if (bytes.size > MAX_TICKET_FILE_BYTES) return@launch
-            val recognized = viewModel.handleTicketFile(bytes, fileName = displayName(uri))
-            if (!recognized) withContext(Dispatchers.Main) {
-                Toast.makeText(
-                    this@MainActivity,
-                    getString(R.string.wallet_import_unreadable),
-                    Toast.LENGTH_SHORT,
-                ).show()
+            withContext(Dispatchers.Main) {
+                viewModel.handleTicketFile(bytes, fileName = displayName(uri))
             }
         }
     }

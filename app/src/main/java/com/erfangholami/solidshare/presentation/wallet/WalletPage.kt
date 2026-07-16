@@ -67,6 +67,7 @@ import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.SheetActionRow
 import com.erfangholami.solidshare.presentation.navigation.TicketDetailRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
+import com.erfangholami.solidshare.presentation.navigation.TicketImportRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketScanRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
@@ -97,9 +98,8 @@ fun WalletPage(
                     }.getOrNull()
                 }
                 if (bytes != null) {
-                    viewModel.importPass(bytes, ticketFileName(context, uri)) { draft ->
-                        navController.navigate(TicketEditRoute(draft = draft))
-                    }
+                    viewModel.prepareImport(bytes, ticketFileName(context, uri))
+                    navController.navigate(TicketImportRoute)
                 }
             }
         }
