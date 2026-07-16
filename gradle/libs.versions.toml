@@ -31,6 +31,7 @@ zxing = "3.5.4"
 
 cameraX = "1.6.1"
 mlkitBarcode = "17.3.0"
+mlkitText = "16.0.1"
 
 ass = "0.6.0"
 
@@ -103,6 +104,7 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 
 #ML Kit Barcode (bundled model, works offline)
 google-mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+google-mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version.ref = "mlkitText" }
 
 
 #Test

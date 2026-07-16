@@ -137,6 +137,7 @@ dependencies {
 
     //ML Kit Barcode (QR decoding from camera frames + gallery images)
     implementation(libs.google.mlkit.barcode.scanning)
+    implementation(libs.google.mlkit.text.recognition)
 
     //Navigation
     implementation(libs.androidx.navigation.compose)

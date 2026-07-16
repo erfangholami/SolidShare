@@ -1,5 +1,8 @@
 package com.erfangholami.solidshare.presentation.wallet
 
+import com.erfangholami.solidshare.data.passimport.TicketScanFormats
+import com.erfangholami.solidshare.data.passimport.mlKitFormatToDomain
+
 import android.Manifest
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
