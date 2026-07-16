@@ -30,6 +30,9 @@ class ProfileViewModel @Inject constructor(
     val accounts: StateFlow<List<PublicProfile>> = authRepository.loggedInProfilesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val expiredAccounts: StateFlow<List<PublicProfile>> = authRepository.expiredProfilesFlow
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     val activeWebId: StateFlow<String> = authRepository.activeWebIdFlow
         .map { it ?: "" }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")

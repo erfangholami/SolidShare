@@ -85,6 +85,7 @@ fun Profile(
 ) {
     val navigateToLogin by viewModel.navigateToLogin.collectAsStateWithLifecycle()
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val expiredAccounts by viewModel.expiredAccounts.collectAsStateWithLifecycle()
     val activeWebId by viewModel.activeWebId.collectAsStateWithLifecycle()
     val publicProfile by viewModel.publicProfile.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -174,9 +175,13 @@ fun Profile(
 
                 AccountsCard(
                     accounts = accounts,
+                    expiredAccounts = expiredAccounts,
                     activeWebId = activeWebId.takeIf { it.isNotEmpty() },
                     onSelectAccount = viewModel::switchAccount,
                     onAddAccount = {
+                        navController.navigate(AuthNavItem.Login(isAddingAccount = true))
+                    },
+                    onReconnectAccount = {
                         navController.navigate(AuthNavItem.Login(isAddingAccount = true))
                     },
                     isOnline = isOnline,
@@ -218,6 +223,8 @@ private fun AccountsCard(
     activeWebId: String?,
     onSelectAccount: (webId: String) -> Unit,
     onAddAccount: () -> Unit,
+    expiredAccounts: List<PublicProfile> = emptyList(),
+    onReconnectAccount: (webId: String) -> Unit = {},
     isOnline: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
@@ -245,6 +252,16 @@ private fun AccountsCard(
                 if (index < accounts.size - 1) {
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                 }
+            }
+            expiredAccounts.forEach { profile ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
+                AccountRow(
+                    profile = profile,
+                    isActive = false,
+                    onClick = { onReconnectAccount(profile.webId) },
+                    enabled = isOnline,
+                    statusText = stringResource(R.string.account_session_expired),
+                )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
             AddAccountRow(onClick = onAddAccount, enabled = isOnline)
@@ -429,6 +446,22 @@ private fun AccountsCardPreview() {
                 activeWebId = PreviewSamples.webIdOf("alice"),
                 onSelectAccount = {},
                 onAddAccount = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun AccountsCardExpiredPreview() {
+    AppTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            AccountsCard(
+                accounts = PreviewSamples.profiles("alice"),
+                activeWebId = PreviewSamples.webIdOf("alice"),
+                onSelectAccount = {},
+                onAddAccount = {},
+                expiredAccounts = PreviewSamples.profiles("ben"),
             )
         }
     }

@@ -62,6 +62,7 @@ fun AccountRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    statusText: String? = null,
 ) {
     val webId = profile.webId
     val name = displayNameFor(profile)
@@ -83,9 +84,13 @@ fun AccountRow(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = webId,
+                text = statusText ?: webId,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (statusText != null) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

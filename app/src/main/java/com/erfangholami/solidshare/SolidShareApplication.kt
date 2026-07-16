@@ -23,6 +23,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
 @HiltAndroidApp
@@ -86,9 +87,14 @@ class SolidShareApplication : Application(), Configuration.Provider {
 
     private fun reconcileSolidAccounts() {
         applicationScope.launch {
-            authRepository.get().loggedInProfilesFlow.collect { profiles ->
+            combine(
+                authRepository.get().loggedInProfilesFlow,
+                authRepository.get().expiredProfilesFlow,
+            ) { loggedIn, expired ->
+                (loggedIn + expired).map { it.webId }.distinct()
+            }.collect { webIds ->
                 runCatching {
-                    solidAccountManager.get().reconcile(profiles.map { it.webId })
+                    solidAccountManager.get().reconcile(webIds)
                 }
             }
         }

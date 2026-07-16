@@ -24,6 +24,10 @@ class AuthRepositoryImplementation @Inject constructor(
         authenticator.loggedInProfilesFlow.map { profiles ->
             profiles.mapNotNull(publicProfileRepository::fromProfile)
         }
+    override val expiredProfilesFlow: Flow<List<PublicProfile>> =
+        authenticator.expiredProfilesFlow.map { profiles ->
+            profiles.mapNotNull(publicProfileRepository::fromProfile)
+        }
     override val isAuthorizedFlow: StateFlow<Boolean> = authenticator.isAuthorizedFlow
 
     override fun getListOfPodServers(): List<PodServer> = listOf(

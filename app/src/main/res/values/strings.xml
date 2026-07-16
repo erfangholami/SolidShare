@@ -58,6 +58,7 @@
     <string name="accounts">Accounts</string>
     <string name="add_account">Add account</string>
     <string name="active_account">Active account</string>
+    <string name="account_session_expired">Session expired — tap to sign in again</string>
     <string name="logout_active_account">Logout active account</string>
     <string name="logout_all">Logout all</string>
     <string name="login_url_invalid">URL is not valid</string>

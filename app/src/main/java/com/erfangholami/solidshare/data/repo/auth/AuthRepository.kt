@@ -11,6 +11,7 @@ interface AuthRepository {
     val activeWebIdFlow: StateFlow<String?>
     val activeProfileFlow: Flow<PublicProfile?>
     val loggedInProfilesFlow: Flow<List<PublicProfile>>
+    val expiredProfilesFlow: Flow<List<PublicProfile>>
     val isAuthorizedFlow: StateFlow<Boolean>
 
     fun getListOfPodServers(): List<PodServer>
