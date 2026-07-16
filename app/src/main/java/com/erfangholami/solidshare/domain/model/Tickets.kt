@@ -29,20 +29,94 @@ data class TicketStyle(
     val backgroundColor: String? = null,
     val foregroundColor: String? = null,
     val labelColor: String? = null,
+    val stripColor: String? = null,
+    val footerBackgroundColor: String? = null,
     val logoText: String? = null,
+    val logoSymbolName: String? = null,
 ) {
     val isEmpty: Boolean
         get() = backgroundColor == null && foregroundColor == null &&
-            labelColor == null && logoText == null
+            labelColor == null && stripColor == null && footerBackgroundColor == null &&
+            logoText == null && logoSymbolName == null
 }
 
-enum class TicketExtraPlacement { HEADER, PRIMARY, SECONDARY, AUXILIARY, BACK, ADDITIONAL }
+@Serializable
+data class TicketPassInfo(
+    val passTypeIdentifier: String? = null,
+    val serialNumber: String? = null,
+    val teamIdentifier: String? = null,
+    val webServiceUrl: String? = null,
+    val authenticationToken: String? = null,
+    val groupingIdentifier: String? = null,
+    val sharingProhibited: Boolean? = null,
+) {
+    val isEmpty: Boolean
+        get() = passTypeIdentifier == null && serialNumber == null && teamIdentifier == null &&
+            webServiceUrl == null && authenticationToken == null &&
+            groupingIdentifier == null && sharingProhibited == null
+}
+
+@Serializable
+data class TicketLocationInfo(
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val altitude: Double? = null,
+    val maxDistance: Int? = null,
+    val relevantText: String? = null,
+)
+
+@Serializable
+data class TicketBeaconInfo(
+    val proximityUuid: String? = null,
+    val major: Int? = null,
+    val minor: Int? = null,
+    val relevantText: String? = null,
+)
+
+@Serializable
+data class TicketWifiInfo(
+    val ssid: String? = null,
+    val password: String? = null,
+)
+
+@Serializable
+data class TicketReservationInfo(
+    val boardingGroup: String? = null,
+    val boardingZone: String? = null,
+    val sequenceNumber: String? = null,
+    val fareClass: String? = null,
+    val priorityStatus: String? = null,
+    val securityScreening: String? = null,
+) {
+    val isEmpty: Boolean
+        get() = boardingGroup == null && boardingZone == null && sequenceNumber == null &&
+            fareClass == null && priorityStatus == null && securityScreening == null
+}
+
+@Serializable
+data class TicketMembershipInfo(
+    val programName: String? = null,
+    val number: String? = null,
+    val status: String? = null,
+    val pointsBalance: String? = null,
+    val balance: String? = null,
+    val balanceCurrency: String? = null,
+) {
+    val isEmpty: Boolean
+        get() = programName == null && number == null && status == null &&
+            pointsBalance == null && balance == null && balanceCurrency == null
+}
+
+enum class TicketExtraPlacement { HEADER, PRIMARY, SECONDARY, AUXILIARY, BACK, ADDITIONAL, FOOTER }
 
 @Serializable
 data class TicketExtra(
     val label: String? = null,
     val value: String,
     val placement: TicketExtraPlacement? = null,
+    val changeMessage: String? = null,
+    val textAlignment: String? = null,
+    val linkUrl: String? = null,
 )
 
 @Serializable
@@ -50,6 +124,9 @@ data class TicketSeatInfo(
     val number: String? = null,
     val row: String? = null,
     val section: String? = null,
+    val type: String? = null,
+    val identifier: String? = null,
+    val description: String? = null,
 )
 
 @Serializable
@@ -63,7 +140,9 @@ data class TicketEventInfo(
     val name: String? = null,
     val start: String? = null,
     val end: String? = null,
+    val doorTime: String? = null,
     val venue: TicketVenue? = null,
+    val performers: List<String> = emptyList(),
 )
 
 @Serializable
@@ -84,6 +163,13 @@ data class TicketJourney(
     val serviceNumber: String? = null,
     val from: TicketStop? = null,
     val to: TicketStop? = null,
+    val boardingTime: String? = null,
+    val transitStatus: String? = null,
+    val transitStatusReason: String? = null,
+    val vehicleName: String? = null,
+    val vehicleNumber: String? = null,
+    val vehicleType: String? = null,
+    val coachNumber: String? = null,
     val duration: String? = null,
 )
 
@@ -109,6 +195,16 @@ data class Ticket(
     val validThrough: String? = null,
     val style: TicketStyle? = null,
     val extras: List<TicketExtra> = emptyList(),
+    val passInfo: TicketPassInfo? = null,
+    val reservation: TicketReservationInfo? = null,
+    val membership: TicketMembershipInfo? = null,
+    val locations: List<TicketLocationInfo> = emptyList(),
+    val beacons: List<TicketBeaconInfo> = emptyList(),
+    val wifi: List<TicketWifiInfo> = emptyList(),
+    val voided: Boolean? = null,
+    val silenceRequested: Boolean? = null,
+    val relevantStart: String? = null,
+    val relevantEnd: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
     val artifactUri: String? = null,
     val createdAt: String? = null,
@@ -137,6 +233,16 @@ data class TicketDraft(
     val validThrough: String? = null,
     val style: TicketStyle? = null,
     val extras: List<TicketExtra> = emptyList(),
+    val passInfo: TicketPassInfo? = null,
+    val reservation: TicketReservationInfo? = null,
+    val membership: TicketMembershipInfo? = null,
+    val locations: List<TicketLocationInfo> = emptyList(),
+    val beacons: List<TicketBeaconInfo> = emptyList(),
+    val wifi: List<TicketWifiInfo> = emptyList(),
+    val voided: Boolean? = null,
+    val silenceRequested: Boolean? = null,
+    val relevantStart: String? = null,
+    val relevantEnd: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
 )
 
