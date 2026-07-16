@@ -28,6 +28,7 @@ import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import java.time.Instant
 import java.time.LocalDate
+import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -82,7 +83,8 @@ fun formatTicketDate(iso: String?): String? {
     if (iso.isNullOrBlank()) return null
     return runCatching {
         if (iso.contains('T')) {
-            val instant = Instant.parse(iso)
+            val instant = runCatching { Instant.parse(iso) }
+                .getOrElse { OffsetDateTime.parse(iso).toInstant() }
             DateTimeFormatter.ofPattern("EEE d MMM yyyy · HH:mm", Locale.getDefault())
                 .withZone(ZoneId.systemDefault())
                 .format(instant)
@@ -96,8 +98,10 @@ fun formatTicketDate(iso: String?): String? {
 fun ticketInstantOrNull(iso: String?): Instant? {
     if (iso.isNullOrBlank()) return null
     return runCatching { Instant.parse(iso) }.getOrElse {
-        runCatching {
-            LocalDate.parse(iso).atStartOfDay(ZoneId.systemDefault()).toInstant()
-        }.getOrNull()
+        runCatching { OffsetDateTime.parse(iso).toInstant() }.getOrElse {
+            runCatching {
+                LocalDate.parse(iso).atStartOfDay(ZoneId.systemDefault()).toInstant()
+            }.getOrNull()
+        }
     }
 }

@@ -47,6 +47,7 @@ class BcbpParserTest {
         assertEquals("AMS", journey.from?.code)
         assertEquals("JFK", journey.to?.code)
         assertEquals("2026-09-01", journey.from?.time)
+        assertEquals("2026-09-01", draft.event?.start)
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.presentation.wallet
 
+import com.erfangholami.solidshare.data.passimport.BcbpParser
 import com.erfangholami.solidshare.data.passimport.TicketScanFormats
 import com.erfangholami.solidshare.data.passimport.mlKitFormatToDomain
 
@@ -40,11 +41,16 @@ class TicketScanViewModel @Inject constructor(
 ) : ViewModel() {
 
     fun draftFrom(raw: String, mlKitFormat: Int): TicketDraft =
-        ticketsRepository.parseTicketQr(raw) ?: TicketDraft(
-            token = raw.trim(),
-            barcodeFormat = mlKitFormatToDomain(mlKitFormat),
-            source = TicketSource.SCAN,
-        )
+        ticketsRepository.parseTicketQr(raw)
+            ?: BcbpParser.parse(raw)?.copy(
+                token = raw,
+                barcodeFormat = mlKitFormatToDomain(mlKitFormat),
+            )
+            ?: TicketDraft(
+                token = raw.trim(),
+                barcodeFormat = mlKitFormatToDomain(mlKitFormat),
+                source = TicketSource.SCAN,
+            )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

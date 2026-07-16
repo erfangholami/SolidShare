@@ -16,6 +16,7 @@ import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
+import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketFile
 import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
@@ -43,7 +44,7 @@ class TicketsRepositoryImplementation @Inject constructor(
         return ticketsDataModule.tickets
             .create(
                 ownerWebId = webId,
-                newTicket = draft.toLib(),
+                newTicket = draft.withDerivedEventStart().toLib(),
                 storage = storage,
                 artifact = artifact?.bytes,
                 artifactContentType = artifact?.contentType,
@@ -57,7 +58,10 @@ class TicketsRepositoryImplementation @Inject constructor(
         ticketUri: String,
         draft: TicketDraft,
     ): Ticket =
-        ticketsDataModule.tickets.update(webId, ticketUri, draft.toLib()).unwrap().toDomain()
+        ticketsDataModule.tickets
+            .update(webId, ticketUri, draft.withDerivedEventStart().toLib())
+            .unwrap()
+            .toDomain()
 
     override suspend fun deleteTicket(webId: String, ticketUri: String) {
         ticketsDataModule.tickets.delete(webId, ticketUri).unwrap()
@@ -132,4 +136,10 @@ class TicketsRepositoryImplementation @Inject constructor(
         const val PKPASSES_MIME_TYPE = "application/vnd.apple.pkpasses"
         const val OCR_DESCRIPTION_LIMIT = 1000
     }
+}
+
+internal fun TicketDraft.withDerivedEventStart(): TicketDraft {
+    val departure = journey?.from?.time
+    if (departure.isNullOrBlank() || !event?.start.isNullOrBlank()) return this
+    return copy(event = (event ?: TicketEventInfo()).copy(start = departure))
 }

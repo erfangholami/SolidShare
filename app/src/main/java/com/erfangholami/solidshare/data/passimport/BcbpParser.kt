@@ -2,6 +2,7 @@ package com.erfangholami.solidshare.data.passimport
 
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
+import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketSource
@@ -43,6 +44,7 @@ object BcbpParser {
             number = pnr.ifBlank { null },
             holder = holder,
             seat = seatOf(seat),
+            event = date?.let { TicketEventInfo(start = it) },
             journey = TicketJourney(
                 mode = TransportMode.FLIGHT,
                 carrier = carrier.ifBlank { null },
