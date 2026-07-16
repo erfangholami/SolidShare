@@ -42,7 +42,7 @@ class TicketScanViewModel @Inject constructor(
 
     fun draftFrom(raw: String, mlKitFormat: Int): TicketDraft =
         ticketsRepository.parseTicketQr(raw)
-            ?: BcbpParser.parse(raw)?.copy(
+            ?: BcbpParser.parse(raw)?.toDraft()?.copy(
                 token = raw,
                 barcodeFormat = mlKitFormatToDomain(mlKitFormat),
             )

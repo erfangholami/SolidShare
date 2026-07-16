@@ -2,7 +2,7 @@ package com.erfangholami.solidshare.domain.model
 
 import kotlinx.serialization.Serializable
 
-enum class TicketCategory { EVENT, FLIGHT, TRAIN, BUS, CINEMA, LOYALTY, COUPON, GENERIC }
+enum class TicketCategory { EVENT, FLIGHT, TRAIN, BUS, BOAT, CINEMA, LOYALTY, COUPON, GENERIC }
 
 enum class TicketBarcodeFormat {
     QR_CODE, AZTEC, PDF_417, CODE_128, CODE_39, CODE_93,
@@ -20,6 +20,29 @@ data class TicketSummaryItem(
     val eventStart: String? = null,
     val issuer: String? = null,
     val validThrough: String? = null,
+    val backgroundColor: String? = null,
+    val foregroundColor: String? = null,
+)
+
+@Serializable
+data class TicketStyle(
+    val backgroundColor: String? = null,
+    val foregroundColor: String? = null,
+    val labelColor: String? = null,
+    val logoText: String? = null,
+) {
+    val isEmpty: Boolean
+        get() = backgroundColor == null && foregroundColor == null &&
+            labelColor == null && logoText == null
+}
+
+enum class TicketExtraPlacement { HEADER, PRIMARY, SECONDARY, AUXILIARY, BACK, ADDITIONAL }
+
+@Serializable
+data class TicketExtra(
+    val label: String? = null,
+    val value: String,
+    val placement: TicketExtraPlacement? = null,
 )
 
 @Serializable
@@ -71,6 +94,8 @@ data class Ticket(
     val number: String? = null,
     val token: String? = null,
     val barcodeFormat: TicketBarcodeFormat = TicketBarcodeFormat.NONE,
+    val barcodeEncoding: String? = null,
+    val barcodeAltText: String? = null,
     val category: TicketCategory = TicketCategory.GENERIC,
     val issuer: String? = null,
     val holder: String? = null,
@@ -82,6 +107,8 @@ data class Ticket(
     val journey: TicketJourney? = null,
     val validFrom: String? = null,
     val validThrough: String? = null,
+    val style: TicketStyle? = null,
+    val extras: List<TicketExtra> = emptyList(),
     val source: TicketSource = TicketSource.MANUAL,
     val artifactUri: String? = null,
     val createdAt: String? = null,
@@ -95,6 +122,8 @@ data class TicketDraft(
     val number: String? = null,
     val token: String? = null,
     val barcodeFormat: TicketBarcodeFormat = TicketBarcodeFormat.NONE,
+    val barcodeEncoding: String? = null,
+    val barcodeAltText: String? = null,
     val category: TicketCategory = TicketCategory.GENERIC,
     val issuer: String? = null,
     val holder: String? = null,
@@ -106,6 +135,8 @@ data class TicketDraft(
     val journey: TicketJourney? = null,
     val validFrom: String? = null,
     val validThrough: String? = null,
+    val style: TicketStyle? = null,
+    val extras: List<TicketExtra> = emptyList(),
     val source: TicketSource = TicketSource.MANUAL,
 )
 

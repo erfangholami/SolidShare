@@ -31,7 +31,7 @@ class BcbpParserTest {
 
     @Test
     fun `decodes a Format-M boarding pass into a flight journey`() {
-        val draft = BcbpParser.parse(boardingPass(), reference = LocalDate.of(2026, 1, 1))!!
+        val draft = BcbpParser.parse(boardingPass(), reference = LocalDate.of(2026, 1, 1))!!.toDraft()
 
         assertEquals("AMS → JFK", draft.title)
         assertEquals(TicketCategory.FLIGHT, draft.category)
@@ -52,7 +52,7 @@ class BcbpParserTest {
 
     @Test
     fun `an ambiguous Julian day resolves to the next upcoming flight`() {
-        val draft = BcbpParser.parse(boardingPass(), reference = LocalDate.of(2026, 10, 1))!!
+        val draft = BcbpParser.parse(boardingPass(), reference = LocalDate.of(2026, 10, 1))!!.toDraft()
         assertEquals("2027-09-01", draft.journey?.from?.time)
     }
 

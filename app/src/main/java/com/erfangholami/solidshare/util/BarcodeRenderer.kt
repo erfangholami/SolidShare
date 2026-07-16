@@ -7,6 +7,7 @@ import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.MultiFormatWriter
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 
 object BarcodeRenderer {
 
@@ -15,12 +16,18 @@ object BarcodeRenderer {
         format: TicketBarcodeFormat,
         widthPx: Int,
         heightPx: Int,
+        encoding: String? = null,
     ): Bitmap? {
         val zxingFormat = format.toZxing() ?: return null
         return runCatching {
             val hints = buildMap<EncodeHintType, Any> {
                 put(EncodeHintType.MARGIN, 1)
-                if (format.is2d()) put(EncodeHintType.CHARACTER_SET, "UTF-8")
+                if (format.is2d()) {
+                    put(EncodeHintType.CHARACTER_SET, charsetFor(encoding))
+                }
+                if (format == TicketBarcodeFormat.QR_CODE) {
+                    put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.M)
+                }
             }
             val matrix = MultiFormatWriter().encode(payload, zxingFormat, widthPx, heightPx, hints)
             val bitmap = createBitmap(matrix.width, matrix.height)
@@ -31,6 +38,13 @@ object BarcodeRenderer {
             }
             bitmap
         }.getOrNull()
+    }
+
+    private fun charsetFor(encoding: String?): String = when (encoding?.lowercase()?.replace("_", "-")) {
+        "iso-8859-1", "latin-1", "latin1" -> "ISO-8859-1"
+        "utf-8", "utf8" -> "UTF-8"
+        null -> "UTF-8"
+        else -> encoding
     }
 
     fun TicketBarcodeFormat.is2d(): Boolean = this in setOf(

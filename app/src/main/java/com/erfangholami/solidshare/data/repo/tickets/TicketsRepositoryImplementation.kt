@@ -80,12 +80,12 @@ class TicketsRepositoryImplementation @Inject constructor(
         fileName: String?,
     ): Pair<TicketDraft, TicketFile>? = when (val type = TicketFileSniffer.detect(bytes)) {
         TicketFileType.PKPASS ->
-            PkpassParser.parse(bytes)?.let { it to TicketFile(PkpassParser.MIME_TYPE, bytes) }
+            PkpassParser.parse(bytes)?.let { it.toDraft() to TicketFile(PkpassParser.MIME_TYPE, bytes) }
 
         TicketFileType.PKPASSES ->
             TicketFileSniffer.firstPassOfBundle(bytes)
                 ?.let { PkpassParser.parse(it) }
-                ?.let { it to TicketFile(PKPASSES_MIME_TYPE, bytes) }
+                ?.let { it.toDraft() to TicketFile(PKPASSES_MIME_TYPE, bytes) }
 
         TicketFileType.PDF ->
             draftFromExtraction(fileExtractor.extract(bytes, type), fileName, TicketSource.PDF) to
@@ -104,7 +104,9 @@ class TicketsRepositoryImplementation @Inject constructor(
         source: TicketSource,
     ): TicketDraft {
         val base = extraction.barcode?.let { barcode ->
-            BcbpParser.parse(barcode.payload)?.copy(token = barcode.payload, barcodeFormat = barcode.format)
+            BcbpParser.parse(barcode.payload)
+                ?.toDraft()
+                ?.copy(token = barcode.payload, barcodeFormat = barcode.format)
         } ?: fileDraft(fileName, source, extraction.barcode)
         return enrichWithOcr(base, extraction.text)
     }

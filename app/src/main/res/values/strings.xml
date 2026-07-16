@@ -574,6 +574,7 @@
     <string name="ticket_category_flight">Flight</string>
     <string name="ticket_category_train">Train</string>
     <string name="ticket_category_bus">Bus</string>
+    <string name="ticket_category_boat">Boat</string>
     <string name="ticket_category_cinema">Cinema</string>
     <string name="ticket_category_loyalty">Loyalty card</string>
     <string name="ticket_category_coupon">Coupon</string>

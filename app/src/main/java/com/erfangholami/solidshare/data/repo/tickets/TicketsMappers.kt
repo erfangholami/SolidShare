@@ -5,10 +5,13 @@ import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
+import com.erfangholami.solidshare.domain.model.TicketExtra
+import com.erfangholami.solidshare.domain.model.TicketExtraPlacement
 import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.domain.model.TicketStop
+import com.erfangholami.solidshare.domain.model.TicketStyle
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.domain.model.TicketVenue
 import com.erfangholami.solidshare.domain.model.TransportMode
@@ -16,7 +19,9 @@ import com.erfangholami.androidsolidservices.shared.model.tickets.NewTicket as L
 import com.erfangholami.androidsolidservices.shared.model.tickets.Ticket as LibTicket
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketBarcode as LibBarcode
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketBarcodeFormat as LibBarcodeFormat
+import com.erfangholami.androidsolidservices.shared.model.tickets.DetailPlacement as LibPlacement
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketCategory as LibCategory
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketDetail as LibDetail
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketEvent as LibEvent
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketJourney as LibJourney
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketOrganization as LibOrganization
@@ -25,6 +30,7 @@ import com.erfangholami.androidsolidservices.shared.model.tickets.TicketPlace as
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSeat as LibSeat
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSource as LibSource
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketStop as LibStop
+import com.erfangholami.androidsolidservices.shared.model.tickets.TicketStyle as LibStyle
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketSummary as LibSummary
 import com.erfangholami.androidsolidservices.shared.model.tickets.TransportMode as LibTransportMode
 
@@ -35,6 +41,8 @@ fun LibSummary.toDomain(): TicketSummaryItem = TicketSummaryItem(
     eventStart = eventStart,
     issuer = issuer,
     validThrough = validThrough,
+    backgroundColor = backgroundColor,
+    foregroundColor = foregroundColor,
 )
 
 fun LibTicket.toDomain(): Ticket = Ticket(
@@ -44,6 +52,8 @@ fun LibTicket.toDomain(): Ticket = Ticket(
     number = ticketNumber,
     token = primaryBarcode?.payload,
     barcodeFormat = primaryBarcode?.symbology?.toDomain() ?: TicketBarcodeFormat.NONE,
+    barcodeEncoding = primaryBarcode?.encoding,
+    barcodeAltText = primaryBarcode?.altText,
     category = category.toDomain(),
     issuer = issuer?.name ?: organizationName,
     holder = holder?.name,
@@ -55,6 +65,8 @@ fun LibTicket.toDomain(): Ticket = Ticket(
     journey = journey?.toDomain(),
     validFrom = validFrom,
     validThrough = validThrough,
+    style = style?.toDomain(),
+    extras = details.sortedBy { it.order ?: Int.MAX_VALUE }.mapNotNull { it.toDomain() },
     source = source.toDomain(),
     artifactUri = artifactUri,
     createdAt = createdAt,
@@ -66,7 +78,16 @@ fun TicketDraft.toLib(): LibNewTicket = LibNewTicket(
     description = description?.takeIf { it.isNotBlank() },
     ticketNumber = number?.takeIf { it.isNotBlank() },
     barcodes = token?.takeIf { it.isNotBlank() }
-        ?.let { listOf(LibBarcode(payload = it, symbology = barcodeFormat.toLib())) }
+        ?.let {
+            listOf(
+                LibBarcode(
+                    payload = it,
+                    symbology = barcodeFormat.toLib(),
+                    encoding = barcodeEncoding?.takeIf { enc -> enc.isNotBlank() },
+                    altText = barcodeAltText?.takeIf { alt -> alt.isNotBlank() },
+                ),
+            )
+        }
         ?: emptyList(),
     category = category.toLib(),
     issuer = issuer?.takeIf { it.isNotBlank() }?.let { LibOrganization(name = it) },
@@ -81,6 +102,8 @@ fun TicketDraft.toLib(): LibNewTicket = LibNewTicket(
     journey = journey?.toLib(),
     validFrom = validFrom?.takeIf { it.isNotBlank() },
     validThrough = validThrough?.takeIf { it.isNotBlank() },
+    style = style?.toLib(),
+    details = extras.mapIndexed { index, extra -> extra.toLib(index) },
     source = source.toLib(),
 )
 
@@ -90,6 +113,8 @@ fun Ticket.toDraft(): TicketDraft = TicketDraft(
     number = number,
     token = token,
     barcodeFormat = barcodeFormat,
+    barcodeEncoding = barcodeEncoding,
+    barcodeAltText = barcodeAltText,
     category = category,
     issuer = issuer,
     holder = holder,
@@ -101,8 +126,47 @@ fun Ticket.toDraft(): TicketDraft = TicketDraft(
     journey = journey,
     validFrom = validFrom,
     validThrough = validThrough,
+    style = style,
+    extras = extras,
     source = source,
 )
+
+private fun LibDetail.toDomain(): TicketExtra? {
+    val content = value?.takeIf { it.isNotBlank() } ?: return null
+    return TicketExtra(
+        label = label?.takeIf { it.isNotBlank() },
+        value = content,
+        placement = placement?.let { p ->
+            runCatching { TicketExtraPlacement.valueOf(p.name) }.getOrNull()
+        },
+    )
+}
+
+private fun TicketExtra.toLib(order: Int): LibDetail = LibDetail(
+    label = label?.takeIf { it.isNotBlank() },
+    value = value,
+    placement = placement?.let { p ->
+        runCatching { LibPlacement.valueOf(p.name) }.getOrNull()
+    },
+    order = order,
+)
+
+private fun LibStyle.toDomain(): TicketStyle? = TicketStyle(
+    backgroundColor = backgroundColor,
+    foregroundColor = foregroundColor,
+    labelColor = labelColor,
+    logoText = logoText,
+).takeIf { !it.isEmpty }
+
+private fun TicketStyle.toLib(): LibStyle? {
+    if (isEmpty) return null
+    return LibStyle(
+        foregroundColor = foregroundColor?.takeIf { it.isNotBlank() },
+        backgroundColor = backgroundColor?.takeIf { it.isNotBlank() },
+        labelColor = labelColor?.takeIf { it.isNotBlank() },
+        logoText = logoText?.takeIf { it.isNotBlank() },
+    )
+}
 
 private fun LibEvent.toDomain(): TicketEventInfo = TicketEventInfo(
     name = name,

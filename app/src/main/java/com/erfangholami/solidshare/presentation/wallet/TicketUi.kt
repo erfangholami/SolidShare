@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.CardMembership
 import androidx.compose.material.icons.filled.ConfirmationNumber
+import androidx.compose.material.icons.filled.DirectionsBoat
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.Flight
 import androidx.compose.material.icons.filled.LocalOffer
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
+import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import java.time.Instant
 import java.time.LocalDate
@@ -38,6 +40,7 @@ fun iconFor(category: TicketCategory): ImageVector = when (category) {
     TicketCategory.FLIGHT -> Icons.Filled.Flight
     TicketCategory.TRAIN -> Icons.Filled.Train
     TicketCategory.BUS -> Icons.Filled.DirectionsBus
+    TicketCategory.BOAT -> Icons.Filled.DirectionsBoat
     TicketCategory.CINEMA -> Icons.Filled.Movie
     TicketCategory.LOYALTY -> Icons.Filled.CardMembership
     TicketCategory.COUPON -> Icons.Filled.LocalOffer
@@ -51,6 +54,7 @@ fun labelFor(category: TicketCategory): String = stringResource(
         TicketCategory.FLIGHT -> R.string.ticket_category_flight
         TicketCategory.TRAIN -> R.string.ticket_category_train
         TicketCategory.BUS -> R.string.ticket_category_bus
+        TicketCategory.BOAT -> R.string.ticket_category_boat
         TicketCategory.CINEMA -> R.string.ticket_category_cinema
         TicketCategory.LOYALTY -> R.string.ticket_category_loyalty
         TicketCategory.COUPON -> R.string.ticket_category_coupon
@@ -93,6 +97,13 @@ fun formatTicketDate(iso: String?): String? {
             DateTimeFormatter.ofPattern("EEE d MMM yyyy", Locale.getDefault()).format(date)
         }
     }.getOrDefault(iso)
+}
+
+fun isTicketExpired(ticket: Ticket, now: Instant = Instant.now()): Boolean {
+    val reference = ticketInstantOrNull(ticket.event?.start ?: ticket.journey?.from?.time)
+        ?: ticketInstantOrNull(ticket.validThrough)
+        ?: return false
+    return reference.isBefore(now)
 }
 
 fun ticketInstantOrNull(iso: String?): Instant? {

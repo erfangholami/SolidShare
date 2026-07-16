@@ -1,8 +1,5 @@
 package com.erfangholami.solidshare.data.passimport
 
-import com.erfangholami.solidshare.domain.model.TicketCategory
-import com.erfangholami.solidshare.domain.model.TicketDraft
-import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketSource
@@ -15,7 +12,7 @@ object BcbpParser {
     private const val MIN_LENGTH = 58
     private const val GRACE_DAYS = 2L
 
-    fun parse(payload: String, reference: LocalDate = LocalDate.now()): TicketDraft? {
+    fun parse(payload: String, reference: LocalDate = LocalDate.now()): TransportPass? {
         if (payload.length < MIN_LENGTH || payload[0] != 'M') return null
         payload[1].digitToIntOrNull()?.takeIf { it in 1..9 } ?: return null
 
@@ -38,13 +35,12 @@ object BcbpParser {
         val date = julianDay?.let { julianToIsoDate(it, reference) }
         val service = (carrier + flightNumber.trimStart('0')).takeIf { it.isNotBlank() }
 
-        return TicketDraft(
+        return TransportPass(
             title = "$from → $to",
-            category = TicketCategory.FLIGHT,
             number = pnr.ifBlank { null },
             holder = holder,
             seat = seatOf(seat),
-            event = date?.let { TicketEventInfo(start = it) },
+            startIso = date,
             journey = TicketJourney(
                 mode = TransportMode.FLIGHT,
                 carrier = carrier.ifBlank { null },
