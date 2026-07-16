@@ -79,6 +79,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.presentation.components.BlockingProgressOverlay
@@ -99,6 +100,7 @@ fun TicketDetailPage(
     viewModel: TicketDetailViewModel,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val visuals by viewModel.visuals.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -241,7 +243,10 @@ fun TicketDetailPage(
                     onRetry = { viewModel.load() },
                 )
 
-                state.ticket != null -> TicketDetailContent(ticket = state.ticket!!)
+                state.ticket != null -> TicketDetailContent(
+                    ticket = state.ticket!!,
+                    visuals = visuals,
+                )
             }
             if (state.busy) {
                 BlockingProgressOverlay(label = stringResource(R.string.wallet_title))
@@ -284,7 +289,7 @@ fun TicketDetailPage(
 }
 
 @Composable
-private fun TicketDetailContent(ticket: Ticket) {
+private fun TicketDetailContent(ticket: Ticket, visuals: PassImages? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -293,45 +298,11 @@ private fun TicketDetailContent(ticket: Ticket) {
             .padding(bottom = 32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            TicketCategoryIcon(ticket.category)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = ticket.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                val subtitle = listOfNotNull(labelFor(ticket.category), ticket.issuer)
-                    .joinToString(" · ")
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-        }
-
-        ticket.journey?.let { journey ->
-            Spacer(Modifier.height(8.dp))
-            Surface(
-                modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)),
-                color = MaterialTheme.colorScheme.surfaceVariant,
-                tonalElevation = 1.dp,
-            ) {
-                Column(Modifier.padding(20.dp)) { JourneyBody(journey) }
-            }
-        }
-
-        if (!ticket.token.isNullOrBlank()) {
-            Spacer(Modifier.height(8.dp))
-            TicketBarcode(token = ticket.token, format = ticket.barcodeFormat)
-        }
+        Spacer(Modifier.height(8.dp))
+        PassCard(
+            data = ticket.toPassCardData(visuals),
+            expired = isTicketExpired(ticket),
+        )
 
         Spacer(Modifier.height(16.dp))
 
@@ -416,6 +387,14 @@ private fun TicketDetailContent(ticket: Ticket) {
                 it,
             )
         }
+        ticket.extras.forEach { extra ->
+            val (label, value) = normalizedExtra(ticket.category, extra)
+            TicketDetailRow(
+                Icons.AutoMirrored.Filled.Notes,
+                label.ifBlank { stringResource(R.string.details) },
+                value,
+            )
+        }
         ticket.description?.let {
             TicketDetailRow(
                 Icons.AutoMirrored.Filled.Notes,
@@ -430,13 +409,14 @@ private fun TicketDetailContent(ticket: Ticket) {
 internal fun TicketBarcode(
     token: String,
     format: TicketBarcodeFormat,
+    encoding: String? = null,
 ) {
     val density = LocalDensity.current
     val is2d = format.is2d()
     val widthPx = with(density) { 280.dp.roundToPx() }
     val heightPx = with(density) { (if (is2d) 280.dp else 96.dp).roundToPx() }
-    val bitmap = remember(token, format) {
-        BarcodeRenderer.render(token, format, widthPx, heightPx)
+    val bitmap = remember(token, format, encoding) {
+        BarcodeRenderer.render(token, format, widthPx, heightPx, encoding)
     }
     Column(
         modifier = Modifier

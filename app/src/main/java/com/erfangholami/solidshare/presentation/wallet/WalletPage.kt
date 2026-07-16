@@ -249,7 +249,12 @@ private fun TicketList(
                 SectionHeader(stringResource(R.string.wallet_upcoming))
             }
             items(upcoming, key = { it.uri }) { ticket ->
-                TicketCard(ticket = ticket, onClick = { onTicketClick(ticket) })
+                PassCard(
+                    data = ticket.toPassCardData(),
+                    showBarcode = false,
+                    onClick = { onTicketClick(ticket) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
         }
         if (past.isNotEmpty()) {
@@ -257,7 +262,13 @@ private fun TicketList(
                 SectionHeader(stringResource(R.string.wallet_past))
             }
             items(past, key = { it.uri }) { ticket ->
-                TicketCard(ticket = ticket, onClick = { onTicketClick(ticket) })
+                PassCard(
+                    data = ticket.toPassCardData(),
+                    showBarcode = false,
+                    expired = true,
+                    onClick = { onTicketClick(ticket) },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
         }
         item { Spacer(Modifier.height(88.dp)) }
@@ -273,56 +284,6 @@ private fun SectionHeader(title: String) {
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 20.dp, top = 12.dp),
     )
-}
-
-@Composable
-private fun TicketCard(
-    ticket: TicketSummaryItem,
-    onClick: () -> Unit,
-) {
-    OutlinedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(onClick = onClick),
-        shape = RoundedCornerShape(16.dp),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            TicketCategoryIcon(ticket.category)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = ticket.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 2,
-                )
-                val subtitle = listOfNotNull(
-                    ticket.issuer,
-                    formatTicketDate(ticket.eventStart ?: ticket.validThrough),
-                ).joinToString(" · ")
-                if (subtitle.isNotBlank()) {
-                    Text(
-                        text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-    }
 }
 
 @Preview(showBackground = true, widthDp = 360)

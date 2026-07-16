@@ -510,7 +510,7 @@
     <!-- Wallet -->
     <string name="wallet_title">Wallet</string>
     <string name="wallet_upcoming">Upcoming</string>
-    <string name="wallet_past">Past</string>
+    <string name="wallet_past">Expired</string>
     <string name="wallet_empty_title">Your wallet is empty</string>
     <string name="wallet_empty_subtitle">Add tickets and passes by scanning their barcode, importing a pass file, or entering them by hand.</string>
     <string name="wallet_add_ticket">Add ticket</string>
@@ -553,7 +553,13 @@
     <string name="ticket_import_none_subtitle">We couldn\'t find a ticket, boarding pass or card in this file.</string>
     <string name="ticket_import_link_failed">Couldn\'t open the link</string>
     <string name="ticket_import_link_failed_subtitle">The link couldn\'t be downloaded. Check your connection and try again.</string>
+    <string name="wallet_expired_badge">Expired</string>
     <string name="pass_field_date">Date</string>
+    <string name="pass_field_seat">Seat</string>
+    <string name="pass_field_flight">Flight</string>
+    <string name="pass_field_service">Service</string>
+    <string name="pass_field_holder">Holder</string>
+    <string name="pass_field_number">No.</string>
     <string name="pass_field_valid_until">Valid until</string>
     <string name="pass_label_door">Door</string>
     <string name="pass_label_boarding">Boarding</string>

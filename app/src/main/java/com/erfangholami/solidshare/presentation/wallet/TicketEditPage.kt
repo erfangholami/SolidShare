@@ -180,85 +180,89 @@ fun TicketEditPage(
                     if (draft.category.isTravel() || draft.journey != null) {
                         JourneyFields(draft = draft, onChange = viewModel::onDraftChange)
                     }
-                    OutlinedTextField(
-                        value = draft.event?.name.orEmpty(),
-                        onValueChange = {
-                            viewModel.onDraftChange(draft.withEvent { event -> event.copy(name = it) })
-                        },
-                        label = { Text(stringResource(R.string.ticket_field_event)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    DateTimeField(
-                        label = stringResource(R.string.ticket_field_starts),
-                        iso = draft.event?.start,
-                        onChange = {
-                            viewModel.onDraftChange(draft.withEvent { event -> event.copy(start = it) })
-                        },
-                    )
-                    DateTimeField(
-                        label = stringResource(R.string.ticket_field_ends),
-                        iso = draft.event?.end,
-                        onChange = {
-                            viewModel.onDraftChange(draft.withEvent { event -> event.copy(end = it) })
-                        },
-                    )
-                    OutlinedTextField(
-                        value = draft.event?.venue?.name.orEmpty(),
-                        onValueChange = {
-                            viewModel.onDraftChange(
-                                draft.withVenue { venue -> venue.copy(name = it) },
+                    if (draft.category.isEventish() || draft.event?.name != null || draft.event?.venue != null) {
+    OutlinedTextField(
+                            value = draft.event?.name.orEmpty(),
+                            onValueChange = {
+                                viewModel.onDraftChange(draft.withEvent { event -> event.copy(name = it) })
+                            },
+                            label = { Text(stringResource(R.string.ticket_field_event)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        DateTimeField(
+                            label = stringResource(R.string.ticket_field_starts),
+                            iso = draft.event?.start,
+                            onChange = {
+                                viewModel.onDraftChange(draft.withEvent { event -> event.copy(start = it) })
+                            },
+                        )
+                        DateTimeField(
+                            label = stringResource(R.string.ticket_field_ends),
+                            iso = draft.event?.end,
+                            onChange = {
+                                viewModel.onDraftChange(draft.withEvent { event -> event.copy(end = it) })
+                            },
+                        )
+                        OutlinedTextField(
+                            value = draft.event?.venue?.name.orEmpty(),
+                            onValueChange = {
+                                viewModel.onDraftChange(
+                                    draft.withVenue { venue -> venue.copy(name = it) },
+                                )
+                            },
+                            label = { Text(stringResource(R.string.ticket_field_venue)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = draft.event?.venue?.address.orEmpty(),
+                            onValueChange = {
+                                viewModel.onDraftChange(
+                                    draft.withVenue { venue -> venue.copy(address = it) },
+                                )
+                            },
+                            label = { Text(stringResource(R.string.ticket_field_venue_address)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    if (draft.category.isTravel() || draft.category.isEventish() || draft.seat != null) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = draft.seat?.section.orEmpty(),
+                                onValueChange = {
+                                    viewModel.onDraftChange(
+                                        draft.withSeat { seat -> seat.copy(section = it) },
+                                    )
+                                },
+                                label = { Text(stringResource(R.string.ticket_field_seat_section)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
                             )
-                        },
-                        label = { Text(stringResource(R.string.ticket_field_venue)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    OutlinedTextField(
-                        value = draft.event?.venue?.address.orEmpty(),
-                        onValueChange = {
-                            viewModel.onDraftChange(
-                                draft.withVenue { venue -> venue.copy(address = it) },
+                            OutlinedTextField(
+                                value = draft.seat?.row.orEmpty(),
+                                onValueChange = {
+                                    viewModel.onDraftChange(
+                                        draft.withSeat { seat -> seat.copy(row = it) },
+                                    )
+                                },
+                                label = { Text(stringResource(R.string.ticket_field_seat_row)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
                             )
-                        },
-                        label = { Text(stringResource(R.string.ticket_field_venue_address)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = draft.seat?.section.orEmpty(),
-                            onValueChange = {
-                                viewModel.onDraftChange(
-                                    draft.withSeat { seat -> seat.copy(section = it) },
-                                )
-                            },
-                            label = { Text(stringResource(R.string.ticket_field_seat_section)) },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OutlinedTextField(
-                            value = draft.seat?.row.orEmpty(),
-                            onValueChange = {
-                                viewModel.onDraftChange(
-                                    draft.withSeat { seat -> seat.copy(row = it) },
-                                )
-                            },
-                            label = { Text(stringResource(R.string.ticket_field_seat_row)) },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
-                        OutlinedTextField(
-                            value = draft.seat?.number.orEmpty(),
-                            onValueChange = {
-                                viewModel.onDraftChange(
-                                    draft.withSeat { seat -> seat.copy(number = it) },
-                                )
-                            },
-                            label = { Text(stringResource(R.string.ticket_field_seat_number)) },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
+                            OutlinedTextField(
+                                value = draft.seat?.number.orEmpty(),
+                                onValueChange = {
+                                    viewModel.onDraftChange(
+                                        draft.withSeat { seat -> seat.copy(number = it) },
+                                    )
+                                },
+                                label = { Text(stringResource(R.string.ticket_field_seat_number)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                     OutlinedTextField(
                         value = draft.number.orEmpty(),
@@ -269,15 +273,17 @@ fun TicketEditPage(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
-                        value = draft.holder.orEmpty(),
-                        onValueChange = {
-                            viewModel.onDraftChange(draft.copy(holder = it.ifBlank { null }))
-                        },
-                        label = { Text(stringResource(R.string.ticket_field_holder)) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    if (draft.category.isTravel() || draft.category.isEventish() || draft.category == TicketCategory.LOYALTY || draft.holder != null) {
+    OutlinedTextField(
+                            value = draft.holder.orEmpty(),
+                            onValueChange = {
+                                viewModel.onDraftChange(draft.copy(holder = it.ifBlank { null }))
+                            },
+                            label = { Text(stringResource(R.string.ticket_field_holder)) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                     OutlinedTextField(
                         value = draft.issuer.orEmpty(),
                         onValueChange = {
@@ -287,25 +293,27 @@ fun TicketEditPage(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        OutlinedTextField(
-                            value = draft.price.orEmpty(),
-                            onValueChange = {
-                                viewModel.onDraftChange(draft.copy(price = it.ifBlank { null }))
-                            },
-                            label = { Text(stringResource(R.string.ticket_field_price)) },
-                            singleLine = true,
-                            modifier = Modifier.weight(2f),
-                        )
-                        OutlinedTextField(
-                            value = draft.currency.orEmpty(),
-                            onValueChange = {
-                                viewModel.onDraftChange(draft.copy(currency = it.ifBlank { null }))
-                            },
-                            label = { Text(stringResource(R.string.ticket_field_currency)) },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                        )
+                    if (!draft.category.isTravel() || draft.price != null) {
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            OutlinedTextField(
+                                value = draft.price.orEmpty(),
+                                onValueChange = {
+                                    viewModel.onDraftChange(draft.copy(price = it.ifBlank { null }))
+                                },
+                                label = { Text(stringResource(R.string.ticket_field_price)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(2f),
+                            )
+                            OutlinedTextField(
+                                value = draft.currency.orEmpty(),
+                                onValueChange = {
+                                    viewModel.onDraftChange(draft.copy(currency = it.ifBlank { null }))
+                                },
+                                label = { Text(stringResource(R.string.ticket_field_currency)) },
+                                singleLine = true,
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
                     }
                     DateTimeField(
                         label = stringResource(R.string.ticket_field_valid_from),
@@ -393,15 +401,20 @@ private fun JourneyFields(draft: TicketDraft, onChange: (TicketDraft) -> Unit) {
     )
 }
 
+private fun TicketCategory.isEventish(): Boolean =
+    this == TicketCategory.EVENT || this == TicketCategory.CINEMA
+
 private fun TicketCategory.isTravel(): Boolean = this in setOf(
     TicketCategory.FLIGHT,
     TicketCategory.TRAIN,
     TicketCategory.BUS,
+    TicketCategory.BOAT,
 )
 
 private fun TicketCategory.toMode(): TransportMode = when (this) {
     TicketCategory.TRAIN -> TransportMode.TRAIN
     TicketCategory.BUS -> TransportMode.BUS
+    TicketCategory.BOAT -> TransportMode.BOAT
     else -> TransportMode.FLIGHT
 }
 

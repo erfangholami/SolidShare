@@ -5,10 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.data.passimport.PassImages
+import com.erfangholami.solidshare.data.passimport.PkpassImages
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketFile
+import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.presentation.navigation.TicketDetailRoute
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -42,6 +45,9 @@ class TicketDetailViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
+    private val _visuals = MutableStateFlow<PassImages?>(null)
+    val visuals = _visuals.asStateFlow()
+
     fun load() {
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
@@ -50,6 +56,7 @@ class TicketDetailViewModel @Inject constructor(
                 ticketsRepository.getTicket(webId, ticketUri)
             }.onSuccess { ticket ->
                 _state.update { it.copy(loading = false, ticket = ticket) }
+                loadVisuals(ticket)
             }.onFailure { error ->
                 _state.update {
                     it.copy(
@@ -59,6 +66,18 @@ class TicketDetailViewModel @Inject constructor(
                     )
                 }
             }
+        }
+    }
+
+    private fun loadVisuals(ticket: Ticket) {
+        if (ticket.source != TicketSource.PKPASS) return
+        val artifactUri = ticket.artifactUri ?: return
+        viewModelScope.launch {
+            _visuals.value = runCatching {
+                val webId = requireNotNull(authRepository.getActiveWebId())
+                val file = ticketsRepository.getTicketArtifact(webId, artifactUri)
+                PkpassImages.forTicketFile(file.bytes)
+            }.getOrNull()
         }
     }
 

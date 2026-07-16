@@ -3,6 +3,8 @@ package com.erfangholami.solidshare.presentation.wallet
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.data.passimport.PassImages
+import com.erfangholami.solidshare.data.passimport.PkpassImages
 import com.erfangholami.solidshare.data.passimport.TicketLinkFetcher
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
@@ -39,6 +41,9 @@ class TicketImportViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
+    private val _visuals = MutableStateFlow<PassImages?>(null)
+    val visuals = _visuals.asStateFlow()
+
     private var artifact: TicketFile? = null
     private var started = false
 
@@ -67,6 +72,7 @@ class TicketImportViewModel @Inject constructor(
             ticketsRepository.parseTicketFile(bytes, fileName)
         }.getOrNull() ?: return ImportState.NotFound()
         artifact = result.second
+        _visuals.value = runCatching { PkpassImages.forTicketFile(bytes) }.getOrNull()
         return ImportState.Found(result.first)
     }
 
