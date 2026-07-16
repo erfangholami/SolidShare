@@ -90,8 +90,11 @@ fun TicketImportPage(
         Box(Modifier.padding(padding).fillMaxSize()) {
             when (val current = state) {
                 TicketImportViewModel.ImportState.Loading -> LoadingContent()
-                TicketImportViewModel.ImportState.NotFound ->
-                    NotFoundContent(onClose = { navController.popBackStack() })
+                is TicketImportViewModel.ImportState.NotFound ->
+                    NotFoundContent(
+                        linkFailed = current.linkFailed,
+                        onClose = { navController.popBackStack() },
+                    )
 
                 is TicketImportViewModel.ImportState.Found -> FoundContent(
                     draft = current.draft,
@@ -125,7 +128,7 @@ private fun LoadingContent() {
 }
 
 @Composable
-private fun NotFoundContent(onClose: () -> Unit) {
+private fun NotFoundContent(onClose: () -> Unit, linkFailed: Boolean = false) {
     Column(
         modifier = Modifier.fillMaxSize().padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -139,13 +142,19 @@ private fun NotFoundContent(onClose: () -> Unit) {
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            stringResource(R.string.ticket_import_none),
+            stringResource(
+                if (linkFailed) R.string.ticket_import_link_failed
+                else R.string.ticket_import_none,
+            ),
             style = MaterialTheme.typography.titleMedium,
             textAlign = TextAlign.Center,
         )
         Spacer(Modifier.height(8.dp))
         Text(
-            stringResource(R.string.ticket_import_none_subtitle),
+            stringResource(
+                if (linkFailed) R.string.ticket_import_link_failed_subtitle
+                else R.string.ticket_import_none_subtitle,
+            ),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )

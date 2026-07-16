@@ -551,6 +551,8 @@
     <string name="ticket_import_loading">Reading your ticket…</string>
     <string name="ticket_import_none">No ticket found</string>
     <string name="ticket_import_none_subtitle">We couldn\'t find a ticket, boarding pass or card in this file.</string>
+    <string name="ticket_import_link_failed">Couldn\'t open the link</string>
+    <string name="ticket_import_link_failed_subtitle">The link couldn\'t be downloaded. Check your connection and try again.</string>
     <string name="ticket_import_add">Add</string>
     <string name="ticket_untitled">Untitled ticket</string>
     <string name="action_close">Close</string>
