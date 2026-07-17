@@ -1,14 +1,20 @@
 package com.erfangholami.solidshare.data.passimport
 
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
+import com.erfangholami.solidshare.domain.model.TicketBeaconInfo
 import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketExtra
 import com.erfangholami.solidshare.domain.model.TicketJourney
+import com.erfangholami.solidshare.domain.model.TicketLocationInfo
+import com.erfangholami.solidshare.domain.model.TicketMembershipInfo
+import com.erfangholami.solidshare.domain.model.TicketPassInfo
+import com.erfangholami.solidshare.domain.model.TicketReservationInfo
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.domain.model.TicketStyle
+import com.erfangholami.solidshare.domain.model.TicketWifiInfo
 import com.erfangholami.solidshare.domain.model.TransportMode
 
 class PassBarcode(
@@ -16,6 +22,20 @@ class PassBarcode(
     val format: TicketBarcodeFormat,
     val encoding: String? = null,
     val altText: String? = null,
+)
+
+class PassData(
+    val description: String? = null,
+    val passInfo: TicketPassInfo? = null,
+    val reservation: TicketReservationInfo? = null,
+    val membership: TicketMembershipInfo? = null,
+    val locations: List<TicketLocationInfo> = emptyList(),
+    val beacons: List<TicketBeaconInfo> = emptyList(),
+    val wifi: List<TicketWifiInfo> = emptyList(),
+    val voided: Boolean? = null,
+    val silenceRequested: Boolean? = null,
+    val relevantStart: String? = null,
+    val relevantEnd: String? = null,
 )
 
 sealed class Pass {
@@ -30,12 +50,14 @@ sealed class Pass {
     abstract val validFrom: String?
     abstract val validThrough: String?
     abstract val source: TicketSource
+    abstract val data: PassData
 
     protected open fun enrich(draft: TicketDraft): TicketDraft = draft
 
     fun toDraft(): TicketDraft = enrich(
         TicketDraft(
             title = title,
+            description = data.description?.takeIf { it != title },
             number = number,
             token = barcode?.payload,
             barcodeFormat = barcode?.format ?: TicketBarcodeFormat.NONE,
@@ -48,6 +70,16 @@ sealed class Pass {
             validThrough = validThrough,
             style = style,
             extras = extras,
+            passInfo = data.passInfo,
+            reservation = data.reservation,
+            membership = data.membership,
+            locations = data.locations,
+            beacons = data.beacons,
+            wifi = data.wifi,
+            voided = data.voided,
+            silenceRequested = data.silenceRequested,
+            relevantStart = data.relevantStart,
+            relevantEnd = data.relevantEnd,
             source = source,
         ),
     )
@@ -72,6 +104,7 @@ class TransportPass(
     override val validFrom: String? = null,
     override val validThrough: String? = null,
     override val source: TicketSource = TicketSource.MANUAL,
+    override val data: PassData = PassData(),
     val seat: TicketSeatInfo? = null,
     val startIso: String? = null,
 ) : Pass() {
@@ -92,7 +125,8 @@ class TransportPass(
     val departureTime: String? get() = journey.from?.time
     val arrivalTime: String? get() = journey.to?.time
     val serviceNumber: String? get() = journey.serviceNumber
-    val boardingTime: String? get() = extraValue("boarding", "boardingtime", "boardinguntil")
+    val boardingTime: String? get() =
+        journey.boardingTime ?: extraValue("boarding", "boardingtime", "boardinguntil")
     val travelClass: String? get() = extraValue("class", "cabinclass", "travelclass", "fareclass", "cabin")
 
     override fun enrich(draft: TicketDraft): TicketDraft = draft.copy(
@@ -117,6 +151,7 @@ class EventPass(
     override val validFrom: String? = null,
     override val validThrough: String? = null,
     override val source: TicketSource = TicketSource.MANUAL,
+    override val data: PassData = PassData(),
     val seat: TicketSeatInfo? = null,
     val price: String? = null,
     val currency: String? = null,
@@ -146,6 +181,7 @@ class StorePass(
     override val validFrom: String? = null,
     override val validThrough: String? = null,
     override val source: TicketSource = TicketSource.MANUAL,
+    override val data: PassData = PassData(),
 ) : Pass() {
 
     override val category: TicketCategory = TicketCategory.LOYALTY
@@ -165,6 +201,7 @@ class CouponPass(
     override val validFrom: String? = null,
     override val validThrough: String? = null,
     override val source: TicketSource = TicketSource.MANUAL,
+    override val data: PassData = PassData(),
 ) : Pass() {
 
     override val category: TicketCategory = TicketCategory.COUPON
@@ -184,6 +221,7 @@ class GenericPass(
     override val validFrom: String? = null,
     override val validThrough: String? = null,
     override val source: TicketSource = TicketSource.MANUAL,
+    override val data: PassData = PassData(),
     val event: TicketEventInfo? = null,
     val seat: TicketSeatInfo? = null,
 ) : Pass() {
@@ -196,3 +234,29 @@ class GenericPass(
 
 internal fun normalizePassKey(raw: String): String =
     raw.lowercase().filter { it.isLetterOrDigit() }
+
+private val BASIC_ISO_DATE_TIME =
+    Regex("""(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z|[+-]\d{2}:?\d{2})?""")
+
+private val EXTENDED_DATE_TIME =
+    Regex("""(\d{4}-\d{2}-\d{2}T\d{2}:\d{2})(:\d{2}(?:\.\d+)?)?(Z|[+-]\d{2}:?\d{2})?""")
+
+fun normalizePassDateTime(raw: String): String {
+    BASIC_ISO_DATE_TIME.matchEntire(raw)?.let { match ->
+        val values = match.groupValues
+        val seconds = values[6].ifEmpty { "00" }
+        val offset = normalizePassOffset(values[7])
+        return "${values[1]}-${values[2]}-${values[3]}T${values[4]}:${values[5]}:$seconds$offset"
+    }
+    EXTENDED_DATE_TIME.matchEntire(raw)?.let { match ->
+        val seconds = match.groupValues[2].ifEmpty { ":00" }
+        val offset = normalizePassOffset(match.groupValues[3])
+        return "${match.groupValues[1]}$seconds$offset"
+    }
+    return raw
+}
+
+private fun normalizePassOffset(offset: String): String = when {
+    offset.isEmpty() || offset == "Z" || offset.contains(':') -> offset
+    else -> "${offset.take(3)}:${offset.drop(3)}"
+}

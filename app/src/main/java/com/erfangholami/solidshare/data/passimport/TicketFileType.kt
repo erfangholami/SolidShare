@@ -21,13 +21,18 @@ object TicketFileSniffer {
     }
 
     /** Extracts the first `.pkpass` member of a `.pkpasses` bundle, or `null` if there is none. */
-    fun firstPassOfBundle(bytes: ByteArray): ByteArray? = runCatching {
+    fun firstPassOfBundle(bytes: ByteArray): ByteArray? = allPassesOfBundle(bytes).firstOrNull()
+
+    /** Extracts every `.pkpass` member of a `.pkpasses` bundle, in bundle order (max 10 per spec). */
+    fun allPassesOfBundle(bytes: ByteArray): List<ByteArray> = runCatching {
         ZipInputStream(ByteArrayInputStream(bytes)).use { zip ->
             generateSequence { zip.nextEntry }
-                .firstOrNull { it.name.endsWith(".pkpass", ignoreCase = true) }
-                ?.let { zip.readBytes() }
+                .filter { it.name.endsWith(".pkpass", ignoreCase = true) && !it.isDirectory }
+                .map { zip.readBytes() }
+                .take(MAX_BUNDLE_PASSES)
+                .toList()
         }
-    }.getOrNull()
+    }.getOrDefault(emptyList())
 
     private fun classifyZip(bytes: ByteArray): TicketFileType {
         val names = zipEntryNames(bytes)
@@ -49,6 +54,8 @@ object TicketFileSniffer {
         for (i in magic.indices) if (bytes[i] != magic[i]) return false
         return true
     }
+
+    private const val MAX_BUNDLE_PASSES = 10
 
     private val PDF_MAGIC = byteArrayOf('%'.code.toByte(), 'P'.code.toByte(), 'D'.code.toByte(), 'F'.code.toByte())
     private val PNG_MAGIC = byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte())

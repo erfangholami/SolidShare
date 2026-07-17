@@ -64,4 +64,20 @@ class TicketFileSnifferTest {
     fun `firstPassOfBundle returns null when there is no pkpass member`() {
         assertNull(TicketFileSniffer.firstPassOfBundle(zip("notes.txt" to "x".toByteArray())))
     }
+
+    @Test
+    fun `enumerates every pass of a pkpasses bundle in order`() {
+        val out = java.io.ByteArrayOutputStream()
+        java.util.zip.ZipOutputStream(out).use { zip ->
+            listOf("leg1.pkpass" to byteArrayOf(1), "leg2.pkpass" to byteArrayOf(2, 2), "readme.txt" to byteArrayOf(9)).forEach { (name, bytes) ->
+                zip.putNextEntry(java.util.zip.ZipEntry(name))
+                zip.write(bytes)
+                zip.closeEntry()
+            }
+        }
+        val passes = TicketFileSniffer.allPassesOfBundle(out.toByteArray())
+        org.junit.Assert.assertEquals(2, passes.size)
+        org.junit.Assert.assertEquals(1, passes[0].size)
+        org.junit.Assert.assertEquals(2, passes[1].size)
+    }
 }
