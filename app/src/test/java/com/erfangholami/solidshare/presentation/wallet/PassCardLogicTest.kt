@@ -21,6 +21,7 @@ class PassCardLogicTest {
     fun `parses hex colours`() {
         assertEquals(Color(0xFFA8C6E8), parsePassColor("#A8C6E8"))
         assertEquals(Color(0x80A8C6E8), parsePassColor("#80A8C6E8"))
+        assertEquals(Color(0xFF112233), parsePassColor("#123"))
     }
 
     @Test

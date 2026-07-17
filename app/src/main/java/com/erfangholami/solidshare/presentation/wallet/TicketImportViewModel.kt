@@ -5,14 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.tickets.ParsedTicketFile
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.TicketDraft
-import com.erfangholami.solidshare.domain.model.TicketFile
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 @HiltViewModel
@@ -23,9 +24,14 @@ class TicketImportViewModel @Inject constructor(
     private val stringProvider: StringProvider,
 ) : ViewModel() {
 
+    data class FoundPass(
+        val draft: TicketDraft,
+        val visuals: PassImages?,
+    )
+
     sealed interface ImportState {
         data object Loading : ImportState
-        data class Found(val draft: TicketDraft) : ImportState
+        data class Found(val items: List<FoundPass>) : ImportState
         data object NotFound : ImportState
     }
 
@@ -35,13 +41,13 @@ class TicketImportViewModel @Inject constructor(
     private val _saving = MutableStateFlow(false)
     val saving = _saving.asStateFlow()
 
+    private val _added = MutableStateFlow<Set<Int>>(emptySet())
+    val added = _added.asStateFlow()
+
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
-    private val _visuals = MutableStateFlow<PassImages?>(null)
-    val visuals = _visuals.asStateFlow()
-
-    private var artifact: TicketFile? = null
+    private var parsed: List<ParsedTicketFile> = emptyList()
     private var started = false
 
     fun load() {
@@ -54,40 +60,50 @@ class TicketImportViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _state.value = ImportState.Loading
-            _state.value = parsed(pending.bytes, pending.fileName)
-        }
-    }
-
-    private suspend fun parsed(bytes: ByteArray, fileName: String?): ImportState {
-        val result = runCatching {
-            ticketsRepository.parseTicketFile(bytes, fileName)
-        }.getOrNull() ?: return ImportState.NotFound
-        artifact = result.artifact
-        _visuals.value = result.visuals
-        return ImportState.Found(result.draft)
-    }
-
-    fun add(onAdded: () -> Unit) {
-        val draft = withFallbackTitle((_state.value as? ImportState.Found)?.draft ?: return)
-        viewModelScope.launch {
-            _saving.value = true
-            runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
-                ticketsRepository.createTicket(webId, draft, artifact)
-            }.onSuccess {
-                _saving.value = false
-                onAdded()
-            }.onFailure {
-                _saving.value = false
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+            parsed = runCatching {
+                ticketsRepository.parseTicketFile(pending.bytes, pending.fileName)
+            }.getOrDefault(emptyList())
+            _state.value = if (parsed.isEmpty()) {
+                ImportState.NotFound
+            } else {
+                ImportState.Found(parsed.map { FoundPass(it.draft, it.visuals) })
             }
         }
     }
 
-    fun prepareEdit(): TicketDraft? {
-        val draft = (_state.value as? ImportState.Found)?.draft ?: return null
-        importHolder.stash(artifact)
-        return draft
+    fun add(index: Int, onAllAdded: () -> Unit) {
+        addAll(listOf(index), onAllAdded)
+    }
+
+    fun addAll(onAllAdded: () -> Unit) {
+        addAll(parsed.indices.filter { it !in _added.value }, onAllAdded)
+    }
+
+    private fun addAll(indices: List<Int>, onAllAdded: () -> Unit) {
+        if (indices.isEmpty() || _saving.value) return
+        viewModelScope.launch {
+            _saving.value = true
+            runCatching {
+                val webId = requireNotNull(authRepository.getActiveWebId())
+                indices.forEach { index ->
+                    val item = parsed[index]
+                    ticketsRepository.createTicket(webId, withFallbackTitle(item.draft), item.artifact)
+                    _added.update { it + index }
+                }
+            }.onFailure {
+                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+            }
+            _saving.value = false
+            if (_added.value.size == parsed.size && parsed.isNotEmpty()) {
+                onAllAdded()
+            }
+        }
+    }
+
+    fun prepareEdit(index: Int): TicketDraft? {
+        val item = parsed.getOrNull(index) ?: return null
+        importHolder.stash(item.artifact)
+        return item.draft
     }
 
     fun consumeMessage() {

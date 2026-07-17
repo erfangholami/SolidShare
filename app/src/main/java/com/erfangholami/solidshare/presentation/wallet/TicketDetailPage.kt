@@ -31,6 +31,13 @@ import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.CardMembership
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.FormatListNumbered
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Payments
@@ -394,6 +401,81 @@ private fun TicketDetailContent(ticket: Ticket, visuals: PassImages? = null) {
                 label.ifBlank { stringResource(R.string.details) },
                 value,
             )
+        }
+        ticket.event?.performers?.takeIf { it.isNotEmpty() }?.let {
+            TicketDetailRow(
+                Icons.Filled.Groups,
+                stringResource(R.string.ticket_field_performers),
+                it.joinToString(", "),
+            )
+        }
+        ticket.reservation?.let { reservation ->
+            reservation.boardingGroup?.let {
+                TicketDetailRow(Icons.Filled.Group, stringResource(R.string.pass_label_group), it)
+            }
+            reservation.boardingZone?.let {
+                TicketDetailRow(Icons.Filled.Group, stringResource(R.string.pass_label_zone), it)
+            }
+            reservation.sequenceNumber?.let {
+                TicketDetailRow(
+                    Icons.Filled.FormatListNumbered,
+                    stringResource(R.string.pass_label_sequence),
+                    it,
+                )
+            }
+            reservation.fareClass?.let {
+                TicketDetailRow(Icons.Filled.Chair, stringResource(R.string.pass_label_class), it)
+            }
+            reservation.priorityStatus?.let {
+                TicketDetailRow(
+                    Icons.Filled.Star,
+                    stringResource(R.string.ticket_field_priority),
+                    it,
+                )
+            }
+            reservation.securityScreening?.let {
+                TicketDetailRow(
+                    Icons.Filled.Shield,
+                    stringResource(R.string.ticket_field_security),
+                    it,
+                )
+            }
+        }
+        ticket.membership?.let { membership ->
+            membership.programName?.let {
+                TicketDetailRow(
+                    Icons.Filled.CardMembership,
+                    stringResource(R.string.pass_label_program),
+                    it,
+                )
+            }
+            membership.number?.let {
+                TicketDetailRow(
+                    Icons.Filled.CardMembership,
+                    stringResource(R.string.ticket_field_member_number),
+                    it,
+                )
+            }
+            membership.status?.let {
+                TicketDetailRow(Icons.Filled.Star, stringResource(R.string.pass_label_status), it)
+            }
+            membership.balanceText()?.let {
+                TicketDetailRow(
+                    Icons.Filled.Payments,
+                    stringResource(R.string.pass_label_balance),
+                    it,
+                )
+            }
+        }
+        ticket.wifi.forEach { wifi ->
+            TicketDetailRow(
+                Icons.Filled.Wifi,
+                stringResource(R.string.ticket_field_wifi),
+                listOfNotNull(wifi.ssid, wifi.password).joinToString(" · "),
+            )
+        }
+        ticket.locations.mapNotNull { it.relevantText }.distinct().forEach {
+            TicketDetailRow(Icons.Filled.Place, stringResource(R.string.ticket_field_venue), it)
         }
         ticket.description?.let {
             TicketDetailRow(

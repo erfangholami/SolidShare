@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.data.passimport.normalizePassDateTime
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketCategory
@@ -84,8 +85,9 @@ fun TicketCategoryIcon(
     }
 }
 
-fun formatTicketDate(iso: String?): String? {
-    if (iso.isNullOrBlank()) return null
+fun formatTicketDate(raw: String?): String? {
+    if (raw.isNullOrBlank()) return null
+    val iso = normalizePassDateTime(raw)
     return runCatching {
         if (iso.contains('T')) {
             val instant = runCatching { Instant.parse(iso) }
@@ -104,14 +106,18 @@ fun formatTicketDate(iso: String?): String? {
 }
 
 fun isTicketExpired(ticket: Ticket, now: Instant = Instant.now()): Boolean {
+    if (ticket.voided == true) return true
+    ticketInstantOrNull(ticket.validThrough)?.let { ends ->
+        if (ends.isBefore(now)) return true
+    }
     val reference = ticketInstantOrNull(ticket.event?.start ?: ticket.journey?.from?.time)
-        ?: ticketInstantOrNull(ticket.validThrough)
         ?: return false
     return reference.isBefore(now)
 }
 
-fun ticketInstantOrNull(iso: String?): Instant? {
-    if (iso.isNullOrBlank()) return null
+fun ticketInstantOrNull(raw: String?): Instant? {
+    if (raw.isNullOrBlank()) return null
+    val iso = normalizePassDateTime(raw)
     return runCatching { Instant.parse(iso) }.getOrElse {
         runCatching { OffsetDateTime.parse(iso).toInstant() }.getOrElse {
             runCatching {

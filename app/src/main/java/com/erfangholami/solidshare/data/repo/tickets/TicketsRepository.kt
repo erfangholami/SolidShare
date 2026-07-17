@@ -26,7 +26,7 @@ interface TicketsRepository {
 
     fun parseTicketQr(raw: String): TicketDraft?
 
-    suspend fun parseTicketFile(bytes: ByteArray, fileName: String? = null): ParsedTicketFile?
+    suspend fun parseTicketFile(bytes: ByteArray, fileName: String? = null): List<ParsedTicketFile>
 }
 
 data class ParsedTicketFile(

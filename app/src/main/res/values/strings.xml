@@ -566,6 +566,14 @@
     <string name="pass_label_sequence">Sequence</string>
     <string name="pass_label_status">Status</string>
     <string name="pass_label_frequent_flyer">Frequent flyer</string>
+    <string name="pass_label_program">Program</string>
+    <string name="pass_label_balance">Balance</string>
+    <string name="pass_label_zone">Zone</string>
+    <string name="ticket_field_performers">Performers</string>
+    <string name="ticket_field_priority">Priority</string>
+    <string name="ticket_field_security">Security</string>
+    <string name="ticket_field_member_number">Member number</string>
+    <string name="ticket_field_wifi">Wi-Fi</string>
     <string name="pass_value_front">Front</string>
     <string name="pass_value_rear">Rear</string>
     <string name="pass_value_economy">Economy</string>
@@ -573,6 +581,9 @@
     <string name="pass_value_business">Business</string>
     <string name="pass_value_first">First</string>
     <string name="ticket_import_add">Add</string>
+    <string name="ticket_import_add_all">Add all</string>
+    <string name="ticket_import_added">Added</string>
+    <string name="ticket_import_found_count">%1$d passes in this file</string>
     <string name="ticket_untitled">Untitled ticket</string>
     <string name="action_close">Close</string>
     <string name="action_edit">Edit</string>

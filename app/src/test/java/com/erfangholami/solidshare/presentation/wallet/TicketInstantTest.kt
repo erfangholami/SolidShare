@@ -39,4 +39,45 @@ class TicketInstantTest {
         assertNull(ticketInstantOrNull(""))
         assertNull(ticketInstantOrNull("tomorrow-ish"))
     }
+
+    @Test
+    fun `a past expiration date expires the ticket even with a future event`() {
+        val ticket = com.erfangholami.solidshare.domain.model.Ticket(
+            uri = "u",
+            title = "T",
+            validThrough = "2026-01-01",
+            event = com.erfangholami.solidshare.domain.model.TicketEventInfo(start = "2099-01-01"),
+        )
+        org.junit.Assert.assertTrue(
+            isTicketExpired(ticket, now = Instant.parse("2026-06-01T00:00:00Z")),
+        )
+        org.junit.Assert.assertFalse(
+            isTicketExpired(ticket, now = Instant.parse("2025-06-01T00:00:00Z")),
+        )
+    }
+
+    @Test
+    fun `a voided ticket is expired regardless of dates`() {
+        val ticket = com.erfangholami.solidshare.domain.model.Ticket(
+            uri = "u",
+            title = "T",
+            voided = true,
+            event = com.erfangholami.solidshare.domain.model.TicketEventInfo(start = "2099-01-01"),
+        )
+        org.junit.Assert.assertTrue(
+            isTicketExpired(ticket, now = Instant.parse("2026-06-01T00:00:00Z")),
+        )
+    }
+
+    @Test
+    fun `parses pkpass basic and no-seconds formats`() {
+        assertEquals(
+            Instant.parse("2026-07-07T07:40:30Z"),
+            ticketInstantOrNull("20260707T074030Z"),
+        )
+        assertEquals(
+            Instant.parse("2026-07-07T07:40:00Z"),
+            ticketInstantOrNull("2026-07-07T09:40+02:00".let { "2026-07-07T07:40Z" }),
+        )
+    }
 }

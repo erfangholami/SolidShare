@@ -24,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -41,6 +42,8 @@ import androidx.compose.foundation.Canvas
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.passimport.BcbpParser
 import com.erfangholami.solidshare.data.passimport.PassImages
+import com.erfangholami.solidshare.data.passimport.normalizePassDateTime
+import com.erfangholami.solidshare.data.passimport.normalizePassKey
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.domain.model.TicketCategory
@@ -49,6 +52,8 @@ import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketExtra
 import com.erfangholami.solidshare.domain.model.TicketExtraPlacement
 import com.erfangholami.solidshare.domain.model.TicketJourney
+import com.erfangholami.solidshare.domain.model.TicketMembershipInfo
+import com.erfangholami.solidshare.domain.model.TicketReservationInfo
 import com.erfangholami.solidshare.domain.model.TicketSeatInfo
 import com.erfangholami.solidshare.domain.model.TicketStop
 import com.erfangholami.solidshare.domain.model.TicketStyle
@@ -79,6 +84,8 @@ data class PassCardData(
     val extras: List<TicketExtra> = emptyList(),
     val barcodeEncoding: String? = null,
     val barcodeAltText: String? = null,
+    val reservation: TicketReservationInfo? = null,
+    val membership: TicketMembershipInfo? = null,
 )
 
 private fun PassCardData.headerExtras(): List<TicketExtra> = extras
@@ -88,13 +95,41 @@ private fun PassCardData.headerExtras(): List<TicketExtra> = extras
 private fun PassCardData.bodyExtraList(): List<TicketExtra> {
     val header = headerExtras()
     return extras.filter {
-        it.placement != TicketExtraPlacement.BACK && it !in header && !it.label.isNullOrBlank()
+        it.placement != TicketExtraPlacement.BACK &&
+            it.placement != TicketExtraPlacement.ADDITIONAL &&
+            it !in header && !it.label.isNullOrBlank()
     }
 }
 
 @Composable
 private fun PassCardData.bodyFields(): List<Pair<String, String>> =
-    bodyExtraList().map { normalizedExtra(category, it) }
+    bodyExtraList().map { normalizedExtra(category, it) } + typedFields()
+
+@Composable
+private fun PassCardData.typedFields(): List<Pair<String, String>> {
+    val labels = bodyExtraList().mapNotNull { it.label?.let(::normalizePassKey) }.toSet()
+    fun free(vararg keys: String) = keys.none { normalizePassKey(it) in labels }
+    return listOfNotNull(
+        reservation?.boardingGroup
+            ?.takeIf { free("group", "boardinggroup") }
+            ?.let { stringResource(R.string.pass_label_group) to it },
+        reservation?.boardingZone
+            ?.takeIf { free("zone", "boardingzone") }
+            ?.let { stringResource(R.string.pass_label_zone) to it },
+        reservation?.sequenceNumber
+            ?.takeIf { free("sequence", "sequencenumber", "seq") }
+            ?.let { stringResource(R.string.pass_label_sequence) to it },
+        reservation?.fareClass
+            ?.takeIf { free("class", "fareclass", "cabin") }
+            ?.let { stringResource(R.string.pass_label_class) to it },
+        membership?.balanceText()
+            ?.takeIf { free("balance", "points", "pointsbalance") }
+            ?.let { stringResource(R.string.pass_label_balance) to it },
+    )
+}
+
+internal fun TicketMembershipInfo.balanceText(): String? =
+    pointsBalance ?: balance?.let { listOfNotNull(it, balanceCurrency).joinToString(" ") }
 
 fun TicketDraft.toPassCardData(images: PassImages? = null): PassCardData = PassCardData(
     title = title,
@@ -114,6 +149,8 @@ fun TicketDraft.toPassCardData(images: PassImages? = null): PassCardData = PassC
     extras = extras,
     barcodeEncoding = barcodeEncoding,
     barcodeAltText = barcodeAltText,
+    reservation = reservation,
+    membership = membership,
 )
 
 fun Ticket.toPassCardData(images: PassImages? = null): PassCardData = PassCardData(
@@ -134,6 +171,8 @@ fun Ticket.toPassCardData(images: PassImages? = null): PassCardData = PassCardDa
     extras = extras,
     barcodeEncoding = barcodeEncoding,
     barcodeAltText = barcodeAltText,
+    reservation = reservation,
+    membership = membership,
 )
 
 fun TicketSummaryItem.toPassCardData(): PassCardData = PassCardData(
@@ -159,6 +198,11 @@ internal fun parsePassColor(raw: String?): Color? {
         val hex = value.removePrefix("#")
         val parsed = hex.toLongOrNull(16) ?: return null
         return when (hex.length) {
+            3 -> {
+                val expanded = hex.map { "$it$it" }.joinToString("").toLong(16)
+                Color(0xFF000000 or expanded)
+            }
+
             6 -> Color(0xFF000000 or parsed)
             8 -> Color(parsed.toULong().toLong())
             else -> null
@@ -175,7 +219,9 @@ internal fun parsePassColor(raw: String?): Color? {
 private val RGB_PATTERN = Regex("""rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)""")
 
 internal fun passPalette(data: PassCardData, expired: Boolean = false): PassPalette {
-    val container = parsePassColor(data.style?.backgroundColor) ?: defaultContainer(data.category)
+    val container = parsePassColor(data.style?.backgroundColor)
+        ?: parsePassColor(data.style?.stripColor)
+        ?: defaultContainer(data.category)
     val onContainer = parsePassColor(data.style?.foregroundColor) ?: bestOn(container)
     val label = parsePassColor(data.style?.labelColor) ?: onContainer.copy(alpha = 0.72f)
     if (!expired) return PassPalette(container, onContainer, label)
@@ -227,6 +273,14 @@ fun PassCard(
                 Spacer(Modifier.height(18.dp))
             }
             if (showBarcode && !data.token.isNullOrBlank()) {
+                rememberPassBitmap(data.images?.footer)?.let { footer ->
+                    Image(
+                        bitmap = footer,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth().height(44.dp),
+                        contentScale = ContentScale.Fit,
+                    )
+                }
                 TearLine(palette)
                 Column(
                     Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
@@ -258,13 +312,39 @@ fun PassCard(
             }
         }
     }
+    val decorated: @Composable () -> Unit = {
+        val background = rememberPassBitmap(data.images?.background)
+        if (background != null) {
+            Box {
+                Image(
+                    bitmap = background,
+                    contentDescription = null,
+                    modifier = Modifier.matchParentSize().blur(18.dp),
+                    contentScale = ContentScale.Crop,
+                    alpha = 0.45f,
+                )
+                content()
+            }
+        } else {
+            content()
+        }
+    }
     if (onClick != null) {
         Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape, color = palette.container) {
-            content()
+            decorated()
         }
     } else {
         Surface(modifier = modifier.fillMaxWidth(), shape = shape, color = palette.container) {
-            content()
+            decorated()
+        }
+    }
+}
+
+@Composable
+private fun rememberPassBitmap(bytes: ByteArray?): androidx.compose.ui.graphics.ImageBitmap? {
+    return remember(bytes) {
+        bytes?.let {
+            runCatching { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }.getOrNull()
         }
     }
 }
@@ -275,12 +355,7 @@ private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolea
         modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val logo = data.images?.logo
-        val logoBitmap = remember(logo) {
-            logo?.let { bytes ->
-                runCatching { BitmapFactory.decodeByteArray(bytes, 0, bytes.size)?.asImageBitmap() }.getOrNull()
-            }
-        }
+        val logoBitmap = rememberPassBitmap(data.images?.logo)
         if (logoBitmap != null) {
             Image(
                 bitmap = logoBitmap,
@@ -357,10 +432,7 @@ private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolea
 
 @Composable
 private fun PassStrip(data: PassCardData) {
-    val strip = data.images?.strip ?: return
-    val bitmap = remember(strip) {
-        runCatching { BitmapFactory.decodeByteArray(strip, 0, strip.size)?.asImageBitmap() }.getOrNull()
-    } ?: return
+    val bitmap = rememberPassBitmap(data.images?.strip) ?: return
     Image(
         bitmap = bitmap,
         contentDescription = null,
@@ -439,12 +511,25 @@ private fun PassStopColumn(
 
 @Composable
 private fun EventBody(data: PassCardData, palette: PassPalette) {
-    Text(
-        data.event?.name ?: data.title,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = palette.onContainer,
-    )
+    val thumbnail = rememberPassBitmap(data.images?.thumbnail)
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            data.event?.name ?: data.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = palette.onContainer,
+            modifier = Modifier.weight(1f),
+        )
+        thumbnail?.let {
+            Spacer(Modifier.width(12.dp))
+            Image(
+                bitmap = it,
+                contentDescription = null,
+                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)),
+                contentScale = ContentScale.Crop,
+            )
+        }
+    }
     data.event?.venue?.let { venue ->
         Spacer(Modifier.height(4.dp))
         venue.name?.let {
@@ -553,8 +638,8 @@ private val timeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:m
 private val dateFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM")
 private val dateTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM · HH:mm")
 
-internal fun shortTime(iso: String?): String? {
-    iso ?: return null
+internal fun shortTime(raw: String?): String? {
+    val iso = raw?.let(::normalizePassDateTime) ?: return null
     runCatching { OffsetDateTime.parse(iso).format(timeFormatter) }.getOrNull()?.let { return it }
     runCatching { LocalDateTime.parse(iso).format(timeFormatter) }.getOrNull()?.let { return it }
     runCatching { LocalDate.parse(iso).format(dateFormatter) }.getOrNull()?.let { return it }
@@ -563,15 +648,15 @@ internal fun shortTime(iso: String?): String? {
 
 private val DISPLAY_TIME = Regex("""\d{1,2}:\d{2}( ?[APap][Mm])?""")
 
-internal fun shortDate(iso: String?): String? {
-    iso ?: return null
+internal fun shortDate(raw: String?): String? {
+    val iso = raw?.let(::normalizePassDateTime) ?: return null
     runCatching { OffsetDateTime.parse(iso).format(dateFormatter) }.getOrNull()?.let { return it }
     runCatching { LocalDateTime.parse(iso).format(dateFormatter) }.getOrNull()?.let { return it }
     return runCatching { LocalDate.parse(iso).format(dateFormatter) }.getOrNull()
 }
 
-internal fun shortDateTime(iso: String?): String? {
-    iso ?: return null
+internal fun shortDateTime(raw: String?): String? {
+    val iso = raw?.let(::normalizePassDateTime) ?: return null
     runCatching { OffsetDateTime.parse(iso).format(dateTimeFormatter) }.getOrNull()?.let { return it }
     runCatching { LocalDateTime.parse(iso).format(dateTimeFormatter) }.getOrNull()?.let { return it }
     return runCatching { LocalDate.parse(iso).format(dateFormatter) }.getOrNull()

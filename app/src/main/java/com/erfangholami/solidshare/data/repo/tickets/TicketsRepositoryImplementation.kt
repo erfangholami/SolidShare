@@ -73,29 +73,23 @@ class TicketsRepositoryImplementation @Inject constructor(
     override suspend fun parseTicketFile(
         bytes: ByteArray,
         fileName: String?,
-    ): ParsedTicketFile? = when (TicketFileSniffer.detect(bytes)) {
-        TicketFileType.PKPASS ->
-            PkpassParser.parse(bytes)?.let { pass ->
-                ParsedTicketFile(
-                    draft = pass.toDraft(),
-                    artifact = TicketFile(PkpassParser.MIME_TYPE, bytes),
-                    visuals = runCatching { PkpassImages.extract(bytes) }.getOrNull(),
-                )
-            }
+    ): List<ParsedTicketFile> = when (TicketFileSniffer.detect(bytes)) {
+        TicketFileType.PKPASS -> listOfNotNull(parsedPass(bytes))
 
         TicketFileType.PKPASSES ->
-            TicketFileSniffer.firstPassOfBundle(bytes)?.let { first ->
-                PkpassParser.parse(first)?.let { pass ->
-                    ParsedTicketFile(
-                        draft = pass.toDraft(),
-                        artifact = TicketFile(PKPASSES_MIME_TYPE, bytes),
-                        visuals = runCatching { PkpassImages.extract(first) }.getOrNull(),
-                    )
-                }
-            }
+            TicketFileSniffer.allPassesOfBundle(bytes).mapNotNull { parsedPass(it) }
 
-        else -> null
+        else -> emptyList()
     }
+
+    private fun parsedPass(passBytes: ByteArray): ParsedTicketFile? =
+        PkpassParser.parse(passBytes)?.let { pass ->
+            ParsedTicketFile(
+                draft = pass.toDraft(),
+                artifact = TicketFile(PkpassParser.MIME_TYPE, passBytes),
+                visuals = runCatching { PkpassImages.extract(passBytes) }.getOrNull(),
+            )
+        }
 
     private fun <T : Parcelable> SolidResult<T>.unwrap(): T = getOrThrow()
 

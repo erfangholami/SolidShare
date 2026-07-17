@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.SearchOff
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -32,6 +33,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -47,7 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
-import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketStop
@@ -64,7 +65,7 @@ fun TicketImportPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val saving by viewModel.saving.collectAsStateWithLifecycle()
-    val visuals by viewModel.visuals.collectAsStateWithLifecycle()
+    val added by viewModel.added.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -96,12 +97,17 @@ fun TicketImportPage(
                     NotFoundContent(onClose = { navController.popBackStack() })
 
                 is TicketImportViewModel.ImportState.Found -> FoundContent(
-                    draft = current.draft,
-                    visuals = visuals,
+                    items = current.items,
+                    addedIndices = added,
                     saving = saving,
-                    onAdd = { viewModel.add { navController.popBackStack() } },
-                    onEdit = {
-                        val draft = viewModel.prepareEdit() ?: return@FoundContent
+                    onAdd = { index ->
+                        viewModel.add(index) { navController.popBackStack() }
+                    },
+                    onAddAll = {
+                        viewModel.addAll { navController.popBackStack() }
+                    },
+                    onEdit = { index ->
+                        val draft = viewModel.prepareEdit(index) ?: return@FoundContent
                         navController.navigate(TicketEditRoute(draft = draft)) {
                             popUpTo(navController.currentBackStackEntry?.destination?.route ?: return@navigate) {
                                 inclusive = true
@@ -159,11 +165,12 @@ private fun NotFoundContent(onClose: () -> Unit) {
 
 @Composable
 private fun FoundContent(
-    draft: TicketDraft,
-    visuals: PassImages?,
+    items: List<TicketImportViewModel.FoundPass>,
+    addedIndices: Set<Int>,
     saving: Boolean,
-    onAdd: () -> Unit,
-    onEdit: () -> Unit,
+    onAdd: (Int) -> Unit,
+    onAddAll: () -> Unit,
+    onEdit: (Int) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -171,20 +178,65 @@ private fun FoundContent(
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
-        PassCard(draft.toPassCardData(visuals))
-        Spacer(Modifier.height(24.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            OutlinedButton(
-                onClick = onEdit,
-                enabled = !saving,
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.action_edit)) }
-            Button(
-                onClick = onAdd,
-                enabled = !saving,
-                modifier = Modifier.weight(1f),
-            ) { Text(stringResource(R.string.ticket_import_add)) }
+        if (items.size > 1) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.ticket_import_found_count, items.size),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(
+                    onClick = onAddAll,
+                    enabled = !saving && items.indices.any { it !in addedIndices },
+                ) {
+                    Text(stringResource(R.string.ticket_import_add_all))
+                }
+            }
+            Spacer(Modifier.height(8.dp))
         }
+        items.forEachIndexed { index, item ->
+            if (index > 0) Spacer(Modifier.height(20.dp))
+            PassCard(item.draft.toPassCardData(item.visuals))
+            Spacer(Modifier.height(12.dp))
+            if (index in addedIndices) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(
+                        Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        stringResource(R.string.ticket_import_added),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            } else {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedButton(
+                        onClick = { onEdit(index) },
+                        enabled = !saving,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.action_edit)) }
+                    Button(
+                        onClick = { onAdd(index) },
+                        enabled = !saving,
+                        modifier = Modifier.weight(1f),
+                    ) { Text(stringResource(R.string.ticket_import_add)) }
+                }
+            }
+        }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
