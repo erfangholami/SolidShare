@@ -27,23 +27,26 @@
 # ML Kit barcode scanning (com.google.mlkit:barcode-scanning, which pulls in
 # play-services-mlkit-barcode-scanning) builds its scanner through a Firebase-components
 # registry. The registrars are discovered reflectively from MlKitComponentDiscoveryService
-# manifest meta-data, and the registered components are tagged @KeepForSdk — which GMS's
-# consumer rules do NOT member-keep — so under R8 full mode they get optimized away and
-# BarcodeScanning.getClient() NPEs on a null component. Keep the registrars and the ML Kit
-# barcode surface.
+# manifest meta-data; firebase-components' consumer rule keeps only their class NAMES, and
+# under R8 full mode the no-arg constructors that reflective instantiation needs get
+# stripped, NPE-ing BarcodeScanning.getClient() on a null component — member-keeping the
+# registrars is the fix. The rest of ML Kit's reflective surface ships in its own consumer
+# rules (bundled-proto <fields>, native method names, @UsedBy*), and
+# ThickBarcodeScannerCreator is a direct code reference, so no package blankets are needed.
 -keep class * implements com.google.firebase.components.ComponentRegistrar { *; }
--keep class com.google.mlkit.** { *; }
--keep class com.google.android.gms.internal.mlkit_vision_barcode.** { *; }
--keep class com.google.android.gms.internal.mlkit_vision_barcode_bundled.** { *; }
 
-# kotlinx.serialization: the runtime bundles the core rules, but pin the generated
-# serializers for the app's @Serializable models and type-safe Navigation routes so
-# (de)serialization keeps working under R8 full mode. The classes themselves stay
-# shrinkable and obfuscatable.
--keepclassmembers @kotlinx.serialization.Serializable class com.erfangholami.solidshare.** {
-    static **$Companion Companion;
+# The telemetry protos under gms.internal.mlkit_vision_barcode use protobuf-lite field
+# reflection but, unlike the bundled package, ship no consumer <fields> rule anywhere in
+# the graph. Keep just the fields; the classes stay shrinkable and renamable.
+-keepclassmembers class com.google.android.gms.internal.mlkit_vision_barcode.** {
+    <fields>;
 }
--keep class com.erfangholami.solidshare.**$$serializer { *; }
+
+# kotlinx.serialization ≥ 1.8 bundles the complete R8 full-mode ruleset (Companion field,
+# Companion.serializer(), object INSTANCE.serializer(), the $$serializer descriptor
+# workaround), which covers the app's @Serializable models and type-safe Navigation
+# routes — the $$serializer classes themselves are reached through code, so no app-side
+# serialization keeps are needed here.
 
 # Hilt instantiates these Workers reflectively through its WorkerFactory; keep the
 # injected constructors.
