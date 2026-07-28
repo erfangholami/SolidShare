@@ -6,6 +6,9 @@ import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactEmail
 import com.erfangholami.solidshare.domain.model.ContactEmailType
+import com.erfangholami.solidshare.domain.model.ContactGender
+import com.erfangholami.solidshare.domain.model.ContactIm
+import com.erfangholami.solidshare.domain.model.ContactImType
 import com.erfangholami.solidshare.domain.model.ContactLinkType
 import com.erfangholami.solidshare.domain.model.ContactPhone
 import com.erfangholami.solidshare.domain.model.ContactPhoneType
@@ -15,6 +18,9 @@ import com.erfangholami.androidsolidservices.shared.model.contacts.AddressType a
 import com.erfangholami.androidsolidservices.shared.model.contacts.ContactData as LibContactData
 import com.erfangholami.androidsolidservices.shared.model.contacts.EmailEntry as LibEmailEntry
 import com.erfangholami.androidsolidservices.shared.model.contacts.EmailType as LibEmailType
+import com.erfangholami.androidsolidservices.shared.model.contacts.Gender as LibGender
+import com.erfangholami.androidsolidservices.shared.model.contacts.ImEntry as LibImEntry
+import com.erfangholami.androidsolidservices.shared.model.contacts.ImType as LibImType
 import com.erfangholami.androidsolidservices.shared.model.contacts.Name as LibName
 import com.erfangholami.androidsolidservices.shared.model.contacts.PhoneEntry as LibPhoneEntry
 import com.erfangholami.androidsolidservices.shared.model.contacts.PhoneType as LibPhoneType
@@ -33,6 +39,7 @@ fun LibSolidContact.toDomain(): ContactDetail = ContactDetail(
     nickname = data.nickname,
     phones = data.phones.map { ContactPhone(it.number, ContactPhoneType.valueOf(it.type.name)) },
     emails = data.emails.map { ContactEmail(it.address, ContactEmailType.valueOf(it.type.name)) },
+    impps = data.impps.map { ContactIm(it.handle, ContactImType.valueOf(it.type.name)) },
     addresses = data.addresses.map {
         ContactAddress(
             street = it.street,
@@ -51,7 +58,12 @@ fun LibSolidContact.toDomain(): ContactDetail = ContactDetail(
     role = data.role,
     jobTitle = data.title,
     note = data.note,
+    categories = data.categories,
+    gender = data.gender?.let { ContactGender.valueOf(it.name) },
+    geos = data.geos,
+    languages = data.languages,
     links = data.urls.map { ContactWebLink(it.type.toDomain(), it.value) },
+    uid = data.uid,
     photoUri = photoUri,
     modified = modified,
 )
@@ -83,6 +95,10 @@ fun ContactDraft.toLib(): LibContactData {
             .filter { it.address.isNotBlank() }
             .distinctBy { it.address }
             .map { LibEmailEntry(it.address.trim(), LibEmailType.valueOf(it.type.name)) },
+        impps = impps
+            .filter { it.handle.isNotBlank() }
+            .distinctBy { it.handle.trim() }
+            .map { LibImEntry(it.handle.trim(), LibImType.valueOf(it.type.name)) },
         addresses = addresses.map {
             LibAddressEntry(
                 street = it.street?.takeIf { s -> s.isNotBlank() },
@@ -101,9 +117,15 @@ fun ContactDraft.toLib(): LibContactData {
         role = role?.takeIf { it.isNotBlank() },
         title = jobTitle?.takeIf { it.isNotBlank() },
         note = note?.takeIf { it.isNotBlank() },
+        categories = categories.map { it.trim() }.filter { it.isNotBlank() }.distinct(),
+        gender = gender?.let { LibGender.valueOf(it.name) },
+        geos = geos.map { it.trim() }.filter { it.isNotBlank() }.distinct(),
+        languages = languages.map { it.trim() }.filter { it.isNotBlank() }
+            .distinctBy { it.lowercase() },
         urls = links
             .filter { it.value.isNotBlank() }
             .map { LibUrlEntry(it.type.toLib(), it.value.trim()) },
+        uid = uid?.takeIf { it.isNotBlank() },
     )
 }
 

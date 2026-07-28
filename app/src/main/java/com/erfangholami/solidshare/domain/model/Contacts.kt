@@ -69,6 +69,18 @@ data class ContactAddress(
 )
 
 @Serializable
+enum class ContactImType { HOME, WORK, OTHER }
+
+@Serializable
+data class ContactIm(
+    val handle: String,
+    val type: ContactImType = ContactImType.OTHER,
+)
+
+@Serializable
+enum class ContactGender { MALE, FEMALE, OTHER, NONE, UNKNOWN }
+
+@Serializable
 data class ContactDetail(
     val uri: String,
     val fullName: String,
@@ -80,6 +92,7 @@ data class ContactDetail(
     val nickname: String? = null,
     val phones: List<ContactPhone> = emptyList(),
     val emails: List<ContactEmail> = emptyList(),
+    val impps: List<ContactIm> = emptyList(),
     val addresses: List<ContactAddress> = emptyList(),
     val birthday: String? = null,
     val anniversary: String? = null,
@@ -88,7 +101,12 @@ data class ContactDetail(
     val role: String? = null,
     val jobTitle: String? = null,
     val note: String? = null,
+    val categories: List<String> = emptyList(),
+    val gender: ContactGender? = null,
+    val geos: List<String> = emptyList(),
+    val languages: List<String> = emptyList(),
     val links: List<ContactWebLink> = emptyList(),
+    val uid: String? = null,
     val photoUri: String? = null,
     val modified: Long? = null,
 ) {
@@ -106,6 +124,7 @@ data class ContactDraft(
     val nickname: String? = null,
     val phones: List<ContactPhone> = emptyList(),
     val emails: List<ContactEmail> = emptyList(),
+    val impps: List<ContactIm> = emptyList(),
     val addresses: List<ContactAddress> = emptyList(),
     val birthday: String? = null,
     val anniversary: String? = null,
@@ -114,7 +133,12 @@ data class ContactDraft(
     val role: String? = null,
     val jobTitle: String? = null,
     val note: String? = null,
+    val categories: List<String> = emptyList(),
+    val gender: ContactGender? = null,
+    val geos: List<String> = emptyList(),
+    val languages: List<String> = emptyList(),
     val links: List<ContactWebLink> = emptyList(),
+    val uid: String? = null,
 )
 
 data class ContactMatchResult(

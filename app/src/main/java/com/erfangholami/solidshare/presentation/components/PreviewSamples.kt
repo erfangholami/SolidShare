@@ -214,6 +214,8 @@ internal object PreviewSamples {
         organizationUnit = "Design",
         jobTitle = "Designer",
         note = "Met at FOSDEM",
+        geos = listOf("geo:52.3676,4.9041"),
+        languages = listOf("nl", "en-GB"),
         links = listOf(ContactWebLink(ContactLinkType.WEB_ID, webIdOf("ben"))),
     )
 

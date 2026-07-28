@@ -6,6 +6,9 @@ import com.erfangholami.solidshare.domain.model.ContactAddressType
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactEmail
 import com.erfangholami.solidshare.domain.model.ContactEmailType
+import com.erfangholami.solidshare.domain.model.ContactGender
+import com.erfangholami.solidshare.domain.model.ContactIm
+import com.erfangholami.solidshare.domain.model.ContactImType
 import com.erfangholami.solidshare.domain.model.ContactLinkType
 import com.erfangholami.solidshare.domain.model.ContactPhone
 import com.erfangholami.solidshare.domain.model.ContactPhoneType
@@ -172,6 +175,12 @@ object VCardReader {
         var jobTitle: String? = null
         var note: String? = null
         val links = mutableListOf<ContactWebLink>()
+        val impps = mutableListOf<ContactIm>()
+        val categories = mutableListOf<String>()
+        var gender: ContactGender? = null
+        val geos = mutableListOf<String>()
+        val languages = mutableListOf<Pair<Int, String>>()
+        var uid: String? = null
         var photo: ByteArray? = null
         var photoMime: String? = null
 
@@ -245,6 +254,43 @@ object VCardReader {
                     }
                 }
 
+                "IMPP" -> {
+                    val handle = unescape(property.value)
+                    if (handle.isNotBlank()) {
+                        impps.add(ContactIm(handle, imTypeFrom(property.params)))
+                    }
+                }
+
+                "CATEGORIES" -> categories.addAll(
+                    splitOnComma(property.value).filter { it.isNotBlank() },
+                )
+
+                "GENDER" -> gender = when (property.value.substringBefore(';').trim().uppercase()) {
+                    "M" -> ContactGender.MALE
+                    "F" -> ContactGender.FEMALE
+                    "O" -> ContactGender.OTHER
+                    "N" -> ContactGender.NONE
+                    "U" -> ContactGender.UNKNOWN
+                    else -> gender
+                }
+
+                "GEO" -> {
+                    val value = normalizeGeo(property.value)
+                    if (value != null) geos.add(value)
+                }
+
+                "LANG" -> {
+                    val tag = property.value.trim()
+                    if (tag.isNotBlank()) {
+                        val pref = property.params
+                            .firstOrNull { it.startsWith("PREF=") }
+                            ?.removePrefix("PREF=")?.toIntOrNull() ?: 100
+                        languages.add(pref to tag)
+                    }
+                }
+
+                "UID" -> uid = unescape(property.value).takeIf { it.isNotBlank() }
+
                 "PHOTO" -> {
                     decodePhoto(property)?.let { (bytes, mime) ->
                         photo = bytes
@@ -277,11 +323,50 @@ object VCardReader {
                 role = role,
                 jobTitle = jobTitle,
                 note = note,
+                categories = categories.distinct(),
+                gender = gender,
+                geos = geos.distinct(),
+                languages = languages.sortedBy { it.first }.map { it.second }
+                    .distinctBy { it.lowercase() },
                 links = links.distinctBy { it.value },
+                impps = impps.distinctBy { it.handle },
+                uid = uid,
             ),
             photo = photo,
             photoMime = photoMime,
         )
+    }
+
+    private fun splitOnComma(value: String): List<String> {
+        val parts = mutableListOf<String>()
+        val current = StringBuilder()
+        var escaped = false
+        value.forEach { char ->
+            when {
+                escaped -> {
+                    current.append('\\').append(char)
+                    escaped = false
+                }
+
+                char == '\\' -> escaped = true
+                char == ',' -> {
+                    parts.add(current.toString())
+                    current.clear()
+                }
+
+                else -> current.append(char)
+            }
+        }
+        parts.add(current.toString())
+        return parts.map { unescape(it) }
+    }
+
+    private fun normalizeGeo(raw: String): String? {
+        val value = raw.trim().removeSurrounding("\"")
+        if (value.isBlank()) return null
+        if (value.contains(':')) return value
+        val coordinates = value.replace(';', ',').replace(" ", "")
+        return "geo:$coordinates"
     }
 
     private fun decodePhoto(property: VCardProperty): Pair<ByteArray, String>? {
@@ -342,6 +427,15 @@ object VCardReader {
             "WORK" in types -> ContactAddressType.WORK
             "HOME" in types -> ContactAddressType.HOME
             else -> ContactAddressType.OTHER
+        }
+    }
+
+    private fun imTypeFrom(params: List<String>): ContactImType {
+        val types = typeValues(params)
+        return when {
+            "WORK" in types -> ContactImType.WORK
+            "HOME" in types -> ContactImType.HOME
+            else -> ContactImType.OTHER
         }
     }
 

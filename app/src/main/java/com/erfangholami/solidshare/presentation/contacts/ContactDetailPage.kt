@@ -31,10 +31,12 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.TheaterComedy
+import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.DropdownMenu
@@ -86,6 +88,7 @@ import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RowDivider
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -330,6 +333,18 @@ private fun ContactDetailContent(
                 value = formatAddress(address),
             )
         }
+        contact.geos.forEach { geo ->
+            DetailRow(
+                icon = Icons.Filled.Map,
+                label = stringResource(R.string.contact_geo_label),
+                value = formatGeo(geo),
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, geo.toUri()))
+                    }
+                },
+            )
+        }
         contact.birthday?.let {
             DetailRow(
                 icon = Icons.Filled.Cake,
@@ -363,6 +378,13 @@ private fun ContactDetailContent(
                 icon = Icons.Filled.TheaterComedy,
                 label = stringResource(R.string.contact_role_label),
                 value = it,
+            )
+        }
+        if (contact.languages.isNotEmpty()) {
+            DetailRow(
+                icon = Icons.Filled.Translate,
+                label = stringResource(R.string.contact_languages_label),
+                value = contact.languages.joinToString(", ") { languageDisplayName(it) },
             )
         }
         contact.note?.let {
@@ -463,6 +485,15 @@ private fun DetailRow(
             )
         }
     }
+}
+
+private fun formatGeo(geo: String): String =
+    geo.removePrefix("geo:").substringBefore(';').replace(",", ", ")
+
+private fun languageDisplayName(tag: String): String {
+    val locale = Locale.forLanguageTag(tag)
+    val display = locale.getDisplayName(Locale.getDefault())
+    return display.takeIf { it.isNotBlank() && !it.equals("und", ignoreCase = true) } ?: tag
 }
 
 @Composable

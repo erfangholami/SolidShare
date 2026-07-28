@@ -432,6 +432,8 @@
     <string name="contact_job_title_label">Job title</string>
     <string name="contact_role_label">Role</string>
     <string name="contact_note_label">Note</string>
+    <string name="contact_geo_label">Location</string>
+    <string name="contact_languages_label">Languages</string>
     <string name="contact_links_label">Links</string>
     <string name="contact_groups_label">Groups</string>
     <string name="contact_webid_label">WebID</string>

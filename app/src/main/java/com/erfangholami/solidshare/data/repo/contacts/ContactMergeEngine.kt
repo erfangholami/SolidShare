@@ -4,6 +4,7 @@ import com.erfangholami.solidshare.domain.model.ContactAddress
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactEmail
+import com.erfangholami.solidshare.domain.model.ContactIm
 import com.erfangholami.solidshare.domain.model.ContactLinkType
 import com.erfangholami.solidshare.domain.model.ContactPhone
 import com.erfangholami.solidshare.domain.model.ContactWebLink
@@ -116,6 +117,7 @@ class ContactMergeEngine @Inject constructor() {
             nickname = pick { it.nickname },
             phones = mergePhones(ordered.flatMap { it.phones }),
             emails = mergeEmails(ordered.flatMap { it.emails }),
+            impps = mergeImpps(ordered.flatMap { it.impps }),
             addresses = mergeAddresses(ordered.flatMap { it.addresses }),
             birthday = pick { it.birthday },
             anniversary = pick { it.anniversary },
@@ -124,7 +126,12 @@ class ContactMergeEngine @Inject constructor() {
             role = pick { it.role },
             jobTitle = pick { it.jobTitle },
             note = pick { it.note },
+            categories = mergeStrings(ordered.flatMap { it.categories }),
+            gender = ordered.firstNotNullOfOrNull { it.gender },
+            geos = mergeStrings(ordered.flatMap { it.geos }),
+            languages = mergeStrings(ordered.flatMap { it.languages }),
             links = mergeLinks(ordered.flatMap { it.links }),
+            uid = pick { it.uid },
         )
     }
 
@@ -136,6 +143,16 @@ class ContactMergeEngine @Inject constructor() {
     private fun mergeEmails(emails: List<ContactEmail>): List<ContactEmail> {
         val seen = mutableSetOf<String>()
         return emails.filter { seen.add(normalizeEmail(it.address) ?: it.address.trim().lowercase()) }
+    }
+
+    private fun mergeImpps(impps: List<ContactIm>): List<ContactIm> {
+        val seen = mutableSetOf<String>()
+        return impps.filter { seen.add(it.handle.trim().lowercase()) }
+    }
+
+    private fun mergeStrings(values: List<String>): List<String> {
+        val seen = mutableSetOf<String>()
+        return values.map { it.trim() }.filter { it.isNotBlank() && seen.add(it.lowercase()) }
     }
 
     private fun mergeAddresses(addresses: List<ContactAddress>): List<ContactAddress> {

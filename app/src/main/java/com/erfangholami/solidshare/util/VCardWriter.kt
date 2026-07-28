@@ -4,6 +4,8 @@ import android.util.Base64
 import com.erfangholami.solidshare.domain.model.ContactAddressType
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactEmailType
+import com.erfangholami.solidshare.domain.model.ContactGender
+import com.erfangholami.solidshare.domain.model.ContactImType
 import com.erfangholami.solidshare.domain.model.ContactPhoneType
 
 object VCardWriter {
@@ -60,6 +62,24 @@ object VCardWriter {
             contact.jobTitle?.let { append("TITLE:").append(escape(it)).append("\r\n") }
             contact.role?.let { append("ROLE:").append(escape(it)).append("\r\n") }
             contact.note?.let { append("NOTE:").append(escape(it)).append("\r\n") }
+            contact.impps.forEach { im ->
+                append("IMPP")
+                imTypeParam(im.type)?.let { append(";TYPE=").append(it) }
+                append(':').append(escape(im.handle)).append("\r\n")
+            }
+            if (contact.categories.isNotEmpty()) {
+                append("CATEGORIES:")
+                    .append(contact.categories.joinToString(",") { escape(it) })
+                    .append("\r\n")
+            }
+            contact.gender?.let { append("GENDER:").append(genderValue(it)).append("\r\n") }
+            contact.geos.forEach { geo ->
+                geoV3Value(geo)?.let { append("GEO:").append(it).append("\r\n") }
+            }
+            contact.languages.forEachIndexed { index, tag ->
+                append("LANG;PREF=").append(index + 1).append(':').append(tag).append("\r\n")
+            }
+            contact.uid?.let { append("UID:").append(escape(it)).append("\r\n") }
             contact.links.forEach { append("URL:").append(escape(it.value)).append("\r\n") }
             if (photo != null) {
                 val encoded = Base64.encodeToString(photo, Base64.NO_WRAP)
@@ -88,6 +108,29 @@ object VCardWriter {
         ContactAddressType.HOME -> "HOME"
         ContactAddressType.WORK -> "WORK"
         ContactAddressType.OTHER -> null
+    }
+
+    private fun imTypeParam(type: ContactImType): String? = when (type) {
+        ContactImType.HOME -> "HOME"
+        ContactImType.WORK -> "WORK"
+        ContactImType.OTHER -> null
+    }
+
+    private fun genderValue(gender: ContactGender): String = when (gender) {
+        ContactGender.MALE -> "M"
+        ContactGender.FEMALE -> "F"
+        ContactGender.OTHER -> "O"
+        ContactGender.NONE -> "N"
+        ContactGender.UNKNOWN -> "U"
+    }
+
+    private fun geoV3Value(geo: String): String? {
+        val coordinates = geo.trim().removePrefix("geo:").substringBefore(';')
+        val parts = coordinates.split(',')
+        if (parts.size < 2) return null
+        val latitude = parts[0].toDoubleOrNull() ?: return null
+        val longitude = parts[1].toDoubleOrNull() ?: return null
+        return "$latitude;$longitude"
     }
 
     private fun escape(value: String): String = value
