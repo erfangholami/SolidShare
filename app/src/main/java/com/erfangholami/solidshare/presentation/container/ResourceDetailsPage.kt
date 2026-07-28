@@ -60,7 +60,9 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
 import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.sharing.CreateShareSheet
 import com.erfangholami.solidshare.presentation.sharing.SharedAccessGroups
 import com.erfangholami.solidshare.presentation.sharing.SharedWithHeader
@@ -76,6 +78,7 @@ fun ResourceDetailsPage(
 ) {
     val item by viewModel.itemState.collectAsStateWithLifecycle()
     val sharesState by viewModel.sharesState.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val clipboard = LocalClipboard.current
@@ -152,6 +155,7 @@ fun ResourceDetailsPage(
                 Spacer(Modifier.height(4.dp))
                 Button(
                     onClick = { showShareSheet = true },
+                    enabled = isOnline,
                     shape = CircleShape,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -165,6 +169,10 @@ fun ResourceDetailsPage(
                     Spacer(Modifier.width(8.dp))
                     Text(stringResource(R.string.share))
                 }
+                RequiresConnectionHint(
+                    visible = !isOnline,
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                )
             }
         }
     }

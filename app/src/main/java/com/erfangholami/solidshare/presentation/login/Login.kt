@@ -75,7 +75,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
 import com.erfangholami.solidshare.presentation.navigation.MainNavItem
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import kotlinx.coroutines.launch
 
@@ -98,6 +100,7 @@ fun Login(
 
     val previousWebIds by viewModel.previouslyLoggedOutWebIds.collectAsStateWithLifecycle()
     val isExistingUser = previousWebIds.isNotEmpty()
+    val isOnline by rememberIsOnline()
 
     val snackbarHostState = remember { SnackbarHostState() }
     var customUrl by remember { mutableStateOf("") }
@@ -107,6 +110,7 @@ fun Login(
     val urlNotHttpsMsg = stringResource(R.string.login_url_not_https)
 
     fun submitCustomUrl() {
+        if (!isOnline) return
         val trimmed = customUrl.trim()
         if (trimmed.isEmpty() || !URLUtil.isValidUrl(trimmed)) {
             customUrlError = urlInvalidMsg
@@ -201,7 +205,10 @@ fun Login(
                     OrDivider()
                     Spacer(Modifier.height(16.dp))
 
-                    ChooseServerField(onClick = { showProviderSheet = true })
+                    ChooseServerField(
+                        onClick = { showProviderSheet = true },
+                        enabled = isOnline,
+                    )
                     Spacer(Modifier.height(12.dp))
                     CustomUrlField(
                         value = customUrl,
@@ -213,7 +220,10 @@ fun Login(
                         onGo = { submitCustomUrl() },
                     )
                 } else {
-                    ChooseServerField(onClick = { showProviderSheet = true })
+                    ChooseServerField(
+                        onClick = { showProviderSheet = true },
+                        enabled = isOnline,
+                    )
                     Spacer(Modifier.height(16.dp))
                     OrDivider()
                     Spacer(Modifier.height(16.dp))
@@ -242,13 +252,18 @@ fun Login(
 
                 Spacer(Modifier.height(28.dp))
 
+                RequiresConnectionHint(
+                    visible = !isOnline,
+                    modifier = Modifier.padding(bottom = 8.dp),
+                )
+
                 Button(
                     onClick = { submitCustomUrl() },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
-                    enabled = customUrl.isNotBlank(),
+                    enabled = customUrl.isNotBlank() && isOnline,
                 ) {
                     Text(
                         stringResource(R.string.continue_string),
@@ -327,13 +342,13 @@ private fun HexagonHero() {
 }
 
 @Composable
-private fun ChooseServerField(onClick: () -> Unit) {
+private fun ChooseServerField(onClick: () -> Unit, enabled: Boolean = true) {
     OutlinedTextField(
         value = "",
         onValueChange = {},
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         label = { Text(stringResource(R.string.choose_server)) },
         placeholder = {
             Text(

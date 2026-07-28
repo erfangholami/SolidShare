@@ -88,11 +88,13 @@ import com.erfangholami.solidshare.presentation.components.BannerTone
 import com.erfangholami.solidshare.presentation.components.DismissibleBanner
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
 import com.erfangholami.solidshare.presentation.container.icon
 import com.erfangholami.solidshare.presentation.container.tint
 import com.erfangholami.solidshare.presentation.main.ModeChip
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
@@ -106,6 +108,7 @@ fun NotificationsPage(
     viewModel: NotificationsViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
     val snackbarHostState = remember { SnackbarHostState() }
     var rejectTarget by remember { mutableStateOf<NotificationItem?>(null) }
 
@@ -190,7 +193,7 @@ fun NotificationsPage(
                 actions = {
                     IconButton(
                         onClick = viewModel::refresh,
-                        enabled = !state.isRefreshing,
+                        enabled = !state.isRefreshing && isOnline,
                     ) {
                         if (state.isRefreshing) {
                             CircularProgressIndicator(
@@ -253,6 +256,11 @@ fun NotificationsPage(
                     )
                 }
 
+                RequiresConnectionHint(
+                    visible = !isOnline,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                )
+
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -276,6 +284,7 @@ fun NotificationsPage(
                                     isUnread = row.isUnread,
                                     alreadyGranted = row.alreadyGranted,
                                     pending = row.item.id in state.pendingUris,
+                                    isOnline = isOnline,
                                     onOpenResource = { viewModel.openResource(row.item) },
                                     onAccept = { viewModel.accept(row.item) },
                                     onReject = { rejectTarget = row.item },
@@ -376,6 +385,7 @@ private fun NotificationRow(
     onAccept: () -> Unit,
     onReject: () -> Unit,
     onDismiss: () -> Unit,
+    isOnline: Boolean = true,
 ) {
     val showRequestActions = item.kind == NotificationKind.ACCESS_REQUEST && !alreadyGranted
     Surface(
@@ -449,7 +459,7 @@ private fun NotificationRow(
                     }
                 }
                 if (!showRequestActions) {
-                    DismissButton(pending = pending, onDismiss = onDismiss)
+                    DismissButton(pending = pending, enabled = isOnline, onDismiss = onDismiss)
                 }
             }
 
@@ -463,7 +473,12 @@ private fun NotificationRow(
             }
 
             if (showRequestActions) {
-                RequestActions(pending = pending, onReject = onReject, onAccept = onAccept)
+                RequestActions(
+                    pending = pending,
+                    enabled = isOnline,
+                    onReject = onReject,
+                    onAccept = onAccept,
+                )
             }
         }
     }
@@ -576,8 +591,8 @@ private fun ReasonLine(text: String) {
 }
 
 @Composable
-private fun DismissButton(pending: Boolean, onDismiss: () -> Unit) {
-    IconButton(onClick = onDismiss, enabled = !pending) {
+private fun DismissButton(pending: Boolean, onDismiss: () -> Unit, enabled: Boolean = true) {
+    IconButton(onClick = onDismiss, enabled = !pending && enabled) {
         if (pending) {
             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
         } else {
@@ -591,14 +606,19 @@ private fun DismissButton(pending: Boolean, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun RequestActions(pending: Boolean, onReject: () -> Unit, onAccept: () -> Unit) {
+private fun RequestActions(
+    pending: Boolean,
+    onReject: () -> Unit,
+    onAccept: () -> Unit,
+    enabled: Boolean = true,
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         OutlinedButton(
             onClick = onReject,
-            enabled = !pending,
+            enabled = !pending && enabled,
             modifier = Modifier.weight(1f),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.error,
@@ -610,7 +630,7 @@ private fun RequestActions(pending: Boolean, onReject: () -> Unit, onAccept: () 
         }
         Button(
             onClick = onAccept,
-            enabled = !pending,
+            enabled = !pending && enabled,
             modifier = Modifier.weight(1f),
         ) {
             if (pending) {

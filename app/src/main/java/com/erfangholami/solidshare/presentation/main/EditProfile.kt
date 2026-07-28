@@ -44,6 +44,8 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.ProfileEdits
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,6 +56,7 @@ fun EditProfile(
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     val saveState by viewModel.saveState.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
     val profileUpdatedMessage = stringResource(R.string.profile_updated)
     val profileUpdateFailedTemplate = stringResource(R.string.profile_update_failed)
     val snackbarHostState = remember { SnackbarHostState() }
@@ -180,6 +183,8 @@ fun EditProfile(
 
             Spacer(Modifier.height(12.dp))
 
+            RequiresConnectionHint(visible = !isOnline)
+
             Button(
                 onClick = {
                     viewModel.save(
@@ -192,7 +197,7 @@ fun EditProfile(
                         ),
                     )
                 },
-                enabled = !isSaving,
+                enabled = !isSaving && isOnline,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 if (isSaving) {

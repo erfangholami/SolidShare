@@ -5,6 +5,8 @@ import androidx.compose.runtime.Immutable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Constraints
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -216,6 +218,9 @@ class ContainerViewModel @Inject constructor(
             val fileName = item.name
             val mimeType = item.mimeType ?: MIME_TYPE_OCTET_STREAM
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+                )
                 .setInputData(
                     workDataOf(
                         DownloadWorker.KEY_WEB_ID to webId,

@@ -4,6 +4,8 @@ import android.webkit.MimeTypeMap
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Constraints
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -13,6 +15,7 @@ import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.ResourceAccessException
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsBadgeStore
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
+import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
 import com.erfangholami.solidshare.data.repo.sharing.ReceivedSharesSignal
 import com.erfangholami.solidshare.data.repo.sharing.SharingError
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
@@ -58,6 +61,7 @@ class ShareViewModel @Inject constructor(
     private val badgeStore: NotificationsBadgeStore,
     private val receivedSharesSignal: ReceivedSharesSignal,
     private val workManager: WorkManager,
+    private val outboxRepository: OutboxRepository,
 ) : ViewModel() {
 
     data class UiError(
@@ -305,6 +309,9 @@ class ShareViewModel @Inject constructor(
                 .getMimeTypeFromExtension(fileName.substringAfterLast('.', "").lowercase())
                 ?: MIME_TYPE_OCTET_STREAM
             val request = OneTimeWorkRequestBuilder<DownloadWorker>()
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+                )
                 .setInputData(
                     workDataOf(
                         DownloadWorker.KEY_WEB_ID to webId,
@@ -328,10 +335,12 @@ class ShareViewModel @Inject constructor(
         viewModelScope.launch {
             val webId = authRepository.getActiveWebId() ?: return@launch
             try {
-                fileRepository.deleteResource(
+                outboxRepository.enqueueDelete(
                     webId, share.resourceUri, isContainerUri(share.resourceUri),
                 )
-                sharingRepository.removeReceivedShare(webId, share.resourceUri, share.ownerWebId)
+                runCatching {
+                    sharingRepository.removeReceivedShare(webId, share.resourceUri, share.ownerWebId)
+                }
                 load()
             } catch (e: Exception) {
                 fail(e, retry = { deleteReceivedShare(share) })

@@ -13,6 +13,7 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
@@ -35,6 +36,7 @@ internal fun AccessModeSheetContent(
     current: ShareMode,
     onSelect: (ShareMode) -> Unit,
     onRemove: (() -> Unit)? = null,
+    enabled: Boolean = true,
 ) {
     Column(modifier = Modifier.padding(bottom = 16.dp)) {
         ShareMode.entries.forEach { mode ->
@@ -42,6 +44,7 @@ internal fun AccessModeSheetContent(
                 icon = iconFor(mode),
                 label = labelFor(mode),
                 selected = mode == current,
+                enabled = enabled,
                 onClick = { onSelect(mode) },
             )
         }
@@ -50,6 +53,7 @@ internal fun AccessModeSheetContent(
             SheetActionRow(
                 icon = Icons.Outlined.Delete,
                 label = stringResource(R.string.remove_access),
+                enabled = enabled,
                 tint = MaterialTheme.colorScheme.error,
                 onClick = onRemove,
             )
@@ -63,26 +67,34 @@ internal fun SheetRadioRow(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
+    enabled: Boolean = true,
 ) {
+    val contentAlpha = if (enabled) 1f else 0.38f
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .selectable(selected = selected, onClick = onClick, role = Role.RadioButton)
+            .selectable(
+                selected = selected,
+                enabled = enabled,
+                onClick = onClick,
+                role = Role.RadioButton,
+            )
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RadioButton(selected = selected, onClick = null)
+        RadioButton(selected = selected, onClick = null, enabled = enabled)
         Spacer(Modifier.width(8.dp))
         Icon(
             imageVector = icon,
             contentDescription = null,
             modifier = Modifier.size(24.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = contentAlpha),
         )
         Spacer(Modifier.width(16.dp))
         Text(
             text = label,
             style = MaterialTheme.typography.bodyLarge,
+            color = LocalContentColor.current.copy(alpha = contentAlpha),
         )
     }
 }

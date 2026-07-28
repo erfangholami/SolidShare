@@ -58,7 +58,9 @@ import com.erfangholami.solidshare.presentation.components.LoadingLayout
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,6 +71,7 @@ fun ConfirmAccessPage(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val requestedMode by viewModel.requestedMode.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
     val addedMsg = stringResource(R.string.added_to_shares)
     val requestSentMsg = stringResource(R.string.access_request_sent)
 
@@ -147,12 +150,13 @@ fun ConfirmAccessPage(
                         )
 
                     ConfirmAccessViewModel.State.HasAccess ->
-                        HasAccessContent(onAdd = viewModel::addToShares)
+                        HasAccessContent(onAdd = viewModel::addToShares, isOnline = isOnline)
 
                     is ConfirmAccessViewModel.State.NoAccess ->
                         NoAccessContent(
                             ownerWebId = s.ownerWebId,
                             mode = requestedMode,
+                            isOnline = isOnline,
                             onModeChange = viewModel::setRequestedMode,
                             onRequest = { s.ownerWebId?.let(viewModel::requestAccess) },
                         )
@@ -207,6 +211,7 @@ private fun NoAccessContent(
     mode: ShareMode,
     onModeChange: (ShareMode) -> Unit,
     onRequest: () -> Unit,
+    isOnline: Boolean = true,
 ) {
     Row(verticalAlignment = Alignment.Top) {
         Icon(
@@ -237,8 +242,10 @@ private fun NoAccessContent(
     AccessModeField(mode = mode, onSelect = onModeChange)
 
     if (ownerWebId != null) {
+        RequiresConnectionHint(visible = !isOnline)
         Button(
             onClick = onRequest,
+            enabled = isOnline,
             shape = CircleShape,
             modifier = Modifier
                 .fillMaxWidth()
@@ -250,7 +257,7 @@ private fun NoAccessContent(
 }
 
 @Composable
-private fun HasAccessContent(onAdd: () -> Unit) {
+private fun HasAccessContent(onAdd: () -> Unit, isOnline: Boolean = true) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = Icons.Outlined.CheckCircle,
@@ -264,8 +271,10 @@ private fun HasAccessContent(onAdd: () -> Unit) {
             fontWeight = FontWeight.Medium,
         )
     }
+    RequiresConnectionHint(visible = !isOnline)
     Button(
         onClick = onAdd,
+        enabled = isOnline,
         shape = CircleShape,
         modifier = Modifier
             .fillMaxWidth()

@@ -96,6 +96,7 @@ import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.util.BarcodeRenderer
 import com.erfangholami.solidshare.util.BarcodeRenderer.is2d
@@ -112,6 +113,7 @@ fun TicketDetailPage(
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val isOnline by rememberIsOnline()
     var menuOpen by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -158,6 +160,7 @@ fun TicketDetailPage(
                         onClick = {
                             navController.navigate(ManageSharingRoute(viewModel.ticketUri))
                         },
+                        enabled = isOnline,
                     ) {
                         Icon(
                             Icons.Filled.Share,

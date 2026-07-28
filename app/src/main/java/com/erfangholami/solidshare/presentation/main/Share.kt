@@ -88,6 +88,7 @@ import com.erfangholami.solidshare.presentation.sharing.labelFor
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import kotlinx.coroutines.launch
 
@@ -104,6 +105,7 @@ fun Share(
     val lostAccessShare by viewModel.lostAccessShare.collectAsStateWithLifecycle()
     val noAccessShare by viewModel.noAccessShare.collectAsStateWithLifecycle()
     val ownedResource by viewModel.ownedResource.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
 
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
@@ -175,7 +177,7 @@ fun Share(
                 actions = {
                     IconButton(
                         onClick = viewModel::refresh,
-                        enabled = !state.isRefreshing,
+                        enabled = !state.isRefreshing && isOnline,
                     ) {
                         if (state.isRefreshing) {
                             CircularProgressIndicator(
@@ -206,6 +208,7 @@ fun Share(
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.rebuild_share_index)) },
                                 leadingIcon = { Icon(Icons.Outlined.Autorenew, null) },
+                                enabled = isOnline,
                                 onClick = {
                                     overflowOpen = false
                                     viewModel.rebuildIndex()
@@ -298,6 +301,7 @@ fun Share(
                     } else when (selectedTab) {
                         0 -> GivenList(
                             shares = state.given,
+                            isOnline = isOnline,
                             onShowQr = { resourceUri ->
                                 qrSharePayload = QrPayload(
                                     resourceUri = resourceUri,
@@ -315,6 +319,7 @@ fun Share(
 
                         1 -> ReceivedList(
                             shares = state.received,
+                            isOnline = isOnline,
                             onOpen = { viewModel.openReceivedShare(it) },
                             onRemove = { viewModel.removeReceivedShare(it) },
                             onReshare = { viewModel.reshareReceivedShare(it) },

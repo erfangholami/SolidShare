@@ -57,6 +57,7 @@ import com.erfangholami.solidshare.util.formatRelativeTime
 @Composable
 internal fun GivenList(
     shares: List<GivenShare>,
+    isOnline: Boolean,
     onShowQr: (String) -> Unit,
     onManage: (String) -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
@@ -77,6 +78,7 @@ internal fun GivenList(
             GivenResourceRow(
                 resourceUri = resourceUri,
                 recipients = recipients,
+                isOnline = isOnline,
                 onShowQr = { onShowQr(resourceUri) },
                 onManage = { onManage(resourceUri) },
                 loadMeta = loadMeta,
@@ -89,6 +91,7 @@ internal fun GivenList(
 @Composable
 internal fun ReceivedList(
     shares: List<ReceivedShare>,
+    isOnline: Boolean,
     onOpen: (ReceivedShare) -> Unit,
     onRemove: (ReceivedShare) -> Unit,
     onReshare: (ReceivedShare) -> Unit,
@@ -113,6 +116,7 @@ internal fun ReceivedList(
         items(shares, key = { "${it.ownerWebId}|${it.resourceUri}" }) { share ->
             ReceivedRow(
                 share = share,
+                isOnline = isOnline,
                 onOpen = { onOpen(share) },
                 onRemove = { onRemove(share) },
                 onReshare = { onReshare(share) },
@@ -132,6 +136,7 @@ internal fun ReceivedList(
 private fun GivenResourceRow(
     resourceUri: String,
     recipients: List<GivenShare>,
+    isOnline: Boolean,
     onShowQr: () -> Unit,
     onManage: () -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
@@ -181,6 +186,7 @@ private fun GivenResourceRow(
             resourceUri = resourceUri,
             subtitle = headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) },
             actions = ResourceActions.sharedByMe,
+            isOnline = isOnline,
             onDismiss = { sheetOpen = false },
             onAction = { action ->
                 when (action) {
@@ -197,6 +203,7 @@ private fun GivenResourceRow(
 @Composable
 private fun ReceivedRow(
     share: ReceivedShare,
+    isOnline: Boolean,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
     onReshare: () -> Unit,
@@ -262,6 +269,7 @@ private fun ReceivedRow(
                 isContainer = isContainerUri(share.resourceUri),
                 canEdit = share.mode == ShareMode.WRITE,
             ),
+            isOnline = isOnline,
             onDismiss = { sheetOpen = false },
             onAction = { action ->
                 when (action) {
@@ -288,6 +296,7 @@ private fun GivenListPreview() {
                 PreviewSamples.givenShare(name = "ben", mode = ShareMode.READ),
                 PreviewSamples.givenShare(name = "cara", mode = ShareMode.WRITE),
             ),
+            isOnline = true,
             onShowQr = {},
             onManage = {},
             loadMeta = { PreviewSamples.file() },
@@ -303,6 +312,7 @@ private fun ReceivedListPreview() {
             shares = listOf(
                 PreviewSamples.receivedShare(name = "owner", mode = ShareMode.READ),
             ),
+            isOnline = true,
             onOpen = {},
             onRemove = {},
             onReshare = {},
@@ -325,6 +335,7 @@ private fun GivenResourceRowPreview() {
             recipients = listOf(
                 PreviewSamples.givenShare(name = "ben", mode = ShareMode.READ),
             ),
+            isOnline = true,
             onShowQr = {},
             onManage = {},
             loadMeta = { PreviewSamples.file() },
@@ -338,6 +349,7 @@ private fun ReceivedRowPreview() {
     AppTheme {
         ReceivedRow(
             share = PreviewSamples.receivedShare(name = "owner", mode = ShareMode.WRITE),
+            isOnline = true,
             onOpen = {},
             onRemove = {},
             onReshare = {},

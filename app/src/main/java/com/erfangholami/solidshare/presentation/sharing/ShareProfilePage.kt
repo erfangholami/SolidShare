@@ -68,6 +68,7 @@ import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
 import com.erfangholami.solidshare.presentation.navigation.ScanRoute
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.generateQrBitmap
 import com.erfangholami.solidshare.presentation.util.generateQrWithCaptionBitmap
@@ -83,6 +84,7 @@ fun ShareProfilePage(
     viewModel: ShareProfileViewModel,
 ) {
     val profile by viewModel.activeProfile.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
     val context = LocalContext.current
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -105,7 +107,10 @@ fun ShareProfilePage(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { navController.navigate(ScanRoute) }) {
+                    IconButton(
+                        onClick = { navController.navigate(ScanRoute) },
+                        enabled = isOnline,
+                    ) {
                         Icon(
                             Icons.Outlined.QrCodeScanner,
                             contentDescription = stringResource(R.string.scan_qr),

@@ -53,6 +53,8 @@ import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.contacts.ContactReceiverPicker
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.pasteText
 import kotlinx.coroutines.launch
@@ -71,12 +73,14 @@ fun CreateShareSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val shareCreateFailedMsg = stringResource(R.string.share_create_failed)
+    val isOnline by rememberIsOnline()
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         when (val s = stage) {
             is Stage.Form -> ShareFormContent(
                 resourceUri = resourceUri,
                 resourceSubtitle = resourceSubtitle,
+                isOnline = isOnline,
                 onSubmit = { uri, mode, receiver ->
                     stage = Stage.Submitting
                     scope.launch {
@@ -121,6 +125,7 @@ fun CreateShareSheet(
 private fun ShareFormContent(
     resourceUri: String,
     resourceSubtitle: String?,
+    isOnline: Boolean,
     onSubmit: (String, ShareMode, ShareReceiver) -> Unit,
 ) {
     var mode by rememberSaveable { mutableStateOf(ShareMode.READ) }
@@ -197,6 +202,8 @@ private fun ShareFormContent(
 
         Spacer(Modifier.height(4.dp))
 
+        RequiresConnectionHint(visible = !isOnline)
+
         Button(
             onClick = {
                 val receiver = if (anyoneWithLink) {
@@ -206,7 +213,7 @@ private fun ShareFormContent(
                 }
                 onSubmit(resourceUri, mode, receiver)
             },
-            enabled = canSubmit,
+            enabled = canSubmit && isOnline,
             shape = CircleShape,
             modifier = Modifier
                 .fillMaxWidth()
@@ -408,6 +415,7 @@ private fun ShareFormContentPreview() {
         ShareFormContent(
             resourceUri = PreviewSamples.RESOURCE,
             resourceSubtitle = "JPG · 2.4 MB",
+            isOnline = true,
             onSubmit = { _, _, _ -> },
         )
     }

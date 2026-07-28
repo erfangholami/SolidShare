@@ -118,7 +118,7 @@ fun ResourceActionsSheet(
     actions: List<ResourceAction>,
     onDismiss: () -> Unit,
     onAction: (ResourceAction) -> Unit,
-    isOnline: Boolean = true,
+    isOnline: Boolean,
 ) {
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()

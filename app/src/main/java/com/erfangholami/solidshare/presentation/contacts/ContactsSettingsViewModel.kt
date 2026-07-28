@@ -3,6 +3,8 @@ package com.erfangholami.solidshare.presentation.contacts
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.Constraints
+import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.workDataOf
@@ -76,6 +78,9 @@ class ContactsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
             val request = OneTimeWorkRequestBuilder<ContactsDeviceImportWorker>()
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+                )
                 .setInputData(workDataOf(ContactsDeviceImportWorker.KEY_WEB_ID to webId))
                 .build()
             workManager.enqueue(request)
@@ -97,6 +102,9 @@ class ContactsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
             val request = OneTimeWorkRequestBuilder<ContactsImportWorker>()
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+                )
                 .setInputData(
                     workDataOf(
                         ContactsImportWorker.KEY_WEB_ID to webId,
@@ -113,6 +121,9 @@ class ContactsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val webId = runCatching { authRepository.getActiveWebId() }.getOrNull() ?: return@launch
             val request = OneTimeWorkRequestBuilder<ContactsExportWorker>()
+                .setConstraints(
+                    Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
+                )
                 .setInputData(
                     workDataOf(
                         ContactsExportWorker.KEY_WEB_ID to webId,

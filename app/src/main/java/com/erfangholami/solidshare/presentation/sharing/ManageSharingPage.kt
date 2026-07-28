@@ -64,7 +64,9 @@ import com.erfangholami.solidshare.presentation.components.EntityRow
 import com.erfangholami.solidshare.presentation.components.ErrorState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
+import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.util.formatRelativeTime
 import androidx.compose.material3.Surface
@@ -76,6 +78,7 @@ fun ManageSharingPage(
     viewModel: ManageSharingViewModel,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val isOnline by rememberIsOnline()
     val snackbarHostState = remember { SnackbarHostState() }
 
     var showAddSheet by rememberSaveable { mutableStateOf(false) }
@@ -183,7 +186,16 @@ fun ManageSharingPage(
                                 )
                             }
                             if (viewModel.canManage) {
-                                AddPeopleButton(onClick = { showAddSheet = true })
+                                AddPeopleButton(
+                                    onClick = { showAddSheet = true },
+                                    enabled = isOnline,
+                                )
+                                RequiresConnectionHint(
+                                    visible = !isOnline,
+                                    modifier = Modifier
+                                        .align(Alignment.CenterHorizontally)
+                                        .padding(bottom = 8.dp),
+                                )
                             }
                         }
                 }
@@ -207,6 +219,10 @@ fun ManageSharingPage(
             onDismissRequest = { sheetTarget = null },
             sheetState = sheetState,
         ) {
+            RequiresConnectionHint(
+                visible = !isOnline,
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp),
+            )
             AccessModeSheetContent(
                 current = target.mode,
                 onSelect = { mode ->
@@ -217,6 +233,7 @@ fun ManageSharingPage(
                     sheetTarget = null
                     viewModel.revoke(target)
                 },
+                enabled = isOnline,
             )
         }
     }
@@ -317,9 +334,13 @@ private fun AccessControl(
 }
 
 @Composable
-private fun AddPeopleButton(onClick: () -> Unit) {
+private fun AddPeopleButton(
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
     OutlinedButton(
         onClick = onClick,
+        enabled = enabled,
         shape = CircleShape,
         modifier = Modifier
             .fillMaxWidth()
