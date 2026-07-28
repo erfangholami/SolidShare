@@ -1,20 +1,20 @@
 package com.erfangholami.solidshare.presentation.wallet
 
 import android.graphics.BitmapFactory
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -27,7 +27,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.lerp
@@ -35,10 +37,10 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.Canvas
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.passimport.BcbpParser
 import com.erfangholami.solidshare.data.passimport.PassImages
@@ -88,43 +90,177 @@ data class PassCardData(
     val membership: TicketMembershipInfo? = null,
 )
 
+private enum class PassLayout { BOARDING, COUPON, EVENT, STORE, GENERIC }
+
+private fun layoutFor(category: TicketCategory): PassLayout = when (category) {
+    TicketCategory.FLIGHT,
+    TicketCategory.TRAIN,
+    TicketCategory.BUS,
+    TicketCategory.BOAT,
+    -> PassLayout.BOARDING
+
+    TicketCategory.EVENT, TicketCategory.CINEMA -> PassLayout.EVENT
+    TicketCategory.LOYALTY -> PassLayout.STORE
+    TicketCategory.COUPON -> PassLayout.COUPON
+    TicketCategory.GENERIC -> PassLayout.GENERIC
+}
+
+private data class PassField(
+    val label: String,
+    val value: String,
+    val alignment: String? = null,
+)
+
+@Composable
+private fun PassCardData.field(extra: TicketExtra): PassField {
+    val (label, value) = normalizedExtra(category, extra)
+    return PassField(label, value, extra.textAlignment)
+}
+
+private fun PassCardData.tier(placement: TicketExtraPlacement): List<TicketExtra> =
+    extras.filter { it.placement == placement }
+
+private fun PassCardData.hasAuthoredBody(): Boolean = extras.any {
+    it.placement == TicketExtraPlacement.PRIMARY ||
+        it.placement == TicketExtraPlacement.SECONDARY ||
+        it.placement == TicketExtraPlacement.AUXILIARY
+}
+
 private fun PassCardData.headerExtras(): List<TicketExtra> = extras
     .filter { it.placement == TicketExtraPlacement.HEADER && !it.label.isNullOrBlank() }
-    .take(2)
+    .take(3)
 
-private fun PassCardData.bodyExtraList(): List<TicketExtra> {
-    val header = headerExtras()
-    return extras.filter {
-        it.placement != TicketExtraPlacement.BACK &&
-            it.placement != TicketExtraPlacement.ADDITIONAL &&
-            it !in header && !it.label.isNullOrBlank()
+@Composable
+private fun PassCardData.primaryFields(): List<PassField> {
+    if (hasAuthoredBody()) return tier(TicketExtraPlacement.PRIMARY).map { field(it) }
+    return synthesizedPrimary()
+}
+
+@Composable
+private fun PassCardData.secondaryFields(): List<PassField> {
+    if (hasAuthoredBody()) return tier(TicketExtraPlacement.SECONDARY).map { field(it) }.take(5)
+    return synthesizedSecondary()
+}
+
+@Composable
+private fun PassCardData.auxiliaryFields(): List<PassField> {
+    if (hasAuthoredBody()) return tier(TicketExtraPlacement.AUXILIARY).map { field(it) }.take(5)
+    return synthesizedAuxiliary()
+}
+
+@Composable
+private fun PassCardData.footerFields(): List<PassField> =
+    tier(TicketExtraPlacement.FOOTER).map { field(it) }.take(4)
+
+@Composable
+private fun PassCardData.synthesizedPrimary(): List<PassField> = when (layoutFor(category)) {
+    PassLayout.BOARDING -> emptyList()
+
+    PassLayout.EVENT -> listOf(PassField("", event?.name ?: title))
+
+    PassLayout.STORE -> listOfNotNull(
+        membership?.balanceText()?.let {
+            PassField(stringResource(R.string.pass_label_balance), it)
+        },
+    ).ifEmpty { listOf(PassField("", title)) }
+
+    PassLayout.COUPON, PassLayout.GENERIC -> listOf(PassField("", title))
+}
+
+@Composable
+private fun PassCardData.synthesizedSecondary(): List<PassField> = when (layoutFor(category)) {
+    PassLayout.BOARDING -> listOfNotNull(
+        seatText(seat)?.let { PassField(stringResource(R.string.pass_field_seat), it) },
+        journey?.from?.gate?.let { PassField(stringResource(R.string.ticket_field_gate), it) },
+        journey?.from?.platform?.let {
+            PassField(stringResource(R.string.ticket_field_platform), it)
+        },
+        journey?.from?.terminal?.let {
+            PassField(stringResource(R.string.ticket_field_terminal), it)
+        },
+    )
+
+    PassLayout.EVENT -> listOfNotNull(
+        shortDateTime(start)?.let { PassField(stringResource(R.string.pass_field_date), it) },
+    )
+
+    PassLayout.STORE -> listOfNotNull(
+        number?.let { PassField(stringResource(R.string.pass_field_number), it) },
+        holder?.let { PassField(stringResource(R.string.pass_field_holder), it) },
+        shortDate(validThrough)?.let {
+            PassField(stringResource(R.string.pass_field_valid_until), it)
+        },
+    )
+
+    PassLayout.COUPON -> listOfNotNull(
+        shortDate(validThrough)?.let {
+            PassField(stringResource(R.string.pass_field_valid_until), it)
+        },
+        number?.let { PassField(stringResource(R.string.pass_field_number), it) },
+    )
+
+    PassLayout.GENERIC -> listOfNotNull(
+        number?.let { PassField(stringResource(R.string.pass_field_number), it) },
+        holder?.let { PassField(stringResource(R.string.pass_field_holder), it) },
+    )
+}
+
+@Composable
+private fun PassCardData.synthesizedAuxiliary(): List<PassField> = when (layoutFor(category)) {
+    PassLayout.BOARDING -> {
+        val serviceLabel = when (journey?.mode) {
+            TransportMode.FLIGHT -> stringResource(R.string.pass_field_flight)
+            else -> stringResource(R.string.pass_field_service)
+        }
+        listOfNotNull(
+            shortDate(start ?: journey?.from?.time)?.let {
+                PassField(stringResource(R.string.pass_field_date), it)
+            },
+            listOfNotNull(
+                journey?.carrier?.takeIf { journey.serviceNumber == null },
+                journey?.serviceNumber,
+            ).firstOrNull()?.let { PassField(serviceLabel, it) },
+        ) + typedFields()
+    }
+
+    PassLayout.EVENT -> listOfNotNull(
+        seat?.section?.let { PassField(stringResource(R.string.ticket_field_seat_section), it) },
+        seat?.row?.let { PassField(stringResource(R.string.ticket_field_seat_row), it) },
+        seat?.number?.let { PassField(stringResource(R.string.pass_field_seat), it) },
+    ) + typedFields()
+
+    PassLayout.STORE, PassLayout.COUPON, PassLayout.GENERIC -> when (layoutFor(category)) {
+        PassLayout.GENERIC -> listOfNotNull(
+            shortDate(validThrough)?.let {
+                PassField(stringResource(R.string.pass_field_valid_until), it)
+            },
+        ) + typedFields()
+
+        else -> typedFields()
     }
 }
 
 @Composable
-private fun PassCardData.bodyFields(): List<Pair<String, String>> =
-    bodyExtraList().map { normalizedExtra(category, it) } + typedFields()
-
-@Composable
-private fun PassCardData.typedFields(): List<Pair<String, String>> {
-    val labels = bodyExtraList().mapNotNull { it.label?.let(::normalizePassKey) }.toSet()
+private fun PassCardData.typedFields(): List<PassField> {
+    val labels = extras.mapNotNull { it.label?.let(::normalizePassKey) }.toSet()
     fun free(vararg keys: String) = keys.none { normalizePassKey(it) in labels }
     return listOfNotNull(
         reservation?.boardingGroup
             ?.takeIf { free("group", "boardinggroup") }
-            ?.let { stringResource(R.string.pass_label_group) to it },
+            ?.let { PassField(stringResource(R.string.pass_label_group), it) },
         reservation?.boardingZone
             ?.takeIf { free("zone", "boardingzone") }
-            ?.let { stringResource(R.string.pass_label_zone) to it },
+            ?.let { PassField(stringResource(R.string.pass_label_zone), it) },
         reservation?.sequenceNumber
             ?.takeIf { free("sequence", "sequencenumber", "seq") }
-            ?.let { stringResource(R.string.pass_label_sequence) to it },
+            ?.let { PassField(stringResource(R.string.pass_label_sequence), it) },
         reservation?.fareClass
             ?.takeIf { free("class", "fareclass", "cabin") }
-            ?.let { stringResource(R.string.pass_label_class) to it },
+            ?.let { PassField(stringResource(R.string.pass_label_class), it) },
         membership?.balanceText()
+            ?.takeIf { layoutFor(category) != PassLayout.STORE }
             ?.takeIf { free("balance", "points", "pointsbalance") }
-            ?.let { stringResource(R.string.pass_label_balance) to it },
+            ?.let { PassField(stringResource(R.string.pass_label_balance), it) },
     )
 }
 
@@ -258,93 +394,130 @@ fun PassCard(
 ) {
     val palette = remember(data, expired) { passPalette(data, expired) }
     val shape = RoundedCornerShape(20.dp)
-    val content: @Composable () -> Unit = {
-        Column {
-            PassHeader(data, palette, expired)
-            PassStrip(data)
-            Column(Modifier.padding(horizontal = 18.dp)) {
-                when {
-                    data.journey != null -> TransitBody(data, data.journey, palette)
-                    data.category == TicketCategory.EVENT || data.category == TicketCategory.CINEMA ->
-                        EventBody(data, palette)
-
-                    else -> GenericBody(data, palette)
-                }
-                Spacer(Modifier.height(18.dp))
-            }
-            if (showBarcode && !data.token.isNullOrBlank()) {
-                rememberPassBitmap(data.images?.footer)?.let { footer ->
-                    Image(
-                        bitmap = footer,
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxWidth().height(44.dp),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-                TearLine(palette)
-                Column(
-                    Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = Color.White,
-                    ) {
-                        Column(
-                            Modifier.padding(12.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            TicketBarcode(token = data.token, format = data.barcodeFormat, encoding = data.barcodeEncoding)
-                            val caption = remember(data.barcodeAltText, data.token) {
-                                barcodeCaption(data.barcodeAltText, data.token)
-                            }
-                            caption?.let {
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    it,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = Color(0xFF3C4043),
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    val layout = layoutFor(data.category)
+    val strip = rememberPassBitmap(data.images?.strip)
+    val background = if (layout == PassLayout.EVENT && strip == null) {
+        rememberPassBitmap(data.images?.background)
+    } else {
+        null
     }
-    val decorated: @Composable () -> Unit = {
-        val background = rememberPassBitmap(data.images?.background)
-        if (background != null) {
-            Box {
+    val content: @Composable () -> Unit = {
+        Box {
+            background?.let {
                 Image(
-                    bitmap = background,
+                    bitmap = it,
                     contentDescription = null,
                     modifier = Modifier.matchParentSize().blur(18.dp),
                     contentScale = ContentScale.Crop,
                     alpha = 0.45f,
                 )
-                content()
             }
-        } else {
-            content()
+            Column {
+                PassHeader(data, palette, expired)
+                when (layout) {
+                    PassLayout.BOARDING -> BoardingBody(data, palette)
+
+                    PassLayout.COUPON, PassLayout.STORE ->
+                        StripBody(data, palette, strip, COUPON_STRIP_ASPECT, combineRows = true)
+
+                    PassLayout.EVENT ->
+                        if (strip != null || parsePassColor(data.style?.stripColor) != null) {
+                            StripBody(data, palette, strip, EVENT_STRIP_ASPECT, combineRows = true)
+                        } else {
+                            EventBody(data, palette)
+                        }
+
+                    PassLayout.GENERIC -> GenericBody(data, palette)
+                }
+                val footerFields = data.footerFields()
+                if (footerFields.isNotEmpty()) {
+                    FieldRow(
+                        footerFields,
+                        palette,
+                        modifier = Modifier.padding(horizontal = 18.dp),
+                    )
+                }
+                Spacer(Modifier.height(16.dp))
+                if (showBarcode && !data.token.isNullOrBlank()) {
+                    rememberPassBitmap(data.images?.footer)?.let { footer ->
+                        Image(
+                            bitmap = footer,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxWidth().height(20.dp),
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                    TearLine(palette)
+                    BarcodePanel(data)
+                }
+            }
         }
     }
     if (onClick != null) {
-        Surface(onClick = onClick, modifier = modifier.fillMaxWidth(), shape = shape, color = palette.container) {
-            decorated()
+        Surface(
+            onClick = onClick,
+            modifier = modifier.fillMaxWidth(),
+            shape = shape,
+            color = palette.container,
+        ) {
+            content()
         }
     } else {
         Surface(modifier = modifier.fillMaxWidth(), shape = shape, color = palette.container) {
-            decorated()
+            content()
+        }
+    }
+}
+
+private const val COUPON_STRIP_ASPECT = 375f / 144f
+private const val EVENT_STRIP_ASPECT = 375f / 98f
+
+@Composable
+private fun BarcodePanel(data: PassCardData) {
+    val footerBackground = parsePassColor(data.style?.footerBackgroundColor)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .then(footerBackground?.let { Modifier.background(it) } ?: Modifier)
+            .padding(start = 18.dp, end = 18.dp, bottom = 18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Surface(
+            shape = RoundedCornerShape(14.dp),
+            color = Color.White,
+        ) {
+            Column(
+                Modifier.padding(12.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                TicketBarcode(
+                    token = data.token.orEmpty(),
+                    format = data.barcodeFormat,
+                    encoding = data.barcodeEncoding,
+                )
+                val caption = remember(data.barcodeAltText, data.token) {
+                    barcodeCaption(data.barcodeAltText, data.token)
+                }
+                caption?.let {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF3C4043),
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun rememberPassBitmap(bytes: ByteArray?): androidx.compose.ui.graphics.ImageBitmap? {
+private fun rememberPassBitmap(bytes: ByteArray?): ImageBitmap? {
     return remember(bytes) {
         bytes?.let {
-            runCatching { BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap() }.getOrNull()
+            runCatching {
+                BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap()
+            }.getOrNull()
         }
     }
 }
@@ -352,7 +525,9 @@ private fun rememberPassBitmap(bytes: ByteArray?): androidx.compose.ui.graphics.
 @Composable
 private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolean) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 18.dp, end = 18.dp, top = 16.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val logoBitmap = rememberPassBitmap(data.images?.logo)
@@ -360,7 +535,7 @@ private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolea
             Image(
                 bitmap = logoBitmap,
                 contentDescription = null,
-                modifier = Modifier.height(26.dp).weight(1f, fill = false),
+                modifier = Modifier.height(27.dp).weight(1f, fill = false),
                 contentScale = ContentScale.Fit,
                 alignment = Alignment.CenterStart,
             )
@@ -371,6 +546,8 @@ private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolea
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = palette.onContainer,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         } else {
@@ -409,18 +586,19 @@ private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolea
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                     headerFields.forEach { extra ->
-                        val (label, value) = normalizedExtra(data.category, extra)
+                        val field = data.field(extra)
                         Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                label.uppercase(),
+                                field.label.uppercase(),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = palette.label,
                             )
                             Text(
-                                value,
+                                field.value,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = palette.onContainer,
+                                textAlign = TextAlign.End,
                             )
                         }
                     }
@@ -431,48 +609,106 @@ private fun PassHeader(data: PassCardData, palette: PassPalette, expired: Boolea
 }
 
 @Composable
-private fun PassStrip(data: PassCardData) {
-    val bitmap = rememberPassBitmap(data.images?.strip) ?: return
-    Image(
-        bitmap = bitmap,
-        contentDescription = null,
-        modifier = Modifier.fillMaxWidth().height(96.dp),
-        contentScale = ContentScale.Crop,
-    )
-    Spacer(Modifier.height(12.dp))
+private fun BoardingBody(data: PassCardData, palette: PassPalette) {
+    Column(Modifier.padding(horizontal = 18.dp)) {
+        val primaries = if (data.hasAuthoredBody()) {
+            data.tier(TicketExtraPlacement.PRIMARY).map { data.field(it) }
+        } else {
+            emptyList()
+        }
+        when {
+            primaries.size >= 2 -> Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BigEndpoint(primaries.first(), palette, alignEnd = false, Modifier.weight(1f))
+                Icon(
+                    iconFor(data.category),
+                    contentDescription = null,
+                    tint = palette.label,
+                    modifier = Modifier.padding(horizontal = 10.dp).size(22.dp),
+                )
+                BigEndpoint(primaries.last(), palette, alignEnd = true, Modifier.weight(1f))
+            }
+
+            data.journey != null -> Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                PassStopColumn(
+                    data.journey.from,
+                    palette,
+                    alignEnd = false,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    iconFor(data.category),
+                    contentDescription = null,
+                    tint = palette.label,
+                    modifier = Modifier.padding(horizontal = 10.dp).size(22.dp),
+                )
+                PassStopColumn(
+                    data.journey.to,
+                    palette,
+                    alignEnd = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+
+            primaries.isNotEmpty() -> BigEndpoint(
+                primaries.first(),
+                palette,
+                alignEnd = false,
+                Modifier.fillMaxWidth(),
+            )
+
+            else -> Text(
+                data.title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = palette.onContainer,
+            )
+        }
+        Spacer(Modifier.height(16.dp))
+        val auxiliary = data.auxiliaryFields()
+        if (auxiliary.isNotEmpty()) {
+            FieldRow(auxiliary, palette)
+            Spacer(Modifier.height(12.dp))
+        }
+        val secondary = data.secondaryFields()
+        if (secondary.isNotEmpty()) {
+            FieldRow(secondary, palette)
+        }
+    }
 }
 
 @Composable
-private fun TransitBody(data: PassCardData, journey: TicketJourney, palette: PassPalette) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        PassStopColumn(journey.from, palette, alignEnd = false, modifier = Modifier.weight(1f))
-        Icon(
-            iconFor(data.category),
-            contentDescription = null,
-            tint = palette.label,
-            modifier = Modifier.padding(horizontal = 10.dp).size(22.dp),
+private fun BigEndpoint(
+    field: PassField,
+    palette: PassPalette,
+    alignEnd: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
+    ) {
+        if (field.label.isNotBlank()) {
+            Text(
+                field.label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = palette.label,
+            )
+        }
+        Text(
+            field.value,
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = palette.onContainer,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
-        PassStopColumn(journey.to, palette, alignEnd = true, modifier = Modifier.weight(1f))
     }
-    Spacer(Modifier.height(16.dp))
-    val serviceLabel = when (journey.mode) {
-        TransportMode.FLIGHT -> stringResource(R.string.pass_field_flight)
-        else -> stringResource(R.string.pass_field_service)
-    }
-    PassFieldGrid(
-        listOfNotNull(
-            shortDate(data.start ?: journey.from?.time)?.let {
-                stringResource(R.string.pass_field_date) to it
-            },
-            listOfNotNull(journey.carrier?.takeIf { journey.serviceNumber == null }, journey.serviceNumber)
-                .firstOrNull()?.let { serviceLabel to it },
-            seatText(data.seat)?.let { stringResource(R.string.pass_field_seat) to it },
-            journey.from?.gate?.let { stringResource(R.string.ticket_field_gate) to it },
-            journey.from?.platform?.let { stringResource(R.string.ticket_field_platform) to it },
-            journey.from?.terminal?.let { stringResource(R.string.ticket_field_terminal) to it },
-        ) + data.bodyFields(),
-        palette,
-    )
 }
 
 @Composable
@@ -482,7 +718,10 @@ private fun PassStopColumn(
     alignEnd: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier, horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (alignEnd) Alignment.End else Alignment.Start,
+    ) {
         Text(
             stop?.code ?: stop?.name ?: "—",
             style = MaterialTheme.typography.displaySmall,
@@ -510,92 +749,264 @@ private fun PassStopColumn(
 }
 
 @Composable
-private fun EventBody(data: PassCardData, palette: PassPalette) {
-    val thumbnail = rememberPassBitmap(data.images?.thumbnail)
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            data.event?.name ?: data.title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.SemiBold,
-            color = palette.onContainer,
-            modifier = Modifier.weight(1f),
-        )
-        thumbnail?.let {
-            Spacer(Modifier.width(12.dp))
+private fun StripBody(
+    data: PassCardData,
+    palette: PassPalette,
+    strip: ImageBitmap?,
+    aspect: Float,
+    combineRows: Boolean,
+) {
+    val stripColor = parsePassColor(data.style?.stripColor)
+    val primaries = data.primaryFields()
+    when {
+        strip != null -> Box(Modifier.fillMaxWidth().aspectRatio(aspect)) {
             Image(
-                bitmap = it,
+                bitmap = strip,
                 contentDescription = null,
-                modifier = Modifier.size(56.dp).clip(RoundedCornerShape(10.dp)),
+                modifier = Modifier.matchParentSize(),
                 contentScale = ContentScale.Crop,
+            )
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.55f to Color.Transparent,
+                            1f to Color.Black.copy(alpha = 0.45f),
+                        ),
+                    ),
+            )
+            PrimaryOverlay(
+                primaries,
+                palette.copy(onContainer = Color.White, label = Color.White.copy(alpha = 0.8f)),
+                Modifier.align(Alignment.BottomStart),
+            )
+        }
+
+        stripColor != null -> Box(
+            Modifier
+                .fillMaxWidth()
+                .height(if (aspect == EVENT_STRIP_ASPECT) 72.dp else 96.dp)
+                .background(stripColor),
+        ) {
+            val onStrip = bestOn(stripColor)
+            PrimaryOverlay(
+                primaries,
+                palette.copy(onContainer = onStrip, label = onStrip.copy(alpha = 0.72f)),
+                Modifier.align(Alignment.BottomStart),
+            )
+        }
+
+        else -> Column(Modifier.padding(horizontal = 18.dp)) {
+            PrimaryBlock(primaries, data, palette)
+        }
+    }
+    Spacer(Modifier.height(12.dp))
+    Column(Modifier.padding(horizontal = 18.dp)) {
+        if (combineRows) {
+            val combined = (data.secondaryFields() + data.auxiliaryFields()).take(4)
+            if (combined.isNotEmpty()) {
+                FieldRow(combined, palette)
+            }
+        } else {
+            val secondary = data.secondaryFields()
+            if (secondary.isNotEmpty()) {
+                FieldRow(secondary, palette)
+                Spacer(Modifier.height(12.dp))
+            }
+            val auxiliary = data.auxiliaryFields()
+            if (auxiliary.isNotEmpty()) {
+                FieldRow(auxiliary, palette)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PrimaryOverlay(
+    fields: List<PassField>,
+    palette: PassPalette,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.padding(horizontal = 18.dp, vertical = 12.dp)) {
+        fields.take(1).forEach { field ->
+            if (field.label.isNotBlank()) {
+                Text(
+                    field.label.uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = palette.label,
+                )
+            }
+            Text(
+                field.value,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = palette.onContainer,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
             )
         }
     }
-    data.event?.venue?.let { venue ->
-        Spacer(Modifier.height(4.dp))
-        venue.name?.let {
-            Text(it, style = MaterialTheme.typography.bodyMedium, color = palette.onContainer)
+}
+
+@Composable
+private fun PrimaryBlock(
+    fields: List<PassField>,
+    data: PassCardData,
+    palette: PassPalette,
+) {
+    fields.take(1).forEach { field ->
+        if (field.label.isNotBlank()) {
+            Text(
+                field.label.uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = palette.label,
+            )
         }
-        venue.address?.let {
-            Text(it, style = MaterialTheme.typography.bodySmall, color = palette.label)
+        Text(
+            field.value,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = palette.onContainer,
+        )
+    }
+    if (fields.isEmpty()) {
+        Text(
+            data.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = palette.onContainer,
+        )
+    }
+}
+
+@Composable
+private fun EventBody(data: PassCardData, palette: PassPalette) {
+    Column(Modifier.padding(horizontal = 18.dp)) {
+        val thumbnail = rememberPassBitmap(data.images?.thumbnail)
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                PrimaryBlock(data.primaryFields(), data, palette)
+                if (!data.hasAuthoredBody()) {
+                    data.event?.venue?.let { venue ->
+                        Spacer(Modifier.height(4.dp))
+                        venue.name?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = palette.onContainer,
+                            )
+                        }
+                        venue.address?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = palette.label,
+                            )
+                        }
+                    }
+                }
+            }
+            thumbnail?.let {
+                Spacer(Modifier.width(12.dp))
+                Image(
+                    bitmap = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        val secondary = data.secondaryFields()
+        if (secondary.isNotEmpty()) {
+            FieldRow(secondary, palette)
+            Spacer(Modifier.height(12.dp))
+        }
+        val auxiliary = data.auxiliaryFields()
+        if (auxiliary.isNotEmpty()) {
+            FieldRow(auxiliary, palette)
         }
     }
-    Spacer(Modifier.height(16.dp))
-    PassFieldGrid(
-        listOfNotNull(
-            shortDateTime(data.start)?.let { stringResource(R.string.pass_field_date) to it },
-            data.seat?.section?.let { stringResource(R.string.ticket_field_seat_section) to it },
-            data.seat?.row?.let { stringResource(R.string.ticket_field_seat_row) to it },
-            data.seat?.number?.let { stringResource(R.string.pass_field_seat) to it },
-        ) + data.bodyFields(),
-        palette,
-    )
 }
 
 @Composable
 private fun GenericBody(data: PassCardData, palette: PassPalette) {
-    Text(
-        data.title,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.SemiBold,
-        color = palette.onContainer,
-    )
-    Spacer(Modifier.height(16.dp))
-    PassFieldGrid(
-        listOfNotNull(
-            data.number?.let { stringResource(R.string.pass_field_number) to it },
-            data.holder?.let { stringResource(R.string.pass_field_holder) to it },
-            (shortDate(data.validThrough) ?: shortDate(data.start))?.let {
-                stringResource(R.string.pass_field_valid_until) to it
-            },
-        ) + data.bodyFields(),
-        palette,
-    )
+    Column(Modifier.padding(horizontal = 18.dp)) {
+        val thumbnail = rememberPassBitmap(data.images?.thumbnail)
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                PrimaryBlock(data.primaryFields(), data, palette)
+            }
+            thumbnail?.let {
+                Spacer(Modifier.width(12.dp))
+                Image(
+                    bitmap = it,
+                    contentDescription = null,
+                    modifier = Modifier.size(72.dp).clip(RoundedCornerShape(10.dp)),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
+        Spacer(Modifier.height(16.dp))
+        val secondary = data.secondaryFields()
+        if (secondary.isNotEmpty()) {
+            FieldRow(secondary, palette)
+            Spacer(Modifier.height(12.dp))
+        }
+        val auxiliary = data.auxiliaryFields()
+        if (auxiliary.isNotEmpty()) {
+            FieldRow(auxiliary, palette)
+        }
+    }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun PassFieldGrid(fields: List<Pair<String, String>>, palette: PassPalette) {
-    val visible = fields.filter { it.second.isNotBlank() }
+private fun FieldRow(
+    fields: List<PassField>,
+    palette: PassPalette,
+    modifier: Modifier = Modifier,
+) {
+    val visible = fields.filter { it.value.isNotBlank() }
     if (visible.isEmpty()) return
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        visible.forEach { (label, value) ->
-            Column {
-                if (label.isNotBlank()) {
+        visible.forEachIndexed { index, field ->
+            val positionAlignment = when {
+                visible.size == 1 -> Alignment.Start
+                index == 0 -> Alignment.Start
+                index == visible.lastIndex -> Alignment.End
+                else -> Alignment.CenterHorizontally
+            }
+            val alignment = when (field.alignment) {
+                "PKTextAlignmentLeft" -> Alignment.Start
+                "PKTextAlignmentCenter" -> Alignment.CenterHorizontally
+                "PKTextAlignmentRight" -> Alignment.End
+                else -> positionAlignment
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = alignment,
+            ) {
+                if (field.label.isNotBlank()) {
                     Text(
-                        label.uppercase(),
+                        field.label.uppercase(),
                         style = MaterialTheme.typography.labelSmall,
                         color = palette.label,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
                 Text(
-                    value,
+                    field.value,
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     color = palette.onContainer,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -676,7 +1087,12 @@ private fun sampleFlight(): PassCardData = TicketDraft(
         mode = TransportMode.FLIGHT,
         carrier = "KL",
         serviceNumber = "KL641",
-        from = TicketStop(code = "AMS", cityName = "Amsterdam", time = "2026-09-01T09:40+02:00", gate = "D07"),
+        from = TicketStop(
+            code = "AMS",
+            cityName = "Amsterdam",
+            time = "2026-09-01T09:40+02:00",
+            gate = "D07",
+        ),
         to = TicketStop(code = "JFK", cityName = "New York", time = "2026-09-01T12:25-04:00"),
     ),
 ).toPassCardData()
@@ -693,6 +1109,27 @@ private fun sampleEvent(): PassCardData = TicketDraft(
         start = "2026-08-20T19:30+02:00",
         venue = TicketVenue(name = "Paradiso", address = "Weteringschans 6, Amsterdam"),
     ),
+).toPassCardData()
+
+private fun sampleStoreCard(): PassCardData = TicketDraft(
+    title = "Coffee Club",
+    category = TicketCategory.LOYALTY,
+    issuer = "Bocca Coffee",
+    number = "9917",
+    holder = "Erfan Gholami",
+    token = "LOY-9917",
+    barcodeFormat = TicketBarcodeFormat.CODE_128,
+    style = TicketStyle(backgroundColor = "#00696B", stripColor = "#00565A"),
+    membership = TicketMembershipInfo(pointsBalance = "1 250 points"),
+).toPassCardData()
+
+private fun sampleCoupon(): PassCardData = TicketDraft(
+    title = "25% off espresso beans",
+    category = TicketCategory.COUPON,
+    issuer = "Bocca Coffee",
+    validThrough = "2026-12-31",
+    token = "SAVE25",
+    barcodeFormat = TicketBarcodeFormat.QR_CODE,
 ).toPassCardData()
 
 @Preview(showBackground = true, widthDp = 380)
@@ -727,21 +1164,20 @@ private fun PassCardExpiredPreview() {
 
 @Preview(showBackground = true, widthDp = 380)
 @Composable
-private fun PassCardLoyaltyPreview() {
+private fun PassCardStoreCardPreview() {
     AppTheme {
         Column(Modifier.padding(16.dp)) {
-            PassCard(
-                TicketDraft(
-                    title = "Coffee Club",
-                    category = TicketCategory.LOYALTY,
-                    issuer = "Bocca Coffee",
-                    number = "9917",
-                    holder = "Erfan Gholami",
-                    token = "LOY-9917",
-                    barcodeFormat = TicketBarcodeFormat.CODE_128,
-                ).toPassCardData(),
-                showBarcode = false,
-            )
+            PassCard(sampleStoreCard())
+        }
+    }
+}
+
+@Preview(showBackground = true, widthDp = 380)
+@Composable
+private fun PassCardCouponPreview() {
+    AppTheme {
+        Column(Modifier.padding(16.dp)) {
+            PassCard(sampleCoupon(), showBarcode = false)
         }
     }
 }

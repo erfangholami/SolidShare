@@ -89,6 +89,7 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
+import com.erfangholami.solidshare.domain.model.TicketExtraPlacement
 import com.erfangholami.solidshare.presentation.components.BlockingProgressOverlay
 import com.erfangholami.solidshare.presentation.components.ErrorState
 import com.erfangholami.solidshare.presentation.components.LoadingState
@@ -394,7 +395,11 @@ private fun TicketDetailContent(ticket: Ticket, visuals: PassImages? = null) {
                 it,
             )
         }
-        ticket.extras.forEach { extra ->
+        ticket.extras.filter {
+            it.placement == null ||
+                it.placement == TicketExtraPlacement.BACK ||
+                it.placement == TicketExtraPlacement.ADDITIONAL
+        }.forEach { extra ->
             val (label, value) = normalizedExtra(ticket.category, extra)
             TicketDetailRow(
                 Icons.AutoMirrored.Filled.Notes,
