@@ -10,6 +10,7 @@ import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import javax.inject.Inject
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -38,6 +39,9 @@ class WalletViewModel @Inject constructor(
     private val _message = MutableStateFlow<String?>(null)
     val message = _message.asStateFlow()
 
+    private var observeJob: Job? = null
+    private var observedWebId: String? = null
+
     fun prepareImport(bytes: ByteArray, fileName: String? = null) {
         importHolder.stashImport(bytes, fileName)
     }
@@ -48,11 +52,29 @@ class WalletViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            _state.update { it.copy(loading = true, error = null) }
-            runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
-                ticketsRepository.getTickets(webId)
-            }.onSuccess { tickets ->
+            runCatching { requireNotNull(authRepository.getActiveWebId()) }
+                .onSuccess { webId ->
+                    startObserving(webId)
+                    refresh(webId)
+                }
+                .onFailure { error ->
+                    _state.update {
+                        it.copy(
+                            loading = false,
+                            error = error.message
+                                ?: stringProvider.getString(R.string.error_something_went_wrong),
+                        )
+                    }
+                }
+        }
+    }
+
+    private fun startObserving(webId: String) {
+        if (observedWebId == webId && observeJob?.isActive == true) return
+        observeJob?.cancel()
+        observedWebId = webId
+        observeJob = viewModelScope.launch {
+            ticketsRepository.observeTickets(webId).collect { tickets ->
                 val now = Instant.now()
                 val (upcoming, past) = tickets.partition { ticket ->
                     val reference = ticketInstantOrNull(ticket.eventStart)
@@ -61,24 +83,41 @@ class WalletViewModel @Inject constructor(
                 }
                 _state.update {
                     it.copy(
-                        loading = false,
-                        upcoming = upcoming.sortedBy {
-                            t -> ticketInstantOrNull(t.eventStart) ?: Instant.MAX
+                        loading = it.loading && tickets.isEmpty(),
+                        error = null,
+                        upcoming = upcoming.sortedBy { t ->
+                            ticketInstantOrNull(t.eventStart) ?: Instant.MAX
                         },
-                        past = past.sortedByDescending {
-                            t -> ticketInstantOrNull(t.eventStart) ?: Instant.MIN
+                        past = past.sortedByDescending { t ->
+                            ticketInstantOrNull(t.eventStart) ?: Instant.MIN
                         },
-                    )
-                }
-            }.onFailure { error ->
-                _state.update {
-                    it.copy(
-                        loading = false,
-                        error = error.message
-                            ?: stringProvider.getString(R.string.error_something_went_wrong),
                     )
                 }
             }
         }
+    }
+
+    private suspend fun refresh(webId: String) {
+        runCatching { ticketsRepository.refreshTickets(webId) }
+            .onSuccess {
+                _state.update { it.copy(loading = false, error = null) }
+            }
+            .onFailure { error ->
+                val hadContent = !_state.value.isEmpty
+                _state.update {
+                    it.copy(
+                        loading = false,
+                        error = if (hadContent) {
+                            null
+                        } else {
+                            error.message
+                                ?: stringProvider.getString(R.string.error_something_went_wrong)
+                        },
+                    )
+                }
+                if (hadContent) {
+                    _message.value = stringProvider.getString(R.string.wallet_refresh_failed)
+                }
+            }
     }
 }

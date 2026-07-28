@@ -55,6 +55,12 @@ class CacheConverters {
     @TypeConverter
     fun nameToContactOpType(value: String): ContactOpType = ContactOpType.valueOf(value)
 
+    @TypeConverter
+    fun ticketOpTypeToName(value: TicketOpType): String = value.name
+
+    @TypeConverter
+    fun nameToTicketOpType(value: String): TicketOpType = TicketOpType.valueOf(value)
+
     private companion object {
         val json = Json { ignoreUnknownKeys = true }
     }

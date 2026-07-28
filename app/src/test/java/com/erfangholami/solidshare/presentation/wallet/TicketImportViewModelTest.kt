@@ -63,7 +63,7 @@ class TicketImportViewModelTest {
             ParsedTicketFile(second, TicketFile("application/vnd.apple.pkpass", byteArrayOf(2))),
         )
         coEvery { authRepository.getActiveWebId() } returns "https://erfan.example/#me"
-        coEvery { ticketsRepository.createTicket(any(), any(), any()) } returns mockk(relaxed = true)
+        coEvery { ticketsRepository.queueCreate(any(), any(), any()) } returns "urn:solidshare:pending:1"
 
         val vm = viewModel()
         vm.load()
@@ -77,7 +77,7 @@ class TicketImportViewModelTest {
 
         assertEquals(setOf(0, 1), vm.added.value)
         assertEquals(true, closed)
-        coVerify(exactly = 2) { ticketsRepository.createTicket(any(), any(), any()) }
+        coVerify(exactly = 2) { ticketsRepository.queueCreate(any(), any(), any()) }
     }
 
     @Test

@@ -6,14 +6,15 @@ import java.util.zip.ZipInputStream
 
 class PassImages(
     val logo: ByteArray? = null,
+    val icon: ByteArray? = null,
     val strip: ByteArray? = null,
     val thumbnail: ByteArray? = null,
     val footer: ByteArray? = null,
     val background: ByteArray? = null,
 ) {
     val isEmpty: Boolean
-        get() = logo == null && strip == null && thumbnail == null &&
-            footer == null && background == null
+        get() = logo == null && icon == null && strip == null &&
+            thumbnail == null && footer == null && background == null
 }
 
 object PkpassImages {
@@ -52,6 +53,7 @@ object PkpassImages {
 
         return PassImages(
             logo = pick("logo") ?: pick("primaryLogo") ?: pick("secondaryLogo") ?: pick("icon"),
+            icon = pick("icon"),
             strip = pick("strip"),
             thumbnail = pick("thumbnail"),
             footer = pick("footer"),

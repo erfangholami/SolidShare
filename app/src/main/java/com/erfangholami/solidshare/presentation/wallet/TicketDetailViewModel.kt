@@ -71,12 +71,14 @@ class TicketDetailViewModel @Inject constructor(
 
     private fun loadVisuals(ticket: Ticket) {
         if (ticket.source != TicketSource.PKPASS) return
-        val artifactUri = ticket.artifactUri ?: return
         viewModelScope.launch {
             _visuals.value = runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
-                val file = ticketsRepository.getTicketArtifact(webId, artifactUri)
-                PkpassImages.forTicketFile(file.bytes)
+                ticketsRepository.getTicketImages(webId, ticket.uri, ticket.images)
+                    ?: ticket.artifactUri?.let { artifactUri ->
+                        val file = ticketsRepository.getTicketArtifact(webId, ticket.uri, artifactUri)
+                        PkpassImages.forTicketFile(file.bytes)
+                    }
             }.getOrNull()
         }
     }
@@ -86,7 +88,7 @@ class TicketDetailViewModel @Inject constructor(
             _state.update { it.copy(busy = true) }
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
-                ticketsRepository.deleteTicket(webId, ticketUri)
+                ticketsRepository.queueDelete(webId, ticketUri)
             }.onSuccess {
                 _state.update { it.copy(busy = false) }
                 onDeleted()
@@ -103,7 +105,7 @@ class TicketDetailViewModel @Inject constructor(
             _state.update { it.copy(busy = true) }
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
-                ticketsRepository.getTicketArtifact(webId, artifactUri)
+                ticketsRepository.getTicketArtifact(webId, ticketUri, artifactUri)
             }.onSuccess { file ->
                 _state.update { it.copy(busy = false) }
                 onReady(file)

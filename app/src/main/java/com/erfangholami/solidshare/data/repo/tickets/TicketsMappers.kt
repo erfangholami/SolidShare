@@ -8,6 +8,7 @@ import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketExtra
 import com.erfangholami.solidshare.domain.model.TicketExtraPlacement
 import com.erfangholami.solidshare.domain.model.TicketBeaconInfo
+import com.erfangholami.solidshare.domain.model.TicketImageUris
 import com.erfangholami.solidshare.domain.model.TicketJourney
 import com.erfangholami.solidshare.domain.model.TicketLocationInfo
 import com.erfangholami.solidshare.domain.model.TicketMembershipInfo
@@ -116,6 +117,16 @@ fun LibTicket.toDomain(): Ticket = Ticket(
     relevantEnd = relevantEndDate,
     source = source.toDomain(),
     artifactUri = artifactUri,
+    images = images?.let {
+        TicketImageUris(
+            logo = it.logo,
+            icon = it.icon,
+            strip = it.strip,
+            thumbnail = it.thumbnail,
+            footer = it.footer,
+            background = it.background,
+        )
+    },
     createdAt = createdAt,
     modifiedAt = modifiedAt,
 )
@@ -417,3 +428,72 @@ fun LibSource.toDomain(): TicketSource =
     runCatching { TicketSource.valueOf(name) }.getOrDefault(TicketSource.MANUAL)
 
 fun TicketSource.toLib(): LibSource = LibSource.valueOf(name)
+
+fun TicketDraft.toProvisionalTicket(uri: String): Ticket = Ticket(
+    uri = uri,
+    title = title,
+    description = description,
+    number = number,
+    token = token,
+    barcodeFormat = barcodeFormat,
+    barcodeEncoding = barcodeEncoding,
+    barcodeAltText = barcodeAltText,
+    category = category,
+    issuer = issuer,
+    holder = holder,
+    seat = seat,
+    price = price,
+    currency = currency,
+    dateIssued = dateIssued,
+    event = event,
+    journey = journey,
+    validFrom = validFrom,
+    validThrough = validThrough,
+    style = style,
+    extras = extras,
+    passInfo = passInfo,
+    reservation = reservation,
+    membership = membership,
+    locations = locations,
+    beacons = beacons,
+    wifi = wifi,
+    voided = voided,
+    silenceRequested = silenceRequested,
+    relevantStart = relevantStart,
+    relevantEnd = relevantEnd,
+    source = source,
+)
+
+fun Ticket.applying(draft: TicketDraft): Ticket = copy(
+    title = draft.title,
+    description = draft.description,
+    number = draft.number,
+    token = draft.token,
+    barcodeFormat = draft.barcodeFormat,
+    barcodeEncoding = draft.barcodeEncoding,
+    barcodeAltText = draft.barcodeAltText,
+    category = draft.category,
+    issuer = draft.issuer,
+    holder = draft.holder,
+    seat = draft.seat,
+    price = draft.price,
+    currency = draft.currency,
+    dateIssued = draft.dateIssued,
+    event = draft.event,
+    journey = draft.journey,
+    validFrom = draft.validFrom,
+    validThrough = draft.validThrough,
+    style = draft.style,
+    extras = draft.extras,
+    passInfo = draft.passInfo,
+    reservation = draft.reservation,
+    membership = draft.membership,
+    locations = draft.locations,
+    beacons = draft.beacons,
+    wifi = draft.wifi,
+    voided = draft.voided,
+    silenceRequested = draft.silenceRequested,
+    relevantStart = draft.relevantStart,
+    relevantEnd = draft.relevantEnd,
+    source = draft.source,
+)

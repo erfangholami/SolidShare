@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -237,12 +240,14 @@ private fun TicketList(
                 SectionHeader(stringResource(R.string.wallet_upcoming))
             }
             items(upcoming, key = { it.uri }) { ticket ->
-                PassCard(
-                    data = ticket.toPassCardData(),
-                    showBarcode = false,
-                    onClick = { onTicketClick(ticket) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    PassCard(
+                        data = ticket.toPassCardData(),
+                        showBarcode = false,
+                        onClick = { onTicketClick(ticket) },
+                    )
+                    if (ticket.pending) PendingSyncLabel()
+                }
             }
         }
         if (past.isNotEmpty()) {
@@ -250,13 +255,15 @@ private fun TicketList(
                 SectionHeader(stringResource(R.string.wallet_past))
             }
             items(past, key = { it.uri }) { ticket ->
-                PassCard(
-                    data = ticket.toPassCardData(),
-                    showBarcode = false,
-                    expired = true,
-                    onClick = { onTicketClick(ticket) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+                Column(Modifier.padding(horizontal = 16.dp)) {
+                    PassCard(
+                        data = ticket.toPassCardData(),
+                        showBarcode = false,
+                        expired = true,
+                        onClick = { onTicketClick(ticket) },
+                    )
+                    if (ticket.pending) PendingSyncLabel()
+                }
             }
         }
         item { Spacer(Modifier.height(88.dp)) }
@@ -272,6 +279,27 @@ private fun SectionHeader(title: String) {
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(start = 20.dp, top = 12.dp),
     )
+}
+
+@Composable
+private fun PendingSyncLabel() {
+    Row(
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            Icons.Filled.CloudUpload,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = stringResource(R.string.wallet_pending_sync),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
 }
 
 @Preview(showBackground = true, widthDp = 360)

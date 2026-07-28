@@ -22,6 +22,7 @@ data class TicketSummaryItem(
     val validThrough: String? = null,
     val backgroundColor: String? = null,
     val foregroundColor: String? = null,
+    val pending: Boolean = false,
 )
 
 @Serializable
@@ -173,6 +174,17 @@ data class TicketJourney(
     val duration: String? = null,
 )
 
+@Serializable
+data class TicketImageUris(
+    val logo: String? = null,
+    val icon: String? = null,
+    val strip: String? = null,
+    val thumbnail: String? = null,
+    val footer: String? = null,
+    val background: String? = null,
+)
+
+@Serializable
 data class Ticket(
     val uri: String,
     val title: String,
@@ -207,6 +219,7 @@ data class Ticket(
     val relevantEnd: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
     val artifactUri: String? = null,
+    val images: TicketImageUris? = null,
     val createdAt: String? = null,
     val modifiedAt: String? = null,
 )

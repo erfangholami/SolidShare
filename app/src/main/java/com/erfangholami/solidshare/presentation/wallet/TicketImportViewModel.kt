@@ -87,7 +87,7 @@ class TicketImportViewModel @Inject constructor(
                 val webId = requireNotNull(authRepository.getActiveWebId())
                 indices.forEach { index ->
                     val item = parsed[index]
-                    ticketsRepository.createTicket(webId, withFallbackTitle(item.draft), item.artifact)
+                    ticketsRepository.queueCreate(webId, withFallbackTitle(item.draft), item.artifact)
                     _added.update { it + index }
                 }
             }.onFailure {

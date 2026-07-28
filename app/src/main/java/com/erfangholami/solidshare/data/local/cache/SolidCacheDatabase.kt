@@ -11,8 +11,10 @@ import androidx.room.TypeConverters
         OutboxOpEntity::class,
         CachedContactEntity::class,
         ContactOutboxOpEntity::class,
+        CachedTicketEntity::class,
+        TicketOutboxOpEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 @TypeConverters(CacheConverters::class)
@@ -22,4 +24,6 @@ abstract class SolidCacheDatabase : RoomDatabase() {
     abstract fun outboxDao(): OutboxDao
     abstract fun contactDao(): ContactDao
     abstract fun contactOutboxDao(): ContactOutboxDao
+    abstract fun ticketDao(): TicketDao
+    abstract fun ticketOutboxDao(): TicketOutboxDao
 }

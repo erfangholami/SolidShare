@@ -9,6 +9,8 @@ import com.erfangholami.solidshare.data.local.cache.ContactOutboxDao
 import com.erfangholami.solidshare.data.local.cache.OutboxDao
 import com.erfangholami.solidshare.data.local.cache.ResourceDao
 import com.erfangholami.solidshare.data.local.cache.SolidCacheDatabase
+import com.erfangholami.solidshare.data.local.cache.TicketDao
+import com.erfangholami.solidshare.data.local.cache.TicketOutboxDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -53,6 +55,13 @@ object CacheModule {
     @Provides
     fun provideContactOutboxDao(database: SolidCacheDatabase): ContactOutboxDao =
         database.contactOutboxDao()
+
+    @Provides
+    fun provideTicketDao(database: SolidCacheDatabase): TicketDao = database.ticketDao()
+
+    @Provides
+    fun provideTicketOutboxDao(database: SolidCacheDatabase): TicketOutboxDao =
+        database.ticketOutboxDao()
 
     private fun open(context: Context, passphrase: ByteArray): SolidCacheDatabase =
         Room.databaseBuilder(context, SolidCacheDatabase::class.java, DATABASE_NAME)

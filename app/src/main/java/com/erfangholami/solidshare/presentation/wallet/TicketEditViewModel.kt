@@ -83,9 +83,9 @@ class TicketEditViewModel @Inject constructor(
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
                 if (ticketUri == null) {
-                    ticketsRepository.createTicket(webId, draft, importHolder.consume())
+                    ticketsRepository.queueCreate(webId, draft, importHolder.consume())
                 } else {
-                    ticketsRepository.updateTicket(webId, ticketUri, draft)
+                    ticketsRepository.queueUpdate(webId, ticketUri, draft)
                 }
             }.onSuccess {
                 _state.update { it.copy(saving = false) }

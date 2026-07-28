@@ -553,6 +553,8 @@
     <string name="ticket_import_none">No ticket found</string>
     <string name="ticket_import_none_subtitle">We couldn\'t find a ticket, boarding pass or card in this file.</string>
     <string name="wallet_expired_badge">Expired</string>
+    <string name="wallet_refresh_failed">Couldn\'t refresh tickets. Showing saved copies.</string>
+    <string name="wallet_pending_sync">Waiting to sync</string>
     <string name="pass_field_date">Date</string>
     <string name="pass_field_seat">Seat</string>
     <string name="pass_field_flight">Flight</string>

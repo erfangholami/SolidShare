@@ -8,6 +8,7 @@ import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
+import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +26,7 @@ class ProfileViewModel @Inject constructor(
     private val fileRepository: FileRepository,
     private val outboxRepository: OutboxRepository,
     private val contactsRepository: ContactsRepository,
+    private val ticketsRepository: TicketsRepository,
 ) : ViewModel() {
 
     val accounts: StateFlow<List<PublicProfile>> = authRepository.loggedInProfilesFlow
@@ -70,6 +72,7 @@ class ProfileViewModel @Inject constructor(
             fileRepository.clearCacheForWebId(webId)
             outboxRepository.clearForWebId(webId)
             contactsRepository.clearCacheForWebId(webId)
+            ticketsRepository.clearCacheForWebId(webId)
             logoutLoading.value = false
         }
     }
@@ -83,6 +86,7 @@ class ProfileViewModel @Inject constructor(
                 fileRepository.clearCacheForWebId(it)
                 outboxRepository.clearForWebId(it)
                 contactsRepository.clearCacheForWebId(it)
+                ticketsRepository.clearCacheForWebId(it)
             }
             logoutLoading.value = false
         }
