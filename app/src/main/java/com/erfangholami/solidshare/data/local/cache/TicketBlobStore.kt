@@ -81,6 +81,7 @@ class TicketBlobStore @Inject constructor(
         private const val BLOB_DIR = "ticket_blobs"
         const val ARTIFACT = "artifact"
         const val ARTIFACT_MIME = "artifact.mime"
+        const val REFRESH_SINCE = "refresh.since"
         const val LOGO = "logo"
         const val ICON = "icon"
         const val STRIP = "strip"

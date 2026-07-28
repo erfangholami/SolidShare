@@ -2,11 +2,13 @@ package com.erfangholami.solidshare.presentation.wallet
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.work.WorkManager
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.util.StringProvider
+import com.erfangholami.solidshare.worker.PassRefreshWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.time.Instant
 import javax.inject.Inject
@@ -22,6 +24,7 @@ class WalletViewModel @Inject constructor(
     private val ticketsRepository: TicketsRepository,
     private val importHolder: TicketImportHolder,
     private val stringProvider: StringProvider,
+    private val workManager: WorkManager,
 ) : ViewModel() {
 
     data class UiState(
@@ -55,6 +58,7 @@ class WalletViewModel @Inject constructor(
             runCatching { requireNotNull(authRepository.getActiveWebId()) }
                 .onSuccess { webId ->
                     startObserving(webId)
+                    PassRefreshWorker.enqueue(workManager)
                     refresh(webId)
                 }
                 .onFailure { error ->

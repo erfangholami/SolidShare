@@ -26,15 +26,20 @@ import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
 import com.erfangholami.solidshare.domain.model.TicketFile
 import com.erfangholami.solidshare.domain.model.TicketImageUris
+import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.worker.TicketOutboxWorker
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 
 class TicketsRepositoryImplementation @Inject constructor(
@@ -208,6 +213,75 @@ class TicketsRepositoryImplementation @Inject constructor(
         runCatching { ticketDao.deleteAllForWebId(webId) }
         runCatching { ticketOutboxDao.deleteAllForWebId(webId) }
         runCatching { blobStore.clearForWebId(webId) }
+    }
+
+    override suspend fun refreshIssuerPasses(webId: String) {
+        val candidates = ticketDao.getTickets(webId)
+            .filter { it.syncState == SyncState.SYNCED }
+            .mapNotNull { row -> runCatching { row.toDomain() }.getOrNull() }
+            .filter { ticket ->
+                ticket.source == TicketSource.PKPASS &&
+                    ticket.voided != true &&
+                    ticket.passInfo?.webServiceUrl != null &&
+                    ticket.passInfo?.passTypeIdentifier != null &&
+                    ticket.passInfo?.serialNumber != null &&
+                    ticket.passInfo?.authenticationToken != null
+            }
+        candidates.forEach { ticket -> runCatching { refreshIssuerPass(webId, ticket) } }
+    }
+
+    private suspend fun refreshIssuerPass(webId: String, ticket: Ticket) {
+        val pass = requireNotNull(ticket.passInfo)
+        val url = pass.webServiceUrl!!.trimEnd('/') +
+            "/v1/passes/${pass.passTypeIdentifier}/${pass.serialNumber}"
+        val since = blobStore.readText(webId, ticket.uri, TicketBlobStore.REFRESH_SINCE)
+        val response = fetchIssuerPass(url, pass.authenticationToken!!, since) ?: return
+        val parsed = parsedPass(response.first) ?: return
+        updateTicket(webId, ticket.uri, parsed.draft)
+        val refreshed = ticketsDataModule.tickets
+            .putArtifact(
+                webId,
+                ticket.uri,
+                response.first,
+                PkpassParser.MIME_TYPE,
+                parsed.visuals?.toLibImages(),
+            )
+            .unwrap()
+            .toDomain()
+        runCatching {
+            blobStore.write(webId, ticket.uri, TicketBlobStore.ARTIFACT, response.first)
+            blobStore.writeText(
+                webId,
+                ticket.uri,
+                TicketBlobStore.ARTIFACT_MIME,
+                PkpassParser.MIME_TYPE,
+            )
+            parsed.visuals?.let { writeVisuals(webId, ticket.uri, it) }
+            response.second?.let {
+                blobStore.writeText(webId, ticket.uri, TicketBlobStore.REFRESH_SINCE, it)
+            }
+            ticketDao.upsert(refreshed.toCacheEntity(webId, System.currentTimeMillis()))
+        }
+    }
+
+    private suspend fun fetchIssuerPass(
+        url: String,
+        authenticationToken: String,
+        since: String?,
+    ): Pair<ByteArray, String?>? = withContext(Dispatchers.IO) {
+        val connection = URL(url).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.setRequestProperty("Authorization", "ApplePass $authenticationToken")
+            since?.let { connection.setRequestProperty("If-Modified-Since", it) }
+            connection.connectTimeout = 15_000
+            connection.readTimeout = 30_000
+            if (connection.responseCode != HttpURLConnection.HTTP_OK) return@withContext null
+            val bytes = connection.inputStream.use { it.readBytes() }
+            bytes to connection.getHeaderField("Last-Modified")
+        } finally {
+            connection.disconnect()
+        }
     }
 
     override suspend fun createTicket(

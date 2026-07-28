@@ -24,6 +24,8 @@ interface TicketsRepository {
 
     suspend fun drainTicketOutbox(webId: String): Boolean
 
+    suspend fun refreshIssuerPasses(webId: String)
+
     suspend fun clearCacheForWebId(webId: String)
 
     suspend fun createTicket(

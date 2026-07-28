@@ -16,6 +16,7 @@ import com.erfangholami.solidshare.sync.SolidAccountManager
 import com.erfangholami.solidshare.worker.ContactOutboxWorker
 import com.erfangholami.solidshare.worker.NotificationPollingWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
+import com.erfangholami.solidshare.worker.PassRefreshWorker
 import com.erfangholami.solidshare.worker.TicketOutboxWorker
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
@@ -56,6 +57,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
         scheduleOutboxDrain()
         ContactOutboxWorker.enqueue(workManager.get())
         TicketOutboxWorker.enqueue(workManager.get())
+        PassRefreshWorker.schedulePeriodic(workManager.get())
         reconcileSolidAccounts()
     }
 

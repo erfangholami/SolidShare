@@ -23,6 +23,9 @@ interface TicketDao {
     @Query("SELECT * FROM cached_ticket WHERE webId = :webId AND ticketUri = :ticketUri")
     suspend fun findByUri(webId: String, ticketUri: String): CachedTicketEntity?
 
+    @Query("SELECT DISTINCT webId FROM cached_ticket")
+    suspend fun webIds(): List<String>
+
     @Upsert
     suspend fun upsert(ticket: CachedTicketEntity)
 
