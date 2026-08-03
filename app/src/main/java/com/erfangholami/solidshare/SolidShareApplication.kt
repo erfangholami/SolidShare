@@ -12,7 +12,7 @@ import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.worker.NotificationPollingWorker
 import com.erfangholami.solidshare.worker.ModuleOutboxWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
@@ -40,7 +40,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
     lateinit var authRepository: Lazy<AuthRepository>
 
     @Inject
-    lateinit var solidAccountManager: Lazy<SolidAccountManager>
+    lateinit var contactsAccountManager: Lazy<ContactsAccountManager>
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
@@ -96,7 +96,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
                 (loggedIn + expired).map { it.webId }.distinct()
             }.collect { webIds ->
                 runCatching {
-                    solidAccountManager.get().reconcile(webIds)
+                    contactsAccountManager.get().reconcile(webIds)
                 }
             }
         }

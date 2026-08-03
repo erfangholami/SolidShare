@@ -14,7 +14,7 @@ import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactGroup
 import com.erfangholami.solidshare.domain.model.ContactRef
 import com.erfangholami.solidshare.presentation.navigation.ContactDetailRoute
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -28,7 +28,7 @@ class ContactDetailViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
-    private val solidAccountManager: SolidAccountManager,
+    private val contactsAccountManager: ContactsAccountManager,
     private val stringProvider: StringProvider,
 ) : ViewModel() {
 
@@ -100,7 +100,7 @@ class ContactDetailViewModel @Inject constructor(
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
                 contactsRepository.queueDelete(webId, ContactRef(bookUri, contactUri))
-                solidAccountManager.requestSync(webId)
+                contactsAccountManager.requestSync(webId)
             }.onSuccess {
                 onDeleted()
             }.onFailure {

@@ -411,6 +411,7 @@ class ContactsRepositoryImplementation @Inject constructor(
     override suspend fun clearCache(webId: String) {
         runCatching { entityDao.deleteAllForWebId(moduleId, webId) }
         runCatching { outbox.clear(moduleId, webId) }
+        runCatching { mergePrefs.clearForWebId(webId) }
     }
 
     override suspend fun getGroups(webId: String, bookUri: String): List<ContactGroup> {

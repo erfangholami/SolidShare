@@ -9,7 +9,7 @@ import com.erfangholami.solidshare.data.repo.contacts.ContactMergeEngine
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.ContactRef
 import com.erfangholami.solidshare.domain.model.MergeSuggestion
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -24,7 +24,7 @@ class ContactsMergeViewModel @Inject constructor(
     private val contactsRepository: ContactsRepository,
     private val mergeEngine: ContactMergeEngine,
     private val mergePrefs: ContactsMergePrefs,
-    private val solidAccountManager: SolidAccountManager,
+    private val contactsAccountManager: ContactsAccountManager,
     private val stringProvider: StringProvider,
 ) : ViewModel() {
 
@@ -85,7 +85,7 @@ class ContactsMergeViewModel @Inject constructor(
                     survivor = ContactRef(survivorMember.bookUri, survivor.uri),
                     losers = losers,
                 )
-                solidAccountManager.requestSync(webId)
+                contactsAccountManager.requestSync(webId)
             }.onSuccess {
                 _message.value = stringProvider.getString(R.string.contacts_merge_done)
             }.onFailure {

@@ -7,7 +7,7 @@ import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.AddressBook
 import com.erfangholami.solidshare.domain.model.ContactListEntry
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
 class ContactsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
-    private val solidAccountManager: SolidAccountManager,
+    private val contactsAccountManager: ContactsAccountManager,
     private val stringProvider: StringProvider,
 ) : ViewModel() {
 
@@ -91,7 +91,7 @@ class ContactsViewModel @Inject constructor(
     }
 
     private suspend fun refresh(webId: String) {
-        solidAccountManager.requestSync(webId)
+        contactsAccountManager.requestSync(webId)
         try {
             val overview = contactsRepository.refreshContacts(webId)
             _state.update { it.copy(loading = false, error = null, books = overview.books) }

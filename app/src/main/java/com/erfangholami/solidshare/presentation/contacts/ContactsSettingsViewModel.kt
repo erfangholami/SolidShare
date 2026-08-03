@@ -11,7 +11,7 @@ import androidx.work.workDataOf
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.ContactsDeviceImportWorker
 import com.erfangholami.solidshare.worker.ContactsExportWorker
@@ -27,7 +27,7 @@ import kotlinx.coroutines.launch
 class ContactsSettingsViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
-    private val solidAccountManager: SolidAccountManager,
+    private val contactsAccountManager: ContactsAccountManager,
     private val workManager: WorkManager,
     private val stringProvider: StringProvider,
 ) : ViewModel() {
@@ -50,7 +50,7 @@ class ContactsSettingsViewModel @Inject constructor(
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
                 contactsRepository.queueDeleteAll(webId)
-                solidAccountManager.requestSync(webId)
+                contactsAccountManager.requestSync(webId)
             }.onSuccess {
                 _message.value = stringProvider.getString(R.string.contacts_delete_all_done, count)
             }.onFailure {
@@ -92,7 +92,7 @@ class ContactsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             runCatching {
                 val webId = requireNotNull(authRepository.getActiveWebId())
-                solidAccountManager.requestSync(webId)
+                contactsAccountManager.requestSync(webId)
             }
             _message.value = stringProvider.getString(R.string.contacts_sync_requested)
         }

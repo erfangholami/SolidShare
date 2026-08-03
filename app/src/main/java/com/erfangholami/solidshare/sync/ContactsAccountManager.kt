@@ -12,7 +12,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class SolidAccountManager @Inject constructor(
+class ContactsAccountManager @Inject constructor(
     @param:ApplicationContext private val context: Context,
 ) {
 

@@ -15,7 +15,7 @@ import com.erfangholami.solidshare.domain.model.ContactPhone
 import com.erfangholami.solidshare.domain.model.ContactWebLink
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,7 +31,7 @@ class PublicProfileViewModel @Inject constructor(
     private val publicProfileRepository: PublicProfileRepository,
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
-    private val solidAccountManager: SolidAccountManager,
+    private val contactsAccountManager: ContactsAccountManager,
 ) : ViewModel() {
 
     sealed class UiState {
@@ -90,7 +90,7 @@ class PublicProfileViewModel @Inject constructor(
                     } else {
                         val bookUri = contactsRepository.ensureDefaultAddressBook(ownerWebId)
                         contactsRepository.createContact(ownerWebId, bookUri, profile.toDraft())
-                        solidAccountManager.requestSync(ownerWebId)
+                        contactsAccountManager.requestSync(ownerWebId)
                         stringProvider.getString(R.string.contact_add_added)
                     }
                 }

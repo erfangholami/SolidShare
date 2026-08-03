@@ -13,7 +13,7 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.contacts.ContactMergeEngine
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
-import com.erfangholami.solidshare.sync.SolidAccountManager
+import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.util.VCardReader
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -24,7 +24,7 @@ class ContactsImportWorker @AssistedInject constructor(
     @Assisted params: WorkerParameters,
     private val contactsRepository: ContactsRepository,
     private val mergeEngine: ContactMergeEngine,
-    private val solidAccountManager: SolidAccountManager,
+    private val contactsAccountManager: ContactsAccountManager,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -103,7 +103,7 @@ class ContactsImportWorker @AssistedInject constructor(
                 )
             }
 
-            solidAccountManager.requestSync(webId)
+            contactsAccountManager.requestSync(webId)
             val duplicates = runCatching {
                 contactsRepository.findMergeSuggestions(webId).size
             }.getOrDefault(0)

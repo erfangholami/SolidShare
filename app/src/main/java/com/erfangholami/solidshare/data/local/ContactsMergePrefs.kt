@@ -40,6 +40,12 @@ class ContactsMergePrefs @Inject constructor(
         }
     }
 
+    suspend fun clearForWebId(webId: String) {
+        context.contactsMergeDataStore.edit { prefs ->
+            prefs.remove(dismissedKey(webId))
+        }
+    }
+
     private fun dismissedKey(webId: String) =
         stringSetPreferencesKey("dismissed_$webId")
 }
