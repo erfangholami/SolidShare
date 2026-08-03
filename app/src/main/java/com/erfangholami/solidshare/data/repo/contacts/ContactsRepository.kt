@@ -22,6 +22,12 @@ interface ContactsRepository : DataModuleLifecycle {
 
     suspend fun ensureDefaultAddressBook(webId: String): String
 
+    suspend fun createAddressBook(webId: String, title: String, isPrivate: Boolean): AddressBook
+
+    suspend fun renameAddressBook(webId: String, bookUri: String, newName: String)
+
+    suspend fun deleteAddressBook(webId: String, bookUri: String)
+
     suspend fun getContact(webId: String, contactUri: String): ContactDetail
 
     fun contactShareTarget(contactUri: String): String

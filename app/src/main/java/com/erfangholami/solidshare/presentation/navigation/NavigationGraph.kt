@@ -334,6 +334,9 @@ object ContactsRoute
 object ContactsSettingsRoute
 
 @Serializable
+object AddressBooksRoute
+
+@Serializable
 object ContactsMergeRoute
 
 @Serializable

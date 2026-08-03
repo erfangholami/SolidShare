@@ -3,6 +3,7 @@ package com.erfangholami.solidshare.presentation.contacts
 import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.compose.composable
+import com.erfangholami.solidshare.presentation.navigation.AddressBooksRoute
 import com.erfangholami.solidshare.presentation.navigation.ContactDetailRoute
 import com.erfangholami.solidshare.presentation.navigation.ContactSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.ContactsMergeRoute
@@ -48,6 +49,16 @@ class ContactsNavGraph @Inject constructor() : NavGraphContributor {
                 },
             ) {
                 ContactsSettingsPage(navController, hiltViewModel<ContactsSettingsViewModel>())
+            }
+            composable<AddressBooksRoute>(
+                enterTransition = {
+                    slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+                },
+                popExitTransition = {
+                    slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+                },
+            ) {
+                AddressBooksPage(navController)
             }
             composable<ContactsMergeRoute>(
                 enterTransition = {

@@ -129,6 +129,36 @@ class ContactsRepositoryImplementation @Inject constructor(
             .uri
     }
 
+    override suspend fun createAddressBook(
+        webId: String,
+        title: String,
+        isPrivate: Boolean,
+    ): AddressBook {
+        val storage = authRepository.getStorages(webId).firstOrNull()
+            ?: throw IllegalStateException("No storage found for $webId")
+        val created = contactsDataModule.books
+            .create(webId, title, isPrivate, storage, null)
+            .unwrap()
+        return AddressBook(
+            uri = created.uri,
+            title = created.title,
+            isPrivate = isPrivate,
+            contactCount = created.contacts.size,
+        )
+    }
+
+    override suspend fun renameAddressBook(webId: String, bookUri: String, newName: String) {
+        contactsDataModule.books.rename(webId, bookUri, newName).unwrap()
+    }
+
+    override suspend fun deleteAddressBook(webId: String, bookUri: String) {
+        contactsDataModule.books.delete(webId, bookUri).unwrap()
+        runCatching {
+            sharingRepository.purgeGivenShares(webId, bookContainerOf(bookUri))
+        }
+        runCatching { entityDao.deleteByGroupKey(moduleId, webId, bookUri) }
+    }
+
     override suspend fun getContact(webId: String, contactUri: String): ContactDetail =
         entityDao.findByUri(moduleId, webId, contactUri)?.toContactDetail()
             ?: contactsDataModule.contacts.get(webId, contactUri).unwrap().toDomain()

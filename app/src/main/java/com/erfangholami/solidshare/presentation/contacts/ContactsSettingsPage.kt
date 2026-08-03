@@ -1,5 +1,9 @@
 package com.erfangholami.solidshare.presentation.contacts
 
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.filled.MenuBook
+import com.erfangholami.solidshare.presentation.components.EntityRow
+import com.erfangholami.solidshare.presentation.navigation.AddressBooksRoute
 import android.Manifest
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -167,6 +171,27 @@ fun ContactsSettingsPage(
                     )
                     RowDivider()
                 }
+
+                EntityRow(
+                    title = stringResource(R.string.books_title),
+                    subtitle = stringResource(R.string.books_settings_subtitle),
+                    leading = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.MenuBook,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    },
+                    trailing = {
+                        Icon(
+                            Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    modifier = Modifier.clickable { navController.navigate(AddressBooksRoute) },
+                )
+                RowDivider()
 
                 SectionHeader(stringResource(R.string.contacts_settings_device_section))
                 Text(
