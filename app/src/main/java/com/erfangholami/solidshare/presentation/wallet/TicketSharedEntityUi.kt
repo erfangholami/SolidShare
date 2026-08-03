@@ -10,6 +10,7 @@ import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.presentation.navigation.SharedTicketRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.WalletRoute
+import com.erfangholami.solidshare.presentation.sharing.HomeModuleCard
 import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import javax.inject.Inject
 
@@ -19,6 +20,14 @@ class TicketSharedEntityUi @Inject constructor(
     override val typeIri: String = SharedEntityTypes.TICKET
     override val icon: ImageVector = Icons.Filled.ConfirmationNumber
     override val kindLabelRes: Int = R.string.entity_kind_ticket
+
+    override val homeCard: HomeModuleCard = HomeModuleCard(
+        order = 2,
+        icon = Icons.Filled.AccountBalanceWallet,
+        titleRes = R.string.home_card_wallet_title,
+        subtitleRes = R.string.home_card_wallet_subtitle,
+        route = WalletRoute,
+    )
 
     override fun receivedShareRoute(resourceUri: String, ownerWebId: String?): Any =
         SharedTicketRoute(resourceUri = resourceUri, ownerWebId = ownerWebId)

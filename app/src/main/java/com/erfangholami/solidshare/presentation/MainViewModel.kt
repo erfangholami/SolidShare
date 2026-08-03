@@ -3,13 +3,15 @@ package com.erfangholami.solidshare.presentation
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.erfangholami.solidshare.presentation.navigation.NavGraphRegistry
+import com.erfangholami.solidshare.presentation.navigation.NavGraphContributor
+import com.erfangholami.solidshare.presentation.sharing.ReceiverPickerRegistry
+import com.erfangholami.solidshare.presentation.sharing.ScanRouter
+import com.erfangholami.solidshare.presentation.sharing.ReceiverPickerContributor
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
-import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.ThemeMode
-import com.erfangholami.solidshare.domain.model.TicketDraft
-import com.erfangholami.solidshare.presentation.wallet.TicketImportHolder
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,11 +23,16 @@ import javax.inject.Inject
 
 @HiltViewModel
 class MainViewModel @Inject constructor(
+    receiverPickers: ReceiverPickerRegistry,
+    navGraphs: NavGraphRegistry,
     private val sharingRepository: SharingRepository,
-    private val ticketsRepository: TicketsRepository,
-    private val ticketImportHolder: TicketImportHolder,
+    private val scanRouter: ScanRouter,
     settingsRepository: SettingsRepository,
 ) : ViewModel() {
+
+    val receiverPicker: ReceiverPickerContributor? = receiverPickers.preferred()
+
+    val moduleGraphs: Set<NavGraphContributor> = navGraphs.all()
 
     val themeMode: StateFlow<ThemeMode> = settingsRepository.getSettingPreferences()
         .map { it.themeMode }
@@ -34,11 +41,8 @@ class MainViewModel @Inject constructor(
     private val _pendingShareLink = MutableStateFlow<ParsedShareLink?>(null)
     val pendingShareLink: StateFlow<ParsedShareLink?> = _pendingShareLink.asStateFlow()
 
-    private val _pendingTicketDraft = MutableStateFlow<TicketDraft?>(null)
-    val pendingTicketDraft: StateFlow<TicketDraft?> = _pendingTicketDraft.asStateFlow()
-
-    private val _pendingImport = MutableStateFlow(false)
-    val pendingImport: StateFlow<Boolean> = _pendingImport.asStateFlow()
+    private val _pendingModuleRoute = MutableStateFlow<Any?>(null)
+    val pendingModuleRoute: StateFlow<Any?> = _pendingModuleRoute.asStateFlow()
 
     fun handleDeepLink(intent: Intent?) {
         val raw = intent?.data?.toString() ?: return
@@ -50,25 +54,22 @@ class MainViewModel @Inject constructor(
             _pendingShareLink.value = it
             return
         }
-        ticketsRepository.parseTicketQr(raw)?.let {
-            _pendingTicketDraft.value = it
+        scanRouter.route(raw)?.let {
+            _pendingModuleRoute.value = it
         }
     }
 
-    fun handleTicketFile(bytes: ByteArray, fileName: String? = null) {
-        ticketImportHolder.stashImport(bytes, fileName)
-        _pendingImport.value = true
+    fun handleIncomingFile(bytes: ByteArray, fileName: String? = null) {
+        scanRouter.routeContent(bytes, fileName)?.let {
+            _pendingModuleRoute.value = it
+        }
     }
 
     fun consumePendingShareLink() {
         _pendingShareLink.value = null
     }
 
-    fun consumePendingTicketDraft() {
-        _pendingTicketDraft.value = null
-    }
-
-    fun consumePendingImport() {
-        _pendingImport.value = false
+    fun consumePendingModuleRoute() {
+        _pendingModuleRoute.value = null
     }
 }

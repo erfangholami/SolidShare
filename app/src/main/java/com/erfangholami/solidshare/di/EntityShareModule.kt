@@ -1,8 +1,15 @@
 package com.erfangholami.solidshare.di
 
+import com.erfangholami.solidshare.presentation.contacts.ContactReceiverPickerContributor
 import com.erfangholami.solidshare.presentation.contacts.ContactSharedEntityUi
+import com.erfangholami.solidshare.presentation.contacts.ContactsNavGraph
+import com.erfangholami.solidshare.presentation.navigation.NavGraphContributor
+import com.erfangholami.solidshare.presentation.sharing.ReceiverPickerContributor
+import com.erfangholami.solidshare.presentation.sharing.ScanContributor
 import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
+import com.erfangholami.solidshare.presentation.wallet.TicketScanContributor
 import com.erfangholami.solidshare.presentation.wallet.TicketSharedEntityUi
+import com.erfangholami.solidshare.presentation.wallet.WalletNavGraph
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -21,4 +28,21 @@ interface EntityShareModule {
     @IntoSet
     fun contactSharedEntityUi(implementation: ContactSharedEntityUi): SharedEntityUi
 
+    @Binds
+    @IntoSet
+    fun contactReceiverPicker(
+        implementation: ContactReceiverPickerContributor,
+    ): ReceiverPickerContributor
+
+    @Binds
+    @IntoSet
+    fun contactsNavGraph(implementation: ContactsNavGraph): NavGraphContributor
+
+    @Binds
+    @IntoSet
+    fun walletNavGraph(implementation: WalletNavGraph): NavGraphContributor
+
+    @Binds
+    @IntoSet
+    fun ticketScanContributor(implementation: TicketScanContributor): ScanContributor
 }

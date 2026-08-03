@@ -99,7 +99,6 @@ import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.navigation.ConfirmAccessRoute
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
-import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.pasteText
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
@@ -177,14 +176,14 @@ fun ScanPage(
         when (val target = viewModel.classify(raw)) {
             is ScanViewModel.ScanTarget.Share ->
                 navController.navigate(
-                    ConfirmAccessRoute(target.resourceUri, target.ownerWebId),
+                    ConfirmAccessRoute(target.resourceUri, target.ownerWebId, target.resourceType),
                 )
 
             is ScanViewModel.ScanTarget.Profile ->
                 navController.navigate(PublicProfileRoute(target.webId))
 
-            is ScanViewModel.ScanTarget.Ticket ->
-                navController.navigate(TicketEditRoute(draft = target.draft))
+            is ScanViewModel.ScanTarget.Module ->
+                navController.navigate(target.route)
 
             ScanViewModel.ScanTarget.Unrecognized -> {
                 scope.launch { snackbarHostState.showSnackbar(notRecognizedMsg) }

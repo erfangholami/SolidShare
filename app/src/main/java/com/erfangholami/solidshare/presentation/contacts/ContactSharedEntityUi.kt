@@ -10,6 +10,7 @@ import com.erfangholami.solidshare.data.repo.sharing.SharedEntityTypes
 import com.erfangholami.solidshare.presentation.navigation.ContactSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.ContactsRoute
 import com.erfangholami.solidshare.presentation.navigation.SharedContactRoute
+import com.erfangholami.solidshare.presentation.sharing.HomeModuleCard
 import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import javax.inject.Inject
 
@@ -19,6 +20,14 @@ class ContactSharedEntityUi @Inject constructor(
     override val typeIri: String = SharedEntityTypes.CONTACT
     override val icon: ImageVector = Icons.Filled.Person
     override val kindLabelRes: Int = R.string.entity_kind_contact
+
+    override val homeCard: HomeModuleCard = HomeModuleCard(
+        order = 1,
+        icon = Icons.Filled.Contacts,
+        titleRes = R.string.home_card_contacts_title,
+        subtitleRes = R.string.home_card_contacts_subtitle,
+        route = ContactsRoute,
+    )
 
     override fun receivedShareRoute(resourceUri: String, ownerWebId: String?): Any =
         SharedContactRoute(resourceUri = resourceUri, ownerWebId = ownerWebId)

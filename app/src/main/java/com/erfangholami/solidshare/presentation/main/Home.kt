@@ -45,20 +45,22 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
+import com.erfangholami.solidshare.presentation.navigation.ContactsRoute
+import com.erfangholami.solidshare.presentation.navigation.WalletRoute
+import com.erfangholami.solidshare.presentation.sharing.HomeModuleCard
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 
 @Composable
 fun Home(
     viewModel: HomeViewModel,
-    onOpenContacts: () -> Unit,
-    onOpenWallet: (() -> Unit)? = null,
+    onOpen: (Any) -> Unit,
 ) {
     val profile by viewModel.profile.collectAsStateWithLifecycle()
     HomeContent(
         profile = profile,
-        onOpenContacts = onOpenContacts,
-        onOpenWallet = onOpenWallet,
+        cards = viewModel.cards,
+        onOpen = onOpen,
     )
 }
 
@@ -66,8 +68,8 @@ fun Home(
 @Composable
 fun HomeContent(
     profile: PublicProfile?,
-    onOpenContacts: () -> Unit,
-    onOpenWallet: (() -> Unit)? = null,
+    cards: List<HomeModuleCard>,
+    onOpen: (Any) -> Unit,
 ) {
     Scaffold(
         topBar = {
@@ -111,26 +113,36 @@ fun HomeContent(
                 .padding(horizontal = 16.dp),
         ) {
             HomeGreeting(profile)
-            Spacer(Modifier.height(24.dp))
-            HomeHubCard(
-                icon = Icons.Filled.Contacts,
-                title = stringResource(R.string.home_card_contacts_title),
-                subtitle = stringResource(R.string.home_card_contacts_subtitle),
-                onClick = onOpenContacts,
-            )
-            if (onOpenWallet != null) {
-                Spacer(Modifier.height(12.dp))
+            cards.forEachIndexed { index, card ->
+                Spacer(Modifier.height(if (index == 0) 24.dp else 12.dp))
                 HomeHubCard(
-                    icon = Icons.Filled.AccountBalanceWallet,
-                    title = stringResource(R.string.home_card_wallet_title),
-                    subtitle = stringResource(R.string.home_card_wallet_subtitle),
-                    onClick = onOpenWallet,
+                    icon = card.icon,
+                    title = stringResource(card.titleRes),
+                    subtitle = stringResource(card.subtitleRes),
+                    onClick = { onOpen(card.route) },
                 )
             }
             Spacer(Modifier.height(24.dp))
         }
     }
 }
+
+private fun previewHomeCards(): List<HomeModuleCard> = listOf(
+    HomeModuleCard(
+        order = 1,
+        icon = Icons.Filled.Contacts,
+        titleRes = R.string.home_card_contacts_title,
+        subtitleRes = R.string.home_card_contacts_subtitle,
+        route = ContactsRoute,
+    ),
+    HomeModuleCard(
+        order = 2,
+        icon = Icons.Filled.AccountBalanceWallet,
+        titleRes = R.string.home_card_wallet_title,
+        subtitleRes = R.string.home_card_wallet_subtitle,
+        route = WalletRoute,
+    ),
+)
 
 @Composable
 private fun HomeGreeting(profile: PublicProfile?) {
@@ -223,8 +235,8 @@ private fun HomePreview() {
     AppTheme {
         HomeContent(
             profile = PreviewSamples.profile(),
-            onOpenContacts = {},
-            onOpenWallet = {},
+            cards = previewHomeCards(),
+            onOpen = {},
         )
     }
 }
@@ -235,8 +247,8 @@ private fun HomeDarkPreview() {
     AppTheme(isDarkTheme = true) {
         HomeContent(
             profile = PreviewSamples.profile(),
-            onOpenContacts = {},
-            onOpenWallet = {},
+            cards = previewHomeCards(),
+            onOpen = {},
         )
     }
 }

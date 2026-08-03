@@ -9,12 +9,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.erfangholami.solidshare.presentation.sharing.LocalReceiverPicker
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import com.erfangholami.solidshare.presentation.navigation.AppNavHost
 import com.erfangholami.solidshare.presentation.theme.AppTheme
@@ -36,7 +38,7 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
         viewModel.handleDeepLink(intent)
-        handleIncomingTicket(intent)
+        handleIncomingContent(intent)
         if (intent?.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false) == true) {
             openNotifications = true
         }
@@ -46,26 +48,26 @@ class MainActivity : ComponentActivity() {
         setContent {
             val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
             val pendingShareLink by viewModel.pendingShareLink.collectAsStateWithLifecycle()
-            val pendingTicketDraft by viewModel.pendingTicketDraft.collectAsStateWithLifecycle()
-            val pendingImport by viewModel.pendingImport.collectAsStateWithLifecycle()
+            val pendingModuleRoute by viewModel.pendingModuleRoute.collectAsStateWithLifecycle()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             AppTheme(isDarkTheme = isDarkTheme) {
-                AppNavHost(
-                    openNotifications = openNotifications,
-                    onOpenNotificationsHandled = { openNotifications = false },
-                    openContacts = openContacts,
-                    onOpenContactsHandled = { openContacts = false },
-                    pendingShareLink = pendingShareLink,
-                    onShareLinkHandled = { viewModel.consumePendingShareLink() },
-                    pendingTicketDraft = pendingTicketDraft,
-                    onTicketDraftHandled = { viewModel.consumePendingTicketDraft() },
-                    pendingImport = pendingImport,
-                    onImportHandled = { viewModel.consumePendingImport() },
-                )
+                CompositionLocalProvider(LocalReceiverPicker provides viewModel.receiverPicker) {
+                    AppNavHost(
+                        openNotifications = openNotifications,
+                        onOpenNotificationsHandled = { openNotifications = false },
+                        openContacts = openContacts,
+                        onOpenContactsHandled = { openContacts = false },
+                        pendingShareLink = pendingShareLink,
+                        onShareLinkHandled = { viewModel.consumePendingShareLink() },
+                        pendingModuleRoute = pendingModuleRoute,
+                        onModuleRouteHandled = { viewModel.consumePendingModuleRoute() },
+                        moduleGraphs = viewModel.moduleGraphs,
+                    )
+                }
             }
         }
     }
@@ -73,7 +75,7 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         viewModel.handleDeepLink(intent)
-        handleIncomingTicket(intent)
+        handleIncomingContent(intent)
         if (intent.getBooleanExtra(EXTRA_OPEN_NOTIFICATIONS, false)) {
             openNotifications = true
         }
@@ -82,7 +84,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun handleIncomingTicket(intent: Intent?) {
+    private fun handleIncomingContent(intent: Intent?) {
         intent ?: return
         if (intent.action == Intent.ACTION_SEND && intent.type?.startsWith("text/") == true) {
             return
@@ -97,13 +99,13 @@ class MainActivity : ComponentActivity() {
             else -> null
         } ?: return
         lifecycleScope.launch(Dispatchers.IO) {
-            if (fileSize(uri).let { it != null && it > MAX_TICKET_FILE_BYTES }) return@launch
+            if (fileSize(uri).let { it != null && it > MAX_INCOMING_FILE_BYTES }) return@launch
             val bytes = runCatching {
                 contentResolver.openInputStream(uri)?.use { it.readBytes() }
             }.getOrNull() ?: return@launch
-            if (bytes.size > MAX_TICKET_FILE_BYTES) return@launch
+            if (bytes.size > MAX_INCOMING_FILE_BYTES) return@launch
             withContext(Dispatchers.Main) {
-                viewModel.handleTicketFile(bytes, fileName = displayName(uri))
+                viewModel.handleIncomingFile(bytes, fileName = displayName(uri))
             }
         }
     }
@@ -131,6 +133,6 @@ class MainActivity : ComponentActivity() {
     companion object {
         const val EXTRA_OPEN_NOTIFICATIONS = "open_notifications"
         const val EXTRA_OPEN_CONTACTS = "open_contacts"
-        private const val MAX_TICKET_FILE_BYTES = 20L * 1024 * 1024
+        private const val MAX_INCOMING_FILE_BYTES = 20L * 1024 * 1024
     }
 }

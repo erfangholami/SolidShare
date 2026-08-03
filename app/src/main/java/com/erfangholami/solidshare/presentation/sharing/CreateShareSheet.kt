@@ -47,7 +47,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
-import com.erfangholami.solidshare.presentation.contacts.ContactReceiverPicker
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
@@ -261,8 +260,9 @@ private fun ShareFormContent(
         }
     }
 
-    if (contactPickerOpen) {
-        ContactReceiverPicker(
+    val receiverPicker = LocalReceiverPicker.current
+    if (contactPickerOpen && receiverPicker != null) {
+        receiverPicker.Picker(
             onPick = { webId ->
                 receiverValue = webId
                 contactPickerOpen = false

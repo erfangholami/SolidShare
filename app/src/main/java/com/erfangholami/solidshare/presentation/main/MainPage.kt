@@ -147,8 +147,7 @@ fun MainPage(
             composable<MainNavItem.Home> {
                 Home(
                     viewModel = hiltViewModel<HomeViewModel>(),
-                    onOpenContacts = { parentNavController.navigate(ContactsRoute) },
-                    onOpenWallet = { parentNavController.navigate(WalletRoute) },
+                    onOpen = { route -> parentNavController.navigate(route) },
                 )
             }
             composable<MainNavItem.Directory> {
