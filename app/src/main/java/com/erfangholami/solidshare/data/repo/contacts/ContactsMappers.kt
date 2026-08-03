@@ -129,6 +129,33 @@ fun ContactDraft.toLib(): LibContactData {
     )
 }
 
+fun ContactDetail.toDraft(): ContactDraft = ContactDraft(
+    fullName = fullName,
+    givenName = givenName,
+    familyName = familyName,
+    middleName = middleName,
+    namePrefix = namePrefix,
+    nameSuffix = nameSuffix,
+    nickname = nickname,
+    phones = phones,
+    emails = emails,
+    impps = impps,
+    addresses = addresses,
+    birthday = birthday,
+    anniversary = anniversary,
+    organization = organization,
+    organizationUnit = organizationUnit,
+    role = role,
+    jobTitle = jobTitle,
+    note = note,
+    categories = categories,
+    gender = gender,
+    geos = geos,
+    languages = languages,
+    links = links,
+    uid = uid,
+)
+
 fun LibUrlType.toDomain(): ContactLinkType = when (this) {
     LibUrlType.Home -> ContactLinkType.HOME
     LibUrlType.Work -> ContactLinkType.WORK

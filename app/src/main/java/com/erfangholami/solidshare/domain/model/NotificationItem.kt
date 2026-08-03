@@ -20,4 +20,6 @@ data class NotificationItem(
     val summary: String?,
     val publishedAt: String?,
     val requestUri: String?,
+    val resourceName: String? = null,
+    val resourceType: String? = null,
 )

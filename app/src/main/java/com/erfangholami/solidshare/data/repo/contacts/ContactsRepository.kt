@@ -1,7 +1,7 @@
 package com.erfangholami.solidshare.data.repo.contacts
 
-import com.erfangholami.solidshare.data.repo.datamodule.DataModuleLifecycle
 import com.erfangholami.solidshare.domain.model.AddressBook
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleLifecycle
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactGroup
@@ -23,6 +23,14 @@ interface ContactsRepository : DataModuleLifecycle {
     suspend fun ensureDefaultAddressBook(webId: String): String
 
     suspend fun getContact(webId: String, contactUri: String): ContactDetail
+
+    fun contactShareTarget(contactUri: String): String
+
+    suspend fun getSharedContact(webId: String, target: String): ContactDetail
+
+    suspend fun getSharedContactPhoto(webId: String, photoUri: String): ByteArray?
+
+    suspend fun addSharedContactToBook(webId: String, shared: ContactDetail): ContactDetail
 
     suspend fun getAllContacts(webId: String, bookUri: String): List<ContactDetail>
 

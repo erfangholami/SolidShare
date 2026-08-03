@@ -14,6 +14,7 @@ import com.erfangholami.solidshare.data.local.cache.SyncState
 import com.erfangholami.solidshare.data.local.cache.TicketBlobStore
 import com.erfangholami.solidshare.data.local.cache.inMemoryCacheDb
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import io.mockk.coEvery
@@ -60,6 +61,7 @@ class TicketsRepositoryOfflineTest {
         repo = TicketsRepositoryImplementation(
             module,
             auth,
+            mockk<SharingRepository>(relaxed = true),
             db.cachedEntityDao(),
             testOutbox(db),
             blobStore,

@@ -101,6 +101,12 @@ object ResourceActions {
             add(ResourceAction.INFO)
             if (canEdit) add(ResourceAction.DELETE)
         }
+
+    fun sharedEntity(): List<ResourceAction> = listOf(
+        ResourceAction.REMOVE_FROM_LIST,
+        ResourceAction.RESHARE,
+        ResourceAction.COPY_LINK,
+    )
 }
 
 private val ONLINE_ONLY_ACTIONS = setOf(

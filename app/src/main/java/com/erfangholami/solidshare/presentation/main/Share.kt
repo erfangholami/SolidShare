@@ -147,6 +147,9 @@ fun Share(
                             ownerWebId = event.ownerWebId,
                         ),
                     )
+
+                is ShareViewModel.OpenEvent.OpenEntity ->
+                    navController.navigate(event.route)
             }
         }
     }
@@ -303,18 +306,34 @@ fun Share(
                             shares = state.given,
                             isOnline = isOnline,
                             onShowQr = { resourceUri ->
+                                val resourceType = state.given
+                                    .firstOrNull { it.resourceUri == resourceUri }
+                                    ?.resourceType
                                 qrSharePayload = QrPayload(
                                     resourceUri = resourceUri,
-                                    deepLink = viewModel.deepLinkFor(resourceUri),
+                                    deepLink = viewModel.deepLinkFor(resourceUri, resourceType),
                                     bareUrl = viewModel.bareUrlFor(resourceUri),
                                 )
                             },
                             onManage = { resourceUri ->
-                                navController.navigate(
-                                    ManageSharingRoute(resourceUri = resourceUri, canManage = true),
+                                val entityUi = viewModel.entityUiFor(
+                                    state.given
+                                        .firstOrNull { it.resourceUri == resourceUri }
+                                        ?.resourceType,
                                 )
+                                if (entityUi != null) {
+                                    navController.navigate(entityUi.manageShareRoute(resourceUri))
+                                } else {
+                                    navController.navigate(
+                                        ManageSharingRoute(
+                                            resourceUri = resourceUri,
+                                            canManage = true,
+                                        ),
+                                    )
+                                }
                             },
                             loadMeta = { viewModel.resourceMetaItem(it) },
+                            entityUiFor = viewModel::entityUiFor,
                         )
 
                         1 -> ReceivedList(
@@ -340,6 +359,7 @@ fun Share(
                             },
                             onDelete = { receivedToDelete = it },
                             loadMeta = { viewModel.resourceMetaItem(it) },
+                            entityUiFor = viewModel::entityUiFor,
                         )
                     }
                 }
@@ -373,7 +393,7 @@ fun Share(
             onRequestAccess = {
                 viewModel.clearLostAccessShare()
                 navController.navigate(
-                    ConfirmAccessRoute(share.resourceUri, share.ownerWebId),
+                    ConfirmAccessRoute(share.resourceUri, share.ownerWebId, share.resourceType),
                 )
             },
             onDismiss = { viewModel.dismissLostAccessShare() },

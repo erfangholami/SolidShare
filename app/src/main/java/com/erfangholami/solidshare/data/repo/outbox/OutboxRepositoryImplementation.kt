@@ -302,6 +302,7 @@ class OutboxRepositoryImplementation @Inject constructor(
 
     private suspend fun deleted(op: OutboxOpEntity) {
         removeResource(op.webId, op.targetUri)
+        purgeSharesOf(op.webId, op.targetUri)
     }
 
     private suspend fun executeCopy(op: OutboxOpEntity) {
@@ -346,6 +347,10 @@ class OutboxRepositoryImplementation @Inject constructor(
     private suspend fun removeResource(webId: String, uri: String) {
         resourceDao.deleteByIdentifier(webId, uri)
         blobDao.find(webId, uri)?.let { File(it.localPath).delete(); blobDao.delete(it) }
+    }
+
+    private suspend fun purgeSharesOf(webId: String, uri: String) {
+        runCatching { sharingRepository.purgeGivenShares(webId, uri) }
     }
 
     private suspend fun handleFailure(op: OutboxOpEntity, error: Throwable) {

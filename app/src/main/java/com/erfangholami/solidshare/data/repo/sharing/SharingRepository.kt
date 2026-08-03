@@ -28,6 +28,8 @@ interface SharingRepository {
         mode: ShareMode,
         receiver: ShareReceiver,
         notifyReceiver: Boolean = true,
+        resourceType: String? = null,
+        resourceName: String? = null,
     ): GivenShare
 
     suspend fun updateShare(
@@ -36,6 +38,8 @@ interface SharingRepository {
         mode: ShareMode,
         receiver: ShareReceiver,
         notifyReceiver: Boolean = true,
+        resourceType: String? = null,
+        resourceName: String? = null,
     ): GivenShare
 
     suspend fun revokeShare(
@@ -43,6 +47,13 @@ interface SharingRepository {
         resourceUri: String,
         receiver: ShareReceiver,
     )
+
+    suspend fun purgeGivenShares(
+        webId: String,
+        resourceUri: String,
+        includeDescendants: Boolean = true,
+        notifyReceivers: Boolean = true,
+    ): List<GivenShare>
 
     suspend fun makePrivate(webId: String, resourceUri: String)
 
@@ -53,6 +64,8 @@ interface SharingRepository {
         webId: String,
         resourceUri: String,
         ownerHint: String? = null,
+        resourceType: String? = null,
+        resourceName: String? = null,
     ): ReceivedShare?
 
     suspend fun removeReceivedShare(
@@ -86,7 +99,12 @@ interface SharingRepository {
         ownerWebId: String,
     ): List<CatalogEntry>
 
-    fun deepLinkFor(resourceUri: String, ownerWebId: String? = null): String
+    fun deepLinkFor(
+        resourceUri: String,
+        ownerWebId: String? = null,
+        resourceType: String? = null,
+    ): String
+
     fun parseDeepLink(deepLink: String): ParsedShareLink?
     fun bareUrlFor(resourceUri: String): String
 }

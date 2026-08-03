@@ -52,10 +52,10 @@ fun ShareReceiver.toLib(): LibShareReceiver = when (this) {
 }
 
 fun LibGivenShare.toDomain(): GivenShare =
-    GivenShare(receiver.toDomain(), mode.toDomain(), resourceUri, createdAt)
+    GivenShare(receiver.toDomain(), mode.toDomain(), resourceUri, createdAt, resourceType, resourceName)
 
 fun LibReceivedShare.toDomain(): ReceivedShare =
-    ReceivedShare(ownerWebId, mode.toDomain(), resourceUri, addedAt)
+    ReceivedShare(ownerWebId, mode.toDomain(), resourceUri, addedAt, resourceType, resourceName)
 
 fun LibShareRequest.toDomain(): ShareRequest = ShareRequest(
     requestUri = requestUri,
@@ -75,7 +75,8 @@ fun ShareRequest.toLib(): LibShareRequest = LibShareRequest(
     publishedAt = publishedAt,
 )
 
-fun LibParsedShareLink.toDomain(): ParsedShareLink = ParsedShareLink(resourceUri, ownerWebId)
+fun LibParsedShareLink.toDomain(): ParsedShareLink =
+    ParsedShareLink(resourceUri, ownerWebId, resourceType)
 
 fun LibCatalogEntry.toDomain(): CatalogEntry =
     CatalogEntry(resourceUri, title, description, depictionUri)
@@ -129,6 +130,8 @@ fun LibShareNotification.toDomain(): ShareNotification = ShareNotification(
     summary = summary,
     publishedAt = publishedAt,
     targetWebId = targetWebId,
+    resourceType = resourceType,
+    resourceName = resourceName,
 )
 
 fun ShareNotificationType.toLib(): LibShareNotificationType = when (this) {
@@ -150,4 +153,6 @@ fun ShareNotification.toLib(): LibShareNotification = LibShareNotification(
     summary = summary,
     publishedAt = publishedAt,
     targetWebId = targetWebId,
+    resourceType = resourceType,
+    resourceName = resourceName,
 )

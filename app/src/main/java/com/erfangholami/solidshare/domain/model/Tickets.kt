@@ -218,6 +218,7 @@ data class Ticket(
     val relevantStart: String? = null,
     val relevantEnd: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
+    val copiedFrom: String? = null,
     val artifactUri: String? = null,
     val images: TicketImageUris? = null,
     val createdAt: String? = null,
@@ -257,6 +258,7 @@ data class TicketDraft(
     val relevantStart: String? = null,
     val relevantEnd: String? = null,
     val source: TicketSource = TicketSource.MANUAL,
+    val copiedFrom: String? = null,
 )
 
 data class TicketFile(

@@ -12,6 +12,7 @@ import com.erfangholami.solidshare.data.local.cache.SyncState
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.datamodule.DataModuleIds
 import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.AddressBook
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
@@ -34,6 +35,7 @@ import kotlinx.serialization.json.Json
 class ContactsRepositoryImplementation @Inject constructor(
     private val contactsDataModule: SolidContactsDataModule,
     private val authRepository: AuthRepository,
+    private val sharingRepository: SharingRepository,
     private val mergeEngine: ContactMergeEngine,
     private val mergePrefs: ContactsMergePrefs,
     private val entityDao: CachedEntityDao,
@@ -131,6 +133,36 @@ class ContactsRepositoryImplementation @Inject constructor(
         entityDao.findByUri(moduleId, webId, contactUri)?.toContactDetail()
             ?: contactsDataModule.contacts.get(webId, contactUri).unwrap().toDomain()
 
+    override fun contactShareTarget(contactUri: String): String =
+        contactsDataModule.contacts.shareTarget(contactUri)
+
+    override suspend fun getSharedContact(webId: String, target: String): ContactDetail =
+        if (target.endsWith("/")) {
+            contactsDataModule.contacts.findInContainer(webId, target).unwrap().toDomain()
+        } else {
+            contactsDataModule.contacts.get(webId, target).unwrap().toDomain()
+        }
+
+    override suspend fun getSharedContactPhoto(webId: String, photoUri: String): ByteArray? =
+        runCatching {
+            contactsDataModule.contacts.getPhoto(webId, photoUri).unwrap().bytes
+        }.getOrNull()
+
+    override suspend fun addSharedContactToBook(
+        webId: String,
+        shared: ContactDetail,
+    ): ContactDetail {
+        val bookUri = ensureDefaultAddressBook(webId)
+        val created = createContact(webId, bookUri, shared.toDraft())
+        shared.photoUri?.let { photoUri ->
+            runCatching {
+                val photo = contactsDataModule.contacts.getPhoto(webId, photoUri).unwrap()
+                setContactPhoto(webId, created.uri, photo.bytes, photo.contentType)
+            }
+        }
+        return created
+    }
+
     override suspend fun getAllContacts(webId: String, bookUri: String): List<ContactDetail> =
         contactsDataModule.contacts.list(webId, bookUri).unwrap()
             .contacts.map { it.toDomain() }
@@ -176,6 +208,9 @@ class ContactsRepositoryImplementation @Inject constructor(
 
     override suspend fun deleteContact(webId: String, bookUri: String, contactUri: String) {
         contactsDataModule.contacts.delete(webId, bookUri, contactUri).unwrap()
+        runCatching {
+            sharingRepository.purgeGivenShares(webId, contactShareTarget(contactUri))
+        }
         runCatching { entityDao.deleteByUri(moduleId, webId, contactUri) }
     }
 
@@ -192,11 +227,17 @@ class ContactsRepositoryImplementation @Inject constructor(
             }.isSuccess
             if (removed) {
                 deleted += contactCount
+                runCatching {
+                    sharingRepository.purgeGivenShares(webId, bookContainerOf(bookUri))
+                }
             }
         }
         runCatching { entityDao.deleteAllForWebId(moduleId, webId) }
         return deleted
     }
+
+    private fun bookContainerOf(bookUri: String): String =
+        bookUri.substringBefore('#').substringBeforeLast('/') + "/"
 
     override suspend fun setContactPhoto(
         webId: String,

@@ -59,12 +59,15 @@
     <string name="add_account">Add account</string>
     <string name="active_account">Active account</string>
     <string name="account_session_expired">Session expired — tap to sign in again</string>
+    <string name="account_session_expired_no_refresh">Signed out by the provider — sign in again and tick “Remember this client”</string>
     <string name="logout_active_account">Logout active account</string>
     <string name="logout_all">Logout all</string>
     <string name="login_url_invalid">URL is not valid</string>
     <string name="login_url_not_https">URL must use HTTPS</string>
     <string name="error_login_failed">Login failed</string>
     <string name="error_login_problem">A problem during login occurred!</string>
+    <string name="login_no_refresh_title">Signed in for a limited time</string>
+    <string name="login_no_refresh_message">Your pod provider didn\'t let Solid Share stay signed in, so this session will end when its access token expires — usually within an hour.\n\nTo stay signed in: open the provider\'s login page, sign out there (or choose “Use a different WebID”), then sign in again with “Remember this client” ticked.</string>
 
     <!-- Files & container -->
     <string name="this_folder_is_empty">This folder is empty</string>
@@ -445,6 +448,25 @@
     <string name="contact_link_type_publicid">Public ID</string>
 
     <!-- Contacts settings -->
+    <!-- Address books -->
+    <string name="books_title">Address books</string>
+    <string name="books_settings_subtitle">Create, rename or delete the books your contacts live in</string>
+    <string name="books_empty_title">No address books yet</string>
+    <string name="books_empty_description">Your first book is created automatically when a contact is added.</string>
+    <string name="books_requires_connection">You\'re offline. Connect to manage address books.</string>
+    <string name="book_new">New address book</string>
+    <string name="book_name_label">Name</string>
+    <string name="book_private_label">Private</string>
+    <string name="book_private_support">Only you can discover it; public books are listed in your public type index</string>
+    <string name="book_rename">Rename</string>
+    <string name="book_delete">Delete book</string>
+    <string name="book_delete_title">Delete this address book?</string>
+    <string name="book_delete_warning">“%1$s” and the %2$d contacts inside it will be removed from your pod. Contacts synced from this device will be created again in your default book on the next sync.</string>
+    <string name="book_subtitle">%1$d contacts · %2$s</string>
+    <string name="book_private_badge">Private</string>
+    <string name="book_public_badge">Public</string>
+    <string name="book_actions">Address book actions</string>
+
     <string name="contacts_settings_title">Contacts settings</string>
     <string name="contacts_settings_device_section">Device contacts</string>
     <string name="contacts_settings_device_description">Bring the contacts from your phone and Google accounts into your pod. This is a one-time copy — your phone and Google contacts are never changed.</string>
@@ -508,6 +530,33 @@
     <string name="share_pick_from_contacts">Choose from contacts</string>
     <string name="share_contacts_empty_title">No contacts with a WebID</string>
     <string name="share_contacts_empty_subtitle">Add Solid profiles to your contacts by scanning their QR code.</string>
+
+    <!-- Entity sharing -->
+    <string name="share_ticket_title">Share ticket</string>
+    <string name="share_contact_title">Share contact</string>
+    <string name="entity_kind_ticket">Ticket</string>
+    <string name="entity_kind_contact">Contact</string>
+    <string name="entity_can_view">Can view</string>
+    <string name="entity_no_people">Not shared with anyone yet</string>
+    <string name="entity_share_created">Shared</string>
+    <string name="public_pass_link">Public pass link</string>
+    <string name="public_pass_link_desc">Anyone with the link can download the pass file</string>
+    <string name="public_pass_no_artifact_hint">This ticket has no pass file to share publicly</string>
+    <string name="public_pass_prohibited_hint">The issuer doesn\'t allow sharing this pass</string>
+    <string name="public_pass_show_link">Show link</string>
+    <string name="public_pass_enabled">Public pass link is on</string>
+    <string name="public_pass_disabled">Public pass link turned off</string>
+    <string name="shared_ticket_title">Shared ticket</string>
+    <string name="shared_contact_title">Shared contact</string>
+    <string name="shared_by_label">Shared by %1$s</string>
+    <string name="add_to_my_wallet">Add to my wallet</string>
+    <string name="add_to_my_contacts">Add to my contacts</string>
+    <string name="already_in_wallet">Already in your wallet</string>
+    <string name="added_to_wallet">Added to your wallet</string>
+    <string name="entity_share_load_failed">Couldn\'t load this share</string>
+    <string name="entity_view_ticket">View ticket</string>
+    <string name="entity_view_contact">View contact</string>
+    <string name="entity_chip_label">%1$s · %2$s</string>
 
     <!-- Wallet -->
     <string name="wallet_title">Wallet</string>

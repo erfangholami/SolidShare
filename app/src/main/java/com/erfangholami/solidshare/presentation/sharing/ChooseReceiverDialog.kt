@@ -56,9 +56,19 @@ fun ChooseReceiverDialog(
         onSelect = { webId ->
             viewModel.selectReceiver(webId) {
                 navController.navigate(
-                    ConfirmAccessRoute(viewModel.resourceUri, viewModel.ownerWebId),
+                    ConfirmAccessRoute(
+                        viewModel.resourceUri,
+                        viewModel.ownerWebId,
+                        viewModel.resourceType,
+                    ),
                 ) {
-                    popUpTo(ChooseReceiverRoute(viewModel.resourceUri, viewModel.ownerWebId)) {
+                    popUpTo(
+                        ChooseReceiverRoute(
+                            viewModel.resourceUri,
+                            viewModel.ownerWebId,
+                            viewModel.resourceType,
+                        ),
+                    ) {
                         inclusive = true
                     }
                 }

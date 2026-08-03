@@ -28,6 +28,8 @@ import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.domain.model.getResourceType
+import com.erfangholami.solidshare.presentation.sharing.SharedEntityRegistry
+import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
 import com.erfangholami.solidshare.presentation.sharing.toSharingErrorMessage
@@ -62,6 +64,7 @@ class ShareViewModel @Inject constructor(
     private val receivedSharesSignal: ReceivedSharesSignal,
     private val workManager: WorkManager,
     private val outboxRepository: OutboxRepository,
+    private val entityRegistry: SharedEntityRegistry,
 ) : ViewModel() {
 
     data class UiError(
@@ -93,6 +96,8 @@ class ShareViewModel @Inject constructor(
             val containerUrl: String,
             val ownerWebId: String,
         ) : OpenEvent
+
+        data class OpenEntity(val route: Any) : OpenEvent
     }
 
     data class ReshareLink(
@@ -267,7 +272,9 @@ class ShareViewModel @Inject constructor(
             _reshareLink.emit(
                 ReshareLink(
                     resourceUri = share.resourceUri,
-                    deepLink = reshareLinkFor(share.resourceUri, share.ownerWebId),
+                    deepLink = reshareLinkFor(
+                        share.resourceUri, share.ownerWebId, share.resourceType,
+                    ),
                     bareUrl = bareUrlFor(share.resourceUri),
                 ),
             )
@@ -280,7 +287,15 @@ class ShareViewModel @Inject constructor(
             val webId = authRepository.getActiveWebId() ?: return@launch
             _isOpening.value = true
             try {
-                if (isContainerUri(share.resourceUri)) {
+                val entityUi = entityRegistry.forType(share.resourceType)
+                if (entityUi != null) {
+                    fileRepository.probeAccess(webId, share.resourceUri)
+                    _openEvent.emit(
+                        OpenEvent.OpenEntity(
+                            entityUi.receivedShareRoute(share.resourceUri, share.ownerWebId),
+                        ),
+                    )
+                } else if (isContainerUri(share.resourceUri)) {
                     fileRepository.probeAccess(webId, share.resourceUri)
                     _openEvent.emit(
                         OpenEvent.BrowseContainer(share.resourceUri, share.ownerWebId),
@@ -300,6 +315,8 @@ class ShareViewModel @Inject constructor(
             }
         }
     }
+
+    fun entityUiFor(typeIri: String?): SharedEntityUi? = entityRegistry.forType(typeIri)
 
     fun downloadReceivedShare(share: ReceivedShare) {
         viewModelScope.launch {
@@ -462,11 +479,14 @@ class ShareViewModel @Inject constructor(
         }
     }
 
-    fun deepLinkFor(resourceUri: String): String =
-        sharingRepository.deepLinkFor(resourceUri, lastWebId)
+    fun deepLinkFor(resourceUri: String, resourceType: String? = null): String =
+        sharingRepository.deepLinkFor(resourceUri, lastWebId, resourceType)
 
-    fun reshareLinkFor(resourceUri: String, ownerWebId: String?): String =
-        sharingRepository.deepLinkFor(resourceUri, ownerWebId)
+    fun reshareLinkFor(
+        resourceUri: String,
+        ownerWebId: String?,
+        resourceType: String? = null,
+    ): String = sharingRepository.deepLinkFor(resourceUri, ownerWebId, resourceType)
 
     fun bareUrlFor(resourceUri: String): String =
         sharingRepository.bareUrlFor(resourceUri)

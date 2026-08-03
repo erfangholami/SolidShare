@@ -8,6 +8,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination
@@ -16,7 +17,6 @@ import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
-import androidx.compose.ui.window.DialogProperties
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.dialog
@@ -29,12 +29,16 @@ import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.presentation.contacts.ContactDetailPage
 import com.erfangholami.solidshare.presentation.contacts.ContactDetailViewModel
+import com.erfangholami.solidshare.presentation.contacts.ContactShareViewModel
+import com.erfangholami.solidshare.presentation.contacts.ContactSharingPage
 import com.erfangholami.solidshare.presentation.contacts.ContactsMergePage
 import com.erfangholami.solidshare.presentation.contacts.ContactsMergeViewModel
 import com.erfangholami.solidshare.presentation.contacts.ContactsPage
 import com.erfangholami.solidshare.presentation.contacts.ContactsSettingsPage
 import com.erfangholami.solidshare.presentation.contacts.ContactsSettingsViewModel
 import com.erfangholami.solidshare.presentation.contacts.ContactsViewModel
+import com.erfangholami.solidshare.presentation.contacts.SharedContactPage
+import com.erfangholami.solidshare.presentation.contacts.SharedContactViewModel
 import com.erfangholami.solidshare.presentation.container.ResourceDetailsPage
 import com.erfangholami.solidshare.presentation.container.ResourceDetailsViewModel
 import com.erfangholami.solidshare.presentation.container.SharedContainerPage
@@ -47,29 +51,33 @@ import com.erfangholami.solidshare.presentation.notifications.NotificationsPage
 import com.erfangholami.solidshare.presentation.notifications.NotificationsViewModel
 import com.erfangholami.solidshare.presentation.onboard.Onboarding
 import com.erfangholami.solidshare.presentation.onboard.OnboardingViewModel
+import com.erfangholami.solidshare.presentation.sharing.ChooseReceiverDialog
+import com.erfangholami.solidshare.presentation.sharing.ConfirmAccessPage
 import com.erfangholami.solidshare.presentation.sharing.ManageSharingPage
 import com.erfangholami.solidshare.presentation.sharing.ManageSharingViewModel
 import com.erfangholami.solidshare.presentation.sharing.PublicProfilePage
 import com.erfangholami.solidshare.presentation.sharing.PublicProfileViewModel
-import com.erfangholami.solidshare.presentation.sharing.ChooseReceiverDialog
-import com.erfangholami.solidshare.presentation.sharing.ConfirmAccessPage
 import com.erfangholami.solidshare.presentation.sharing.ScanPage
 import com.erfangholami.solidshare.presentation.sharing.ShareProfilePage
 import com.erfangholami.solidshare.presentation.sharing.ShareProfileViewModel
 import com.erfangholami.solidshare.presentation.startup.Startup
 import com.erfangholami.solidshare.presentation.startup.StartupViewModel
+import com.erfangholami.solidshare.presentation.wallet.SharedTicketPage
+import com.erfangholami.solidshare.presentation.wallet.SharedTicketViewModel
 import com.erfangholami.solidshare.presentation.wallet.TicketDetailPage
 import com.erfangholami.solidshare.presentation.wallet.TicketDetailViewModel
 import com.erfangholami.solidshare.presentation.wallet.TicketEditPage
 import com.erfangholami.solidshare.presentation.wallet.TicketEditViewModel
 import com.erfangholami.solidshare.presentation.wallet.TicketImportPage
 import com.erfangholami.solidshare.presentation.wallet.TicketImportViewModel
+import com.erfangholami.solidshare.presentation.wallet.TicketShareViewModel
+import com.erfangholami.solidshare.presentation.wallet.TicketSharingPage
 import com.erfangholami.solidshare.presentation.wallet.WalletPage
 import com.erfangholami.solidshare.presentation.wallet.WalletViewModel
+import kotlin.reflect.typeOf
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlin.reflect.typeOf
 
 @Composable
 fun AppNavHost(
@@ -219,6 +227,46 @@ fun NavGraphBuilder.walletGraph(navController: NavController) {
         },
     ) {
         TicketEditPage(navController, hiltViewModel<TicketEditViewModel>())
+    }
+    composable<ContactSharingRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        ContactSharingPage(navController, hiltViewModel<ContactShareViewModel>())
+    }
+    composable<SharedContactRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        SharedContactPage(navController, hiltViewModel<SharedContactViewModel>())
+    }
+    composable<TicketSharingRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        TicketSharingPage(navController, hiltViewModel<TicketShareViewModel>())
+    }
+    composable<SharedTicketRoute>(
+        enterTransition = {
+            slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start)
+        },
+        popExitTransition = {
+            slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End)
+        },
+    ) {
+        SharedTicketPage(navController, hiltViewModel<SharedTicketViewModel>())
     }
     composable<TicketImportRoute>(
         enterTransition = {
@@ -410,12 +458,14 @@ object ScanRoute
 data class ConfirmAccessRoute(
     val resourceUri: String,
     val ownerWebId: String? = null,
+    val resourceType: String? = null,
 )
 
 @Serializable
 data class ChooseReceiverRoute(
     val resourceUri: String,
     val ownerWebId: String? = null,
+    val resourceType: String? = null,
 )
 
 @Serializable
@@ -450,6 +500,15 @@ data class ContactDetailRoute(
 )
 
 @Serializable
+data class ContactSharingRoute(val contactUri: String)
+
+@Serializable
+data class SharedContactRoute(
+    val resourceUri: String,
+    val ownerWebId: String? = null,
+)
+
+@Serializable
 object WalletRoute
 
 @Serializable
@@ -463,6 +522,15 @@ data class TicketEditRoute(
 
 @Serializable
 object TicketImportRoute
+
+@Serializable
+data class TicketSharingRoute(val target: String)
+
+@Serializable
+data class SharedTicketRoute(
+    val resourceUri: String,
+    val ownerWebId: String? = null,
+)
 
 @Serializable
 object OnBoarding

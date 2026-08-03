@@ -92,6 +92,39 @@ internal object PreviewSamples {
         addedAt = "2026-05-02T09:30:00Z",
     )
 
+    fun ticketGivenShare(
+        name: String = "ben",
+        title: String = "Coldplay — Music of the Spheres",
+    ): GivenShare = givenShare(
+        name = name,
+        resourceUri = "https://alice.pod/tickets/6f1c/",
+    ).copy(
+        resourceType = "https://schema.org/Ticket",
+        resourceName = title,
+    )
+
+    fun ticketReceivedShare(
+        name: String = "owner",
+        title: String = "Coldplay — Music of the Spheres",
+    ): ReceivedShare = receivedShare(
+        name = name,
+        resourceUri = "https://alice.pod/tickets/6f1c/",
+    ).copy(
+        resourceType = "https://schema.org/Ticket",
+        resourceName = title,
+    )
+
+    fun contactReceivedShare(
+        name: String = "owner",
+        contactName: String = "Jane Doe",
+    ): ReceivedShare = receivedShare(
+        name = name,
+        resourceUri = "https://alice.pod/contacts/b1/Person/7a2d/",
+    ).copy(
+        resourceType = "http://www.w3.org/2006/vcard/ns#Individual",
+        resourceName = contactName,
+    )
+
     fun file(
         name: String = "trip.jpg",
         identifier: String = RESOURCE,

@@ -13,6 +13,7 @@ import com.erfangholami.solidshare.data.local.cache.CachedEntityDao
 import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
 import com.erfangholami.solidshare.data.passimport.PkpassParser
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketFile
 import com.erfangholami.solidshare.domain.model.TicketImageUris
@@ -46,6 +47,7 @@ class TicketsRepositoryImagesTest {
     private val repo = TicketsRepositoryImplementation(
         module,
         auth,
+        mockk<SharingRepository>(relaxed = true),
         mockk<CachedEntityDao>(relaxed = true),
         mockk<ModuleOutbox>(relaxed = true),
         blobStore,

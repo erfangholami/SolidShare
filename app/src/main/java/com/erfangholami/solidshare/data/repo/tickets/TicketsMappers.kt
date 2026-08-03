@@ -116,6 +116,7 @@ fun LibTicket.toDomain(): Ticket = Ticket(
     relevantStart = relevantStartDate ?: relevantDate,
     relevantEnd = relevantEndDate,
     source = source.toDomain(),
+    copiedFrom = copiedFrom,
     artifactUri = artifactUri,
     images = images?.let {
         TicketImageUris(
@@ -214,6 +215,7 @@ fun TicketDraft.toLib(): LibNewTicket = LibNewTicket(
     relevantStartDate = relevantStart?.takeIf { it.isNotBlank() },
     relevantEndDate = relevantEnd?.takeIf { it.isNotBlank() },
     source = source.toLib(),
+    copiedFrom = copiedFrom?.takeIf { it.isNotBlank() },
 )
 
 private fun TicketReservationInfo.toLib(): LibReservation? {
@@ -282,6 +284,7 @@ fun Ticket.toDraft(): TicketDraft = TicketDraft(
     relevantStart = relevantStart,
     relevantEnd = relevantEnd,
     source = source,
+    copiedFrom = copiedFrom,
 )
 
 private fun LibDetail.toDomain(): TicketExtra? {
@@ -462,6 +465,7 @@ fun TicketDraft.toProvisionalTicket(uri: String): Ticket = Ticket(
     relevantStart = relevantStart,
     relevantEnd = relevantEnd,
     source = source,
+    copiedFrom = copiedFrom,
 )
 
 fun Ticket.applying(draft: TicketDraft): Ticket = copy(
@@ -496,4 +500,5 @@ fun Ticket.applying(draft: TicketDraft): Ticket = copy(
     relevantStart = draft.relevantStart,
     relevantEnd = draft.relevantEnd,
     source = draft.source,
+    copiedFrom = draft.copiedFrom,
 )

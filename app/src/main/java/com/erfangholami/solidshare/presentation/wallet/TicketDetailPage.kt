@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.presentation.wallet
 
+import android.graphics.Bitmap
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -94,7 +95,7 @@ import com.erfangholami.solidshare.presentation.components.BlockingProgressOverl
 import com.erfangholami.solidshare.presentation.components.ErrorState
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
-import com.erfangholami.solidshare.presentation.navigation.ManageSharingRoute
+import com.erfangholami.solidshare.presentation.navigation.TicketSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
 import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
@@ -158,7 +159,7 @@ fun TicketDetailPage(
                 actions = {
                     IconButton(
                         onClick = {
-                            navController.navigate(ManageSharingRoute(viewModel.ticketUri))
+                            navController.navigate(TicketSharingRoute(viewModel.ticketUri))
                         },
                         enabled = isOnline,
                     ) {
@@ -300,7 +301,7 @@ fun TicketDetailPage(
 }
 
 @Composable
-private fun TicketDetailContent(ticket: Ticket, visuals: PassImages? = null) {
+internal fun TicketDetailContent(ticket: Ticket, visuals: PassImages? = null) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -601,7 +602,7 @@ private fun openArtifact(
     }.onFailure { onNoViewer() }
 }
 
-private tailrec fun Context.findActivity(): Activity? = when (this) {
+internal tailrec fun Context.findActivity(): Activity? = when (this) {
     is Activity -> this
     is ContextWrapper -> baseContext.findActivity()
     else -> null

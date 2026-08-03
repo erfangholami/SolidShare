@@ -17,7 +17,24 @@ interface TicketsRepository : DataModuleLifecycle {
 
     suspend fun getTicket(webId: String, ticketUri: String): Ticket
 
-    suspend fun queueCreate(webId: String, draft: TicketDraft, artifact: TicketFile? = null): String
+    fun ticketShareTarget(ticketUri: String): String
+
+    suspend fun getSharedTicket(webId: String, target: String): Ticket
+
+    suspend fun getSharedTicketImages(webId: String, ticket: Ticket): PassImages?
+
+    suspend fun getSharedTicketArtifact(webId: String, artifactUri: String): TicketFile
+
+    suspend fun addSharedTicketToWallet(webId: String, shared: Ticket): String
+
+    suspend fun findTicketCopiedFrom(webId: String, originalUri: String): String?
+
+    suspend fun queueCreate(
+        webId: String,
+        draft: TicketDraft,
+        artifact: TicketFile? = null,
+        images: PassImages? = null,
+    ): String
 
     suspend fun queueUpdate(webId: String, ticketUri: String, draft: TicketDraft)
 
@@ -31,6 +48,7 @@ interface TicketsRepository : DataModuleLifecycle {
         webId: String,
         draft: TicketDraft,
         artifact: TicketFile? = null,
+        images: PassImages? = null,
     ): Ticket
 
     suspend fun updateTicket(webId: String, ticketUri: String, draft: TicketDraft): Ticket

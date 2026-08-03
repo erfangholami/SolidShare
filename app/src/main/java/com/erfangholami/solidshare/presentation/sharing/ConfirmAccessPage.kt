@@ -75,8 +75,6 @@ fun ConfirmAccessPage(
     val addedMsg = stringResource(R.string.added_to_shares)
     val requestSentMsg = stringResource(R.string.access_request_sent)
 
-    // Reached either via Scan (pop the scanner too) or directly from a Shared-with-me
-    // re-request (no ScanRoute in the stack → just pop this dialog).
     val close: () -> Unit = {
         if (!navController.popBackStack(ScanRoute, inclusive = true)) {
             navController.popBackStack()

@@ -16,6 +16,8 @@ import com.erfangholami.solidshare.domain.model.NotificationItem
 import com.erfangholami.solidshare.domain.model.NotificationKind
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareRequest
+import com.erfangholami.solidshare.presentation.sharing.SharedEntityRegistry
+import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
 import com.erfangholami.solidshare.presentation.sharing.shareModeLabelRes
 import com.erfangholami.solidshare.presentation.sharing.toSharingErrorMessage
@@ -48,6 +50,7 @@ class NotificationsViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val fileRepository: FileRepository,
     private val badgeStore: NotificationsBadgeStore,
+    private val entityRegistry: SharedEntityRegistry,
 ) : ViewModel() {
 
     data class Row(
@@ -71,7 +74,10 @@ class NotificationsViewModel @Inject constructor(
     sealed interface OpenEvent {
         data class OpenFile(val file: File, val mimeType: String) : OpenEvent
         data class BrowseContainer(val containerUrl: String, val ownerWebId: String) : OpenEvent
+        data class OpenEntity(val route: Any) : OpenEvent
     }
+
+    fun entityUiFor(typeIri: String?): SharedEntityUi? = entityRegistry.forType(typeIri)
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -112,7 +118,15 @@ class NotificationsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isOpening = true)
             try {
-                if (isContainerUri(item.resourceUri)) {
+                val entityUi = entityRegistry.forType(item.resourceType)
+                if (entityUi != null) {
+                    fileRepository.probeAccess(webId, item.resourceUri)
+                    _openEvent.emit(
+                        OpenEvent.OpenEntity(
+                            entityUi.receivedShareRoute(item.resourceUri, item.counterpartWebId),
+                        ),
+                    )
+                } else if (isContainerUri(item.resourceUri)) {
                     fileRepository.probeAccess(webId, item.resourceUri)
                     _openEvent.emit(
                         OpenEvent.BrowseContainer(item.resourceUri, item.counterpartWebId),

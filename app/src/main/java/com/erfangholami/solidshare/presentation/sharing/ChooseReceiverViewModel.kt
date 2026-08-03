@@ -23,6 +23,7 @@ class ChooseReceiverViewModel @Inject constructor(
     private val route = savedStateHandle.toRoute<ChooseReceiverRoute>()
     val resourceUri: String = route.resourceUri
     val ownerWebId: String? = route.ownerWebId
+    val resourceType: String? = route.resourceType
 
     val accounts: StateFlow<List<PublicProfile>> = authRepository.loggedInProfilesFlow
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())

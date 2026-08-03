@@ -15,6 +15,7 @@ data class TicketCreatePayload(
     val draft: TicketDraft,
     val hasArtifact: Boolean = false,
     val artifactContentType: String? = null,
+    val hasImages: Boolean = false,
 )
 
 @Serializable

@@ -95,6 +95,7 @@ import com.erfangholami.solidshare.presentation.main.ModeChip
 import com.erfangholami.solidshare.presentation.navigation.SharedContainerRoute
 import com.erfangholami.solidshare.presentation.permissions.rememberPermissionGate
 import com.erfangholami.solidshare.presentation.rememberIsOnline
+import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.resourceTypeForUri
 import com.erfangholami.solidshare.presentation.sharing.shortenWebId
@@ -160,6 +161,9 @@ fun NotificationsPage(
                             ownerWebId = event.ownerWebId,
                         ),
                     )
+
+                is NotificationsViewModel.OpenEvent.OpenEntity ->
+                    navController.navigate(event.route)
             }
         }
     }
@@ -289,6 +293,7 @@ fun NotificationsPage(
                                     onAccept = { viewModel.accept(row.item) },
                                     onReject = { rejectTarget = row.item },
                                     onDismiss = { viewModel.dismiss(row.item) },
+                                    entityUi = viewModel.entityUiFor(row.item.resourceType),
                                 )
                             }
                         }
@@ -386,6 +391,7 @@ private fun NotificationRow(
     onReject: () -> Unit,
     onDismiss: () -> Unit,
     isOnline: Boolean = true,
+    entityUi: SharedEntityUi? = null,
 ) {
     val showRequestActions = item.kind == NotificationKind.ACCESS_REQUEST && !alreadyGranted
     Surface(
@@ -465,6 +471,8 @@ private fun NotificationRow(
 
             ResourceChip(
                 resourceUri = item.resourceUri,
+                resourceName = item.resourceName,
+                entityUi = entityUi,
                 onOpen = if (item.kind.opensResource()) onOpenResource else null,
             )
 
@@ -542,7 +550,12 @@ private fun NotificationKind.opensResource(): Boolean = when (this) {
 }
 
 @Composable
-private fun ResourceChip(resourceUri: String, onOpen: (() -> Unit)?) {
+private fun ResourceChip(
+    resourceUri: String,
+    onOpen: (() -> Unit)?,
+    resourceName: String? = null,
+    entityUi: SharedEntityUi? = null,
+) {
     val type = resourceTypeForUri(resourceUri)
     Row(
         modifier = Modifier
@@ -554,14 +567,25 @@ private fun ResourceChip(resourceUri: String, onOpen: (() -> Unit)?) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
-            imageVector = type.icon,
+            imageVector = entityUi?.icon ?: type.icon,
             contentDescription = null,
-            tint = type.tint,
+            tint = if (entityUi != null) MaterialTheme.colorScheme.primary else type.tint,
             modifier = Modifier.size(20.dp),
         )
         Spacer(Modifier.size(8.dp))
         Text(
-            text = displayNameForUri(resourceUri),
+            text = when {
+                entityUi != null && resourceName != null ->
+                    stringResource(
+                        R.string.entity_chip_label,
+                        stringResource(entityUi.kindLabelRes),
+                        resourceName,
+                    )
+
+                entityUi != null -> stringResource(entityUi.kindLabelRes)
+
+                else -> resourceName ?: displayNameForUri(resourceUri)
+            },
             style = MaterialTheme.typography.bodyMedium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

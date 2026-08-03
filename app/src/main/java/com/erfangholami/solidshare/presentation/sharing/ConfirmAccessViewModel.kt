@@ -9,6 +9,7 @@ import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.file.ResourceAccessException
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
+import com.erfangholami.solidshare.data.repo.sharing.SharedEntityTypes
 import com.erfangholami.solidshare.data.repo.sharing.SharingError
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.ShareMode
@@ -28,12 +29,14 @@ class ConfirmAccessViewModel @Inject constructor(
     private val sharingRepository: SharingRepository,
     private val fileRepository: FileRepository,
     private val notificationsRepository: NotificationsRepository,
+    private val entityRegistry: SharedEntityRegistry,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
     private val route = savedStateHandle.toRoute<ConfirmAccessRoute>()
     val resourceUri: String = route.resourceUri
     val ownerWebId: String? = route.ownerWebId
+    val resourceType: String? = route.resourceType
 
     sealed class State {
         data object Checking : State()
@@ -99,7 +102,10 @@ class ConfirmAccessViewModel @Inject constructor(
             }
             _state.value = State.Adding
             try {
-                val received = sharingRepository.addReceivedShare(webId, resourceUri, ownerWebId)
+                val resourceName = resolveEntityName(webId)
+                val received = sharingRepository.addReceivedShare(
+                    webId, resourceUri, ownerWebId, resourceType, resourceName,
+                )
                 _state.value = if (received != null) State.Added else State.NoAccess(ownerWebId)
             } catch (e: SharingError.AccessDenied) {
                 _state.value = State.NoAccess(e.ownerWebId ?: ownerWebId)
@@ -108,6 +114,9 @@ class ConfirmAccessViewModel @Inject constructor(
             }
         }
     }
+
+    private suspend fun resolveEntityName(webId: String): String? =
+        entityRegistry.forType(resourceType)?.resolveName(webId, resourceUri)
 
     fun requestAccess(owner: String) {
         viewModelScope.launch {

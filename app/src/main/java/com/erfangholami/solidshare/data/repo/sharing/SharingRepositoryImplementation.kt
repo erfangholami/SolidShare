@@ -33,16 +33,18 @@ class SharingRepositoryImplementation @Inject constructor(
     ): List<GivenShare> {
         val aclShares = sharingManager.getGivenSharesForResource(webId, resourceUri)
             .unwrap().map { it.toDomain() }
-        val createdByKey = runCatching { sharingManager.getStoredGivenShares(webId).unwrap() }
+        val storedByKey = runCatching { sharingManager.getStoredGivenShares(webId).unwrap() }
             .getOrDefault(emptyList())
             .map { it.toDomain() }
-            .mapNotNull { stored ->
-                stored.createdAt?.let { receiverResourceKey(stored.receiver, stored.resourceUri) to it }
-            }
-            .toMap()
+            .associateBy { receiverResourceKey(it.receiver, it.resourceUri) }
         return aclShares.map { share ->
-            createdByKey[receiverResourceKey(share.receiver, share.resourceUri)]
-                ?.let { share.copy(createdAt = it) } ?: share
+            val stored = storedByKey[receiverResourceKey(share.receiver, share.resourceUri)]
+                ?: return@map share
+            share.copy(
+                createdAt = share.createdAt ?: stored.createdAt,
+                resourceType = share.resourceType ?: stored.resourceType,
+                resourceName = share.resourceName ?: stored.resourceName,
+            )
         }
     }
 
@@ -61,9 +63,14 @@ class SharingRepositoryImplementation @Inject constructor(
         mode: ShareMode,
         receiver: ShareReceiver,
         notifyReceiver: Boolean,
+        resourceType: String?,
+        resourceName: String?,
     ): GivenShare =
         sharingManager
-            .createShare(webId, resourceUri, mode.toLib(), receiver.toLib(), notifyReceiver)
+            .createShare(
+                webId, resourceUri, mode.toLib(), receiver.toLib(), notifyReceiver,
+                resourceType, resourceName,
+            )
             .unwrap().toDomain()
 
     override suspend fun updateShare(
@@ -72,13 +79,17 @@ class SharingRepositoryImplementation @Inject constructor(
         mode: ShareMode,
         receiver: ShareReceiver,
         notifyReceiver: Boolean,
+        resourceType: String?,
+        resourceName: String?,
     ): GivenShare =
         sharingManager.updateShare(
             webId,
             resourceUri,
             mode.toLib(),
             receiver.toLib(),
-            notifyReceiver
+            notifyReceiver,
+            resourceType,
+            resourceName,
         )
             .unwrap().toDomain()
 
@@ -89,6 +100,17 @@ class SharingRepositoryImplementation @Inject constructor(
     ) {
         sharingManager.revokeShare(webId, resourceUri, receiver.toLib()).unwrap()
     }
+
+    override suspend fun purgeGivenShares(
+        webId: String,
+        resourceUri: String,
+        includeDescendants: Boolean,
+        notifyReceivers: Boolean,
+    ): List<GivenShare> =
+        sharingManager
+            .purgeGivenShares(webId, resourceUri, includeDescendants, notifyReceivers)
+            .unwrap()
+            .map { it.toDomain() }
 
     override suspend fun makePrivate(webId: String, resourceUri: String) {
         sharingManager.makePrivate(webId, resourceUri).unwrap()
@@ -104,8 +126,11 @@ class SharingRepositoryImplementation @Inject constructor(
         webId: String,
         resourceUri: String,
         ownerHint: String?,
+        resourceType: String?,
+        resourceName: String?,
     ): ReceivedShare? =
-        sharingManager.addReceivedShare(webId, resourceUri, ownerHint).unwrap()?.toDomain()
+        sharingManager.addReceivedShare(webId, resourceUri, ownerHint, resourceType, resourceName)
+            .unwrap()?.toDomain()
 
     override suspend fun removeReceivedShare(
         webId: String,
@@ -152,8 +177,8 @@ class SharingRepositoryImplementation @Inject constructor(
     ): List<CatalogEntry> =
         sharingManager.getOwnerCatalog(viewerWebId, ownerWebId).unwrap().map { it.toDomain() }
 
-    override fun deepLinkFor(resourceUri: String, ownerWebId: String?): String =
-        sharingManager.getShareDeepLink(resourceUri, ownerWebId)
+    override fun deepLinkFor(resourceUri: String, ownerWebId: String?, resourceType: String?): String =
+        sharingManager.getShareDeepLink(resourceUri, ownerWebId, resourceType)
 
     override fun parseDeepLink(deepLink: String): ParsedShareLink? =
         sharingManager.parseShareDeepLink(deepLink)?.toDomain()

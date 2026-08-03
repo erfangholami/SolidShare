@@ -17,6 +17,8 @@ data class GivenShare(
     val mode: ShareMode,
     val resourceUri: String,
     val createdAt: String? = null,
+    val resourceType: String? = null,
+    val resourceName: String? = null,
 )
 
 data class ReceivedShare(
@@ -24,6 +26,8 @@ data class ReceivedShare(
     val mode: ShareMode,
     val resourceUri: String,
     val addedAt: String? = null,
+    val resourceType: String? = null,
+    val resourceName: String? = null,
 )
 
 data class ShareRequest(
@@ -38,6 +42,7 @@ data class ShareRequest(
 data class ParsedShareLink(
     val resourceUri: String,
     val ownerWebId: String?,
+    val resourceType: String? = null,
 )
 
 data class CatalogEntry(
@@ -93,4 +98,6 @@ data class ShareNotification(
     val summary: String?,
     val publishedAt: String?,
     val targetWebId: String? = null,
+    val resourceType: String? = null,
+    val resourceName: String? = null,
 )

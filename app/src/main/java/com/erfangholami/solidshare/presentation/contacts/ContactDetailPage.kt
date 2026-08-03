@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.filled.TheaterComedy
 import androidx.compose.material.icons.filled.Translate
@@ -86,7 +87,9 @@ import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RowDivider
+import com.erfangholami.solidshare.presentation.navigation.ContactSharingRoute
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
+import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import java.util.Locale
 
@@ -99,6 +102,7 @@ fun ContactDetailPage(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val message by viewModel.message.collectAsStateWithLifecycle()
     val snackbarHostState = remember { SnackbarHostState() }
+    val isOnline by rememberIsOnline()
     var menuOpen by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -126,6 +130,17 @@ fun ContactDetailPage(
                 },
                 title = {},
                 actions = {
+                    IconButton(
+                        onClick = {
+                            navController.navigate(ContactSharingRoute(viewModel.contactUri))
+                        },
+                        enabled = isOnline,
+                    ) {
+                        Icon(
+                            Icons.Filled.Share,
+                            contentDescription = stringResource(R.string.share),
+                        )
+                    }
                     Box {
                         IconButton(onClick = { menuOpen = true }) {
                             Icon(

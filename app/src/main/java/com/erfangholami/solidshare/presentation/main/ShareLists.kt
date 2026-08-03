@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ConfirmationNumber
 import androidx.compose.material.icons.filled.Public
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.QrCodeScanner
@@ -39,6 +40,7 @@ import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ReceivedShare
 import com.erfangholami.solidshare.domain.model.ShareMode
+import com.erfangholami.solidshare.presentation.components.BadgeAvatar
 import com.erfangholami.solidshare.presentation.components.EmptyState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ResourceAction
@@ -48,6 +50,7 @@ import com.erfangholami.solidshare.presentation.components.RowDivider
 import com.erfangholami.solidshare.presentation.container.itemCountLabel
 import com.erfangholami.solidshare.presentation.container.metaSubtitle
 import com.erfangholami.solidshare.presentation.sharing.SharedAccessGroups
+import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import com.erfangholami.solidshare.presentation.sharing.SharedWithOwner
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
@@ -61,6 +64,7 @@ internal fun GivenList(
     onShowQr: (String) -> Unit,
     onManage: (String) -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
+    entityUiFor: (String?) -> SharedEntityUi? = { null },
 ) {
     if (shares.isEmpty()) {
         EmptyState(
@@ -82,6 +86,7 @@ internal fun GivenList(
                 onShowQr = { onShowQr(resourceUri) },
                 onManage = { onManage(resourceUri) },
                 loadMeta = loadMeta,
+                entityUi = entityUiFor(recipients.firstNotNullOfOrNull { it.resourceType }),
             )
             RowDivider(startIndent = 72.dp)
         }
@@ -101,6 +106,7 @@ internal fun ReceivedList(
     onInfo: (ReceivedShare) -> Unit,
     onDelete: (ReceivedShare) -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
+    entityUiFor: (String?) -> SharedEntityUi? = { null },
 ) {
     if (shares.isEmpty()) {
         EmptyState(
@@ -126,6 +132,7 @@ internal fun ReceivedList(
                 onInfo = { onInfo(share) },
                 onDelete = { onDelete(share) },
                 loadMeta = loadMeta,
+                entityUi = entityUiFor(share.resourceType),
             )
             RowDivider(startIndent = 72.dp)
         }
@@ -140,15 +147,19 @@ private fun GivenResourceRow(
     onShowQr: () -> Unit,
     onManage: () -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
+    entityUi: SharedEntityUi? = null,
 ) {
     var sheetOpen by remember { mutableStateOf(false) }
     var headerItem by remember(resourceUri) { mutableStateOf<ContainerItem?>(null) }
     LaunchedEffect(sheetOpen) {
-        if (sheetOpen && headerItem == null) headerItem = loadMeta(resourceUri)
+        if (sheetOpen && entityUi == null && headerItem == null) {
+            headerItem = loadMeta(resourceUri)
+        }
     }
     val sharedAt = remember(recipients) {
         recipients.mapNotNull { it.createdAt }.maxOrNull()
     }?.let { formatRelativeTime(it) }
+    val entityName = recipients.firstNotNullOfOrNull { it.resourceName }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -156,16 +167,31 @@ private fun GivenResourceRow(
             .padding(start = 16.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ResourceTile(resourceUri = resourceUri)
+        if (entityUi != null) {
+            BadgeAvatar(entityUi.icon, size = 44.dp)
+        } else {
+            ResourceTile(resourceUri = resourceUri)
+        }
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = displayNameForUri(resourceUri),
+                text = if (entityUi != null) {
+                    entityName ?: stringResource(entityUi.kindLabelRes)
+                } else {
+                    displayNameForUri(resourceUri)
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (entityUi != null) {
+                Text(
+                    text = stringResource(entityUi.kindLabelRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.size(8.dp))
             SharedAccessGroups(shares = recipients)
             if (sharedAt != null) {
@@ -184,7 +210,11 @@ private fun GivenResourceRow(
     if (sheetOpen) {
         ResourceActionsSheet(
             resourceUri = resourceUri,
-            subtitle = headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) },
+            subtitle = if (entityUi != null) {
+                entityName
+            } else {
+                headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) }
+            },
             actions = ResourceActions.sharedByMe,
             isOnline = isOnline,
             onDismiss = { sheetOpen = false },
@@ -213,11 +243,14 @@ private fun ReceivedRow(
     onInfo: () -> Unit,
     onDelete: () -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
+    entityUi: SharedEntityUi? = null,
 ) {
     var sheetOpen by remember { mutableStateOf(false) }
     var headerItem by remember(share.resourceUri) { mutableStateOf<ContainerItem?>(null) }
     LaunchedEffect(sheetOpen) {
-        if (sheetOpen && headerItem == null) headerItem = loadMeta(share.resourceUri)
+        if (sheetOpen && entityUi == null && headerItem == null) {
+            headerItem = loadMeta(share.resourceUri)
+        }
     }
     val addedAt = formatRelativeTime(share.addedAt)
     Row(
@@ -227,16 +260,31 @@ private fun ReceivedRow(
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ResourceTile(resourceUri = share.resourceUri)
+        if (entityUi != null) {
+            BadgeAvatar(entityUi.icon, size = 44.dp)
+        } else {
+            ResourceTile(resourceUri = share.resourceUri)
+        }
         Spacer(Modifier.size(12.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = displayNameForUri(share.resourceUri),
+                text = if (entityUi != null) {
+                    share.resourceName ?: stringResource(entityUi.kindLabelRes)
+                } else {
+                    displayNameForUri(share.resourceUri)
+                },
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
+            if (entityUi != null) {
+                Text(
+                    text = stringResource(entityUi.kindLabelRes),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
             Spacer(Modifier.size(6.dp))
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -264,11 +312,19 @@ private fun ReceivedRow(
     if (sheetOpen) {
         ResourceActionsSheet(
             resourceUri = share.resourceUri,
-            subtitle = headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) },
-            actions = ResourceActions.sharedWithMe(
-                isContainer = isContainerUri(share.resourceUri),
-                canEdit = share.mode == ShareMode.WRITE,
-            ),
+            subtitle = if (entityUi != null) {
+                share.resourceName
+            } else {
+                headerItem?.let { it.metaSubtitle(it.itemCount?.let { c -> itemCountLabel(c) }) }
+            },
+            actions = if (entityUi != null) {
+                ResourceActions.sharedEntity()
+            } else {
+                ResourceActions.sharedWithMe(
+                    isContainer = isContainerUri(share.resourceUri),
+                    canEdit = share.mode == ShareMode.WRITE,
+                )
+            },
             isOnline = isOnline,
             onDismiss = { sheetOpen = false },
             onAction = { action ->
@@ -359,6 +415,51 @@ private fun ReceivedRowPreview() {
             onInfo = {},
             onDelete = {},
             loadMeta = { PreviewSamples.file() },
+        )
+    }
+}
+
+private val previewTicketEntityUi = object : SharedEntityUi {
+    override val typeIri: String = "https://schema.org/Ticket"
+    override val icon = Icons.Filled.ConfirmationNumber
+    override val kindLabelRes: Int = R.string.entity_kind_ticket
+    override fun receivedShareRoute(resourceUri: String, ownerWebId: String?): Any = Unit
+    override fun manageShareRoute(resourceUri: String): Any = Unit
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Received row · ticket")
+@Composable
+private fun ReceivedTicketRowPreview() {
+    AppTheme {
+        ReceivedRow(
+            share = PreviewSamples.ticketReceivedShare(),
+            isOnline = true,
+            onOpen = {},
+            onRemove = {},
+            onReshare = {},
+            onOpenOwner = {},
+            onCopyLink = {},
+            onDownload = {},
+            onInfo = {},
+            onDelete = {},
+            loadMeta = { null },
+            entityUi = previewTicketEntityUi,
+        )
+    }
+}
+
+@Preview(showBackground = true, widthDp = 360, name = "Given row · ticket")
+@Composable
+private fun GivenTicketRowPreview() {
+    AppTheme {
+        GivenResourceRow(
+            resourceUri = "https://alice.pod/tickets/6f1c/",
+            recipients = listOf(PreviewSamples.ticketGivenShare()),
+            isOnline = true,
+            onShowQr = {},
+            onManage = {},
+            loadMeta = { null },
+            entityUi = previewTicketEntityUi,
         )
     }
 }

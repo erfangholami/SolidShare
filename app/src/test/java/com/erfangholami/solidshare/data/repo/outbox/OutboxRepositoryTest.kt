@@ -261,6 +261,34 @@ class OutboxRepositoryTest {
     }
 
     @Test
+    fun drainDelete_alsoPurgesTheResourcesGivenShareRows() = runTest {
+        resourceDao.upsert(resourceEntity("shared.txt", syncState = SyncState.SYNCED))
+        val uri = TEST_CONTAINER + "shared.txt"
+        repo.enqueueDelete(TEST_WEB_ID, uri, isContainer = false)
+        coEvery { resourceManager.delete(any(), any()) } returns SolidResult.Success(true)
+
+        repo.drain()
+
+        coVerify { sharingRepository.purgeGivenShares(TEST_WEB_ID, uri, any(), any()) }
+    }
+
+    @Test
+    fun drainDelete_purgeFailure_doesNotFailTheDelete() = runTest {
+        resourceDao.upsert(resourceEntity("shared.txt", syncState = SyncState.SYNCED))
+        val uri = TEST_CONTAINER + "shared.txt"
+        repo.enqueueDelete(TEST_WEB_ID, uri, isContainer = false)
+        coEvery { resourceManager.delete(any(), any()) } returns SolidResult.Success(true)
+        coEvery {
+            sharingRepository.purgeGivenShares(any(), any(), any(), any())
+        } throws IllegalStateException("index unreachable")
+
+        repo.drain()
+
+        assertNull(resourceDao.findByIdentifier(TEST_WEB_ID, uri))
+        assertEquals(0, outboxDao.countUnfinished())
+    }
+
+    @Test
     fun drainDelete_terminalError_marksResourceErroredSoItReappears() = runTest {
         resourceDao.upsert(resourceEntity("locked.txt", syncState = SyncState.SYNCED))
         val uri = TEST_CONTAINER + "locked.txt"

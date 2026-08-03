@@ -17,6 +17,7 @@ import com.erfangholami.solidshare.data.passimport.TicketFileType
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.datamodule.DataModuleIds
 import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
+import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
@@ -40,6 +41,7 @@ import kotlinx.serialization.json.Json
 class TicketsRepositoryImplementation @Inject constructor(
     private val ticketsDataModule: SolidTicketsDataModule,
     private val authRepository: AuthRepository,
+    private val sharingRepository: SharingRepository,
     private val entityDao: CachedEntityDao,
     private val outbox: ModuleOutbox,
     private val blobStore: TicketBlobStore,
@@ -79,10 +81,79 @@ class TicketsRepositoryImplementation @Inject constructor(
                 }
             }
 
+    override fun ticketShareTarget(ticketUri: String): String =
+        ticketsDataModule.tickets.shareTarget(ticketUri)
+
+    override suspend fun getSharedTicket(webId: String, target: String): Ticket =
+        if (target.endsWith("/")) {
+            ticketsDataModule.tickets.findInContainer(webId, target).unwrap().toDomain()
+        } else {
+            fetchRemoteTicket(webId, target)
+        }
+
+    override suspend fun getSharedTicketImages(webId: String, ticket: Ticket): PassImages? {
+        fetchSharedImageBytes(webId, ticket)?.let { return it }
+        val artifactUri = ticket.artifactUri ?: return null
+        val artifact = runCatching { getSharedTicketArtifact(webId, artifactUri) }.getOrNull()
+            ?: return null
+        return runCatching { parseTicketFile(artifact.bytes) }.getOrNull()
+            ?.firstOrNull()?.visuals
+    }
+
+    private suspend fun fetchSharedImageBytes(webId: String, ticket: Ticket): PassImages? =
+        coroutineScope {
+            suspend fun fetch(uri: String?): ByteArray? {
+                uri ?: return null
+                return runCatching {
+                    ticketsDataModule.tickets.getArtifact(webId, uri).unwrap().bytes
+                }.getOrNull()
+            }
+            val logo = async { fetch(ticket.images?.logo) }
+            val icon = async { fetch(ticket.images?.icon) }
+            val strip = async { fetch(ticket.images?.strip) }
+            val thumbnail = async { fetch(ticket.images?.thumbnail) }
+            val footer = async { fetch(ticket.images?.footer) }
+            val background = async { fetch(ticket.images?.background) }
+            PassImages(
+                logo = logo.await(),
+                icon = icon.await(),
+                strip = strip.await(),
+                thumbnail = thumbnail.await(),
+                footer = footer.await(),
+                background = background.await(),
+            ).takeIf { !it.isEmpty }
+        }
+
+    override suspend fun getSharedTicketArtifact(webId: String, artifactUri: String): TicketFile {
+        val artifact = ticketsDataModule.tickets.getArtifact(webId, artifactUri).unwrap()
+        return TicketFile(artifact.contentType, artifact.bytes)
+    }
+
+    override suspend fun addSharedTicketToWallet(webId: String, shared: Ticket): String {
+        val artifact = shared.artifactUri?.let {
+            runCatching { getSharedTicketArtifact(webId, it) }.getOrNull()
+        }
+        val images = if (artifact?.contentType == PkpassParser.MIME_TYPE) {
+            null
+        } else {
+            runCatching { getSharedTicketImages(webId, shared) }.getOrNull()
+        }
+        val draft = shared.toDraft().copy(copiedFrom = shared.uri)
+        return queueCreate(webId, draft, artifact, images)
+    }
+
+    override suspend fun findTicketCopiedFrom(webId: String, originalUri: String): String? =
+        entityDao.get(moduleId, webId).firstNotNullOfOrNull { row ->
+            runCatching { row.toTicket() }.getOrNull()
+                ?.takeIf { it.copiedFrom == originalUri }
+                ?.uri
+        }
+
     override suspend fun queueCreate(
         webId: String,
         draft: TicketDraft,
         artifact: TicketFile?,
+        images: PassImages?,
     ): String {
         val provisionalUri = PROVISIONAL_PREFIX + UUID.randomUUID()
         val normalized = draft.withDerivedEventStart()
@@ -100,6 +171,7 @@ class TicketsRepositoryImplementation @Inject constructor(
                         ?.let { writeVisuals(webId, provisionalUri, it) }
                 }
             }
+            images?.let { writeVisuals(webId, provisionalUri, it) }
         }
         runCatching {
             entityDao.upsert(
@@ -120,6 +192,7 @@ class TicketsRepositoryImplementation @Inject constructor(
                     draft = normalized,
                     hasArtifact = artifact != null,
                     artifactContentType = artifact?.contentType,
+                    hasImages = images != null,
                 ),
             ),
         )
@@ -264,12 +337,14 @@ class TicketsRepositoryImplementation @Inject constructor(
         webId: String,
         draft: TicketDraft,
         artifact: TicketFile?,
+        images: PassImages?,
     ): Ticket {
         val storage = authRepository.getStorages(webId).firstOrNull()
             ?: throw IllegalStateException("No storage found for $webId")
-        val visuals = artifact
-            ?.takeIf { it.contentType == PkpassParser.MIME_TYPE }
-            ?.let { runCatching { PkpassImages.extract(it.bytes) }.getOrNull() }
+        val visuals = images
+            ?: artifact
+                ?.takeIf { it.contentType == PkpassParser.MIME_TYPE }
+                ?.let { runCatching { PkpassImages.extract(it.bytes) }.getOrNull() }
         return ticketsDataModule.tickets
             .create(
                 ownerWebId = webId,
@@ -300,6 +375,9 @@ class TicketsRepositoryImplementation @Inject constructor(
 
     override suspend fun deleteTicket(webId: String, ticketUri: String) {
         ticketsDataModule.tickets.delete(webId, ticketUri).unwrap()
+        runCatching {
+            sharingRepository.purgeGivenShares(webId, ticketShareTarget(ticketUri))
+        }
         runCatching { entityDao.deleteByUri(moduleId, webId, ticketUri) }
         runCatching { blobStore.deleteTicket(webId, ticketUri) }
     }
@@ -447,7 +525,12 @@ class TicketsRepositoryImplementation @Inject constructor(
                 } else {
                     null
                 }
-                val created = createTicket(webId, payload.draft, artifact)
+                val images = if (payload.hasImages) {
+                    readVisuals(webId, payload.provisionalUri)
+                } else {
+                    null
+                }
+                val created = createTicket(webId, payload.draft, artifact, images)
                 runCatching {
                     entityDao.deleteByUri(moduleId, webId, payload.provisionalUri)
                     blobStore.move(webId, payload.provisionalUri, created.uri)
