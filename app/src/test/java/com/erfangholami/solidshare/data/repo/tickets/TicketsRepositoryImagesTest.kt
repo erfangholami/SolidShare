@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.data.repo.tickets
 
+import com.erfangholami.solidshare.data.local.cache.testOutbox
 import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.SolidTicketsDataModule
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.TicketStore
@@ -8,8 +9,8 @@ import com.erfangholami.androidsolidservices.shared.model.tickets.Ticket as LibT
 import com.erfangholami.androidsolidservices.shared.model.tickets.TicketArtifact
 import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.data.local.cache.TicketBlobStore
-import com.erfangholami.solidshare.data.local.cache.TicketDao
-import com.erfangholami.solidshare.data.local.cache.TicketOutboxDao
+import com.erfangholami.solidshare.data.local.cache.CachedEntityDao
+import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
 import com.erfangholami.solidshare.data.passimport.PkpassParser
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.domain.model.TicketDraft
@@ -38,17 +39,16 @@ class TicketsRepositoryImagesTest {
         coEvery { getStorages(webId) } returns listOf("https://alice.pod/")
     }
     private val blobStore = mockk<TicketBlobStore>(relaxed = true) {
-        every { read(any(), any(), any()) } returns null
-        every { readText(any(), any(), any()) } returns null
-        every { has(any(), any(), any()) } returns false
+        coEvery { read(any(), any(), any()) } returns null
+        coEvery { readText(any(), any(), any()) } returns null
+        coEvery { has(any(), any(), any()) } returns false
     }
     private val repo = TicketsRepositoryImplementation(
         module,
         auth,
-        mockk<TicketDao>(relaxed = true),
-        mockk<TicketOutboxDao>(relaxed = true),
+        mockk<CachedEntityDao>(relaxed = true),
+        mockk<ModuleOutbox>(relaxed = true),
         blobStore,
-        mockk<WorkManager>(relaxed = true),
     )
 
     private val libTicket = LibTicket(uri = ticketUri, title = "T")
@@ -127,7 +127,7 @@ class TicketsRepositoryImagesTest {
 
     @Test
     fun `getTicketImages serves cached blobs without touching the network`() = runBlocking {
-        every { blobStore.read(webId, ticketUri, TicketBlobStore.LOGO) } returns byteArrayOf(7)
+        coEvery { blobStore.read(webId, ticketUri, TicketBlobStore.LOGO) } returns byteArrayOf(7)
 
         val images = repo.getTicketImages(webId, ticketUri, null)
 

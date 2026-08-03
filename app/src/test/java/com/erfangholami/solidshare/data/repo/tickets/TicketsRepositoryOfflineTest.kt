@@ -1,5 +1,7 @@
 package com.erfangholami.solidshare.data.repo.tickets
 
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleIds
+import com.erfangholami.solidshare.data.local.cache.testOutbox
 import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.SolidTicketsDataModule
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.TicketStore
@@ -11,7 +13,6 @@ import com.erfangholami.solidshare.data.local.cache.SolidCacheDatabase
 import com.erfangholami.solidshare.data.local.cache.SyncState
 import com.erfangholami.solidshare.data.local.cache.TicketBlobStore
 import com.erfangholami.solidshare.data.local.cache.inMemoryCacheDb
-import com.erfangholami.solidshare.data.local.cache.toCacheEntity
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketDraft
@@ -48,9 +49,9 @@ class TicketsRepositoryOfflineTest {
         coEvery { getStorages(webId) } returns listOf("https://alice.pod/")
     }
     private val blobStore = mockk<TicketBlobStore>(relaxed = true) {
-        every { read(any(), any(), any()) } returns null
-        every { readText(any(), any(), any()) } returns null
-        every { has(any(), any(), any()) } returns true
+        coEvery { read(any(), any(), any()) } returns null
+        coEvery { readText(any(), any(), any()) } returns null
+        coEvery { has(any(), any(), any()) } returns true
     }
 
     @Before
@@ -59,10 +60,9 @@ class TicketsRepositoryOfflineTest {
         repo = TicketsRepositoryImplementation(
             module,
             auth,
-            db.ticketDao(),
-            db.ticketOutboxDao(),
+            db.cachedEntityDao(),
+            testOutbox(db),
             blobStore,
-            mockk<WorkManager>(relaxed = true),
         )
     }
 
@@ -80,11 +80,11 @@ class TicketsRepositoryOfflineTest {
             val pending = repo.observeTickets(webId).first()
             assertEquals(listOf(provisionalUri), pending.map { it.uri })
 
-            assertTrue(repo.drainTicketOutbox(webId))
+            assertTrue(repo.drain(webId))
 
             val synced = repo.observeTickets(webId).first()
             assertEquals(listOf(realUri), synced.map { it.uri })
-            assertTrue(db.ticketOutboxDao().pendingWebIds().isEmpty())
+            assertTrue(testOutbox(db).pendingWork().isEmpty())
         }
 
     @Test
@@ -98,7 +98,7 @@ class TicketsRepositoryOfflineTest {
         val provisionalUri = repo.queueCreate(webId, TicketDraft(title = "Draft"))
         repo.queueUpdate(webId, provisionalUri, TicketDraft(title = "Final"))
 
-        assertTrue(repo.drainTicketOutbox(webId))
+        assertTrue(repo.drain(webId))
 
         assertEquals("Final", createdTitle)
         coVerify(exactly = 1) { store.create(any(), any(), any(), any(), any(), any(), any(), any()) }
@@ -111,27 +111,27 @@ class TicketsRepositoryOfflineTest {
         repo.queueDelete(webId, provisionalUri)
 
         assertTrue(repo.observeTickets(webId).first().isEmpty())
-        assertTrue(db.ticketOutboxDao().pendingWebIds().isEmpty())
+        assertTrue(testOutbox(db).pendingWork().isEmpty())
     }
 
     @Test
     fun `queueDelete hides the row immediately and drain deletes on the pod`() = runTest {
-        db.ticketDao().upsert(sampleTicket(realUri).toCacheEntity(webId, 1L))
+        db.cachedEntityDao().upsert(sampleTicket(realUri).toCacheEntity(webId, 1L))
         coEvery { store.delete(webId, realUri) } returns
             SolidResult.Success(LibTicket(uri = realUri, title = "T"))
 
         repo.queueDelete(webId, realUri)
         assertTrue(repo.observeTickets(webId).first().isEmpty())
 
-        assertTrue(repo.drainTicketOutbox(webId))
-        assertNull(db.ticketDao().findByUri(webId, realUri))
+        assertTrue(repo.drain(webId))
+        assertNull(db.cachedEntityDao().findByUri(DataModuleIds.TICKETS, webId, realUri))
         coVerify { store.delete(webId, realUri) }
     }
 
     @Test
     fun `refresh prunes stale synced rows but keeps pending work`() = runTest {
         val staleUri = "https://alice.pod/tickets/old/ticket#this"
-        db.ticketDao().upsert(sampleTicket(staleUri).toCacheEntity(webId, 1L))
+        db.cachedEntityDao().upsert(sampleTicket(staleUri).toCacheEntity(webId, 1L))
         val provisionalUri = repo.queueCreate(webId, TicketDraft(title = "Pending"))
 
         coEvery { store.list(webId) } returns SolidResult.Success(
@@ -144,12 +144,12 @@ class TicketsRepositoryOfflineTest {
 
         val uris = repo.observeTickets(webId).first().map { it.uri }
         assertEquals(setOf(realUri, provisionalUri), uris.toSet())
-        assertNull(db.ticketDao().findByUri(webId, staleUri))
+        assertNull(db.cachedEntityDao().findByUri(DataModuleIds.TICKETS, webId, staleUri))
     }
 
     @Test
     fun `getTicket serves the cache without a network call`() = runTest {
-        db.ticketDao().upsert(sampleTicket(realUri).toCacheEntity(webId, 1L))
+        db.cachedEntityDao().upsert(sampleTicket(realUri).toCacheEntity(webId, 1L))
 
         val ticket = repo.getTicket(webId, realUri)
 

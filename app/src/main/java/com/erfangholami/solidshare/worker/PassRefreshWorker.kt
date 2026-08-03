@@ -11,7 +11,8 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
-import com.erfangholami.solidshare.data.local.cache.TicketDao
+import com.erfangholami.solidshare.data.local.cache.CachedEntityDao
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleIds
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -22,11 +23,12 @@ class PassRefreshWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val ticketsRepository: TicketsRepository,
-    private val ticketDao: TicketDao,
+    private val cachedEntityDao: CachedEntityDao,
 ) : CoroutineWorker(appContext, params) {
 
     override suspend fun doWork(): Result {
-        val webIds = runCatching { ticketDao.webIds() }.getOrDefault(emptyList())
+        val webIds = runCatching { cachedEntityDao.webIds(DataModuleIds.TICKETS) }
+            .getOrDefault(emptyList())
         webIds.forEach { webId ->
             runCatching { ticketsRepository.refreshIssuerPasses(webId) }
         }

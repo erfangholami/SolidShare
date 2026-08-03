@@ -14,6 +14,7 @@ import com.erfangholami.solidshare.data.local.cache.CacheKeyManager
 import com.erfangholami.solidshare.data.local.cache.OpType
 import com.erfangholami.solidshare.data.local.cache.OutboxDao
 import com.erfangholami.solidshare.data.local.cache.ResourceDao
+import com.erfangholami.solidshare.data.local.cache.NoOutboxTrigger
 import com.erfangholami.solidshare.data.local.cache.SolidCacheDatabase
 import com.erfangholami.solidshare.data.local.cache.SyncState
 import com.erfangholami.solidshare.data.local.cache.TEST_CONTAINER
@@ -89,7 +90,7 @@ class OutboxRepositoryTest {
             outboxDao = outboxDao,
             keyManager = keyManager,
             networkMonitor = mockk<NetworkMonitor>(relaxed = true),
-            workManager = mockk<WorkManager>(relaxed = true),
+            trigger = NoOutboxTrigger,
             fileRepository = fileRepository,
             sharingRepository = sharingRepository,
         )

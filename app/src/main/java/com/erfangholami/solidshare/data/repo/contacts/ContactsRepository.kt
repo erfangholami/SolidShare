@@ -1,5 +1,7 @@
 package com.erfangholami.solidshare.data.repo.contacts
 
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleLifecycle
+import com.erfangholami.solidshare.domain.model.AddressBook
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactGroup
@@ -10,7 +12,7 @@ import com.erfangholami.solidshare.domain.model.ContactsOverview
 import com.erfangholami.solidshare.domain.model.MergeSuggestion
 import kotlinx.coroutines.flow.Flow
 
-interface ContactsRepository {
+interface ContactsRepository : DataModuleLifecycle {
 
     fun observeContacts(webId: String): Flow<List<ContactListEntry>>
 
@@ -48,9 +50,7 @@ interface ContactsRepository {
 
     suspend fun queueDeleteAll(webId: String)
 
-    suspend fun drainContactOutbox(webId: String): Boolean
 
-    suspend fun clearCacheForWebId(webId: String)
 
     suspend fun setContactPhoto(
         webId: String,

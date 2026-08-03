@@ -4,20 +4,15 @@ import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
 
-enum class TicketOpType {
-    CREATE,
-    UPDATE,
-    DELETE,
-}
-
 @Entity(
-    tableName = "ticket_outbox_op",
-    indices = [Index(value = ["webId", "status", "nextRetryAt"])],
+    tableName = "module_outbox_op",
+    indices = [Index(value = ["module", "webId", "status", "nextRetryAt"])],
 )
-data class TicketOutboxOpEntity(
+data class ModuleOutboxOpEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val module: String,
     val webId: String,
-    val type: TicketOpType,
+    val type: String,
     val payload: String,
     val status: OpStatus,
     val attempts: Int,

@@ -3,6 +3,12 @@ package com.erfangholami.solidshare.data.repo.tickets
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import kotlinx.serialization.Serializable
 
+enum class TicketOpType {
+    CREATE,
+    UPDATE,
+    DELETE,
+}
+
 @Serializable
 data class TicketCreatePayload(
     val provisionalUri: String,

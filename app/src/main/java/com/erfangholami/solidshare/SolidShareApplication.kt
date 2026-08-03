@@ -13,11 +13,10 @@ import androidx.work.WorkManager
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
 import com.erfangholami.solidshare.sync.SolidAccountManager
-import com.erfangholami.solidshare.worker.ContactOutboxWorker
 import com.erfangholami.solidshare.worker.NotificationPollingWorker
+import com.erfangholami.solidshare.worker.ModuleOutboxWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
 import com.erfangholami.solidshare.worker.PassRefreshWorker
-import com.erfangholami.solidshare.worker.TicketOutboxWorker
 import dagger.Lazy
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
@@ -55,8 +54,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
         NotificationHelper.createChannels(this)
         scheduleNotificationPolling()
         scheduleOutboxDrain()
-        ContactOutboxWorker.enqueue(workManager.get())
-        TicketOutboxWorker.enqueue(workManager.get())
+        ModuleOutboxWorker.enqueue(workManager.get())
         PassRefreshWorker.schedulePeriodic(workManager.get())
         reconcileSolidAccounts()
     }

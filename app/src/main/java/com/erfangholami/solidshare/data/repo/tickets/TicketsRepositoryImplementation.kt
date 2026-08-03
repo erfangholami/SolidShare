@@ -1,26 +1,22 @@
 package com.erfangholami.solidshare.data.repo.tickets
 
 import android.os.Parcelable
-import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.datamodule.tickets.SolidTicketsDataModule
 import com.erfangholami.androidsolidservices.shared.model.tickets.NewTicketImages
 import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.data.local.cache.OpStatus
 import com.erfangholami.solidshare.data.local.cache.SyncState
 import com.erfangholami.solidshare.data.local.cache.TicketBlobStore
-import com.erfangholami.solidshare.data.local.cache.TicketDao
-import com.erfangholami.solidshare.data.local.cache.TicketOutboxDao
-import com.erfangholami.solidshare.data.local.cache.TicketOutboxOpEntity
-import com.erfangholami.solidshare.data.local.cache.TicketOpType
-import com.erfangholami.solidshare.data.local.cache.toCacheEntity
-import com.erfangholami.solidshare.data.local.cache.toDomain
-import com.erfangholami.solidshare.data.local.cache.toSummary
+import com.erfangholami.solidshare.data.local.cache.ModuleOutboxOpEntity
+import com.erfangholami.solidshare.data.local.cache.CachedEntityDao
 import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.data.passimport.PkpassImages
 import com.erfangholami.solidshare.data.passimport.PkpassParser
 import com.erfangholami.solidshare.data.passimport.TicketFileSniffer
 import com.erfangholami.solidshare.data.passimport.TicketFileType
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleIds
+import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.domain.model.TicketEventInfo
@@ -28,7 +24,6 @@ import com.erfangholami.solidshare.domain.model.TicketFile
 import com.erfangholami.solidshare.domain.model.TicketImageUris
 import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
-import com.erfangholami.solidshare.worker.TicketOutboxWorker
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.UUID
@@ -45,16 +40,16 @@ import kotlinx.serialization.json.Json
 class TicketsRepositoryImplementation @Inject constructor(
     private val ticketsDataModule: SolidTicketsDataModule,
     private val authRepository: AuthRepository,
-    private val ticketDao: TicketDao,
-    private val ticketOutboxDao: TicketOutboxDao,
+    private val entityDao: CachedEntityDao,
+    private val outbox: ModuleOutbox,
     private val blobStore: TicketBlobStore,
-    private val workManager: WorkManager,
 ) : TicketsRepository {
 
     private val payloadJson = Json { ignoreUnknownKeys = true }
 
     override fun observeTickets(webId: String): Flow<List<TicketSummaryItem>> =
-        ticketDao.observeTickets(webId).map { rows -> rows.map { it.toSummary() } }
+        entityDao.observeNewestFirst(moduleId, webId)
+            .map { rows -> rows.map { it.toTicketSummary() } }
 
     override suspend fun refreshTickets(webId: String) {
         val summaries = ticketsDataModule.tickets.list(webId).unwrap().tickets
@@ -69,18 +64,18 @@ class TicketsRepositoryImplementation @Inject constructor(
         val failures = fetched.mapNotNull { it.exceptionOrNull() }
         if (tickets.isEmpty() && failures.isNotEmpty()) throw failures.first()
         if (failures.isEmpty()) {
-            runCatching { ticketDao.replaceSynced(webId, entities) }
+            runCatching { entityDao.replaceSynced(moduleId, webId, entities) }
         } else {
-            runCatching { ticketDao.upsertAll(entities) }
+            runCatching { entityDao.upsertAll(entities) }
         }
         tickets.forEach { runCatching { cacheTicketBinaries(webId, it) } }
     }
 
     override suspend fun getTicket(webId: String, ticketUri: String): Ticket =
-        ticketDao.findByUri(webId, ticketUri)?.toDomain()
+        entityDao.findByUri(moduleId, webId, ticketUri)?.toTicket()
             ?: fetchRemoteTicket(webId, ticketUri).also { ticket ->
                 runCatching {
-                    ticketDao.upsert(ticket.toCacheEntity(webId, System.currentTimeMillis()))
+                    entityDao.upsert(ticket.toCacheEntity(webId, System.currentTimeMillis()))
                 }
             }
 
@@ -101,14 +96,13 @@ class TicketsRepositoryImplementation @Inject constructor(
                     artifact.contentType,
                 )
                 if (artifact.contentType == PkpassParser.MIME_TYPE) {
-                    PkpassImages.extract(artifact.bytes)?.let {
-                        writeVisuals(webId, provisionalUri, it)
-                    }
+                    PkpassImages.extract(artifact.bytes)
+                        ?.let { writeVisuals(webId, provisionalUri, it) }
                 }
             }
         }
         runCatching {
-            ticketDao.upsert(
+            entityDao.upsert(
                 normalized.toProvisionalTicket(provisionalUri).toCacheEntity(
                     webId,
                     System.currentTimeMillis(),
@@ -137,7 +131,7 @@ class TicketsRepositoryImplementation @Inject constructor(
         if (ticketUri.startsWith(PROVISIONAL_PREFIX)) {
             rewritePendingCreate(webId, ticketUri, normalized)
             runCatching {
-                ticketDao.upsert(
+                entityDao.upsert(
                     normalized.toProvisionalTicket(ticketUri).toCacheEntity(
                         webId,
                         System.currentTimeMillis(),
@@ -148,9 +142,9 @@ class TicketsRepositoryImplementation @Inject constructor(
             return
         }
         runCatching {
-            val cached = ticketDao.findByUri(webId, ticketUri)?.toDomain()
+            val cached = entityDao.findByUri(moduleId, webId, ticketUri)?.toTicket()
             if (cached != null) {
-                ticketDao.upsert(
+                entityDao.upsert(
                     cached.applying(normalized).toCacheEntity(
                         webId,
                         System.currentTimeMillis(),
@@ -172,11 +166,13 @@ class TicketsRepositoryImplementation @Inject constructor(
     override suspend fun queueDelete(webId: String, ticketUri: String) {
         if (ticketUri.startsWith(PROVISIONAL_PREFIX)) {
             dropPendingCreate(webId, ticketUri)
-            runCatching { ticketDao.deleteByUri(webId, ticketUri) }
+            runCatching { entityDao.deleteByUri(moduleId, webId, ticketUri) }
             runCatching { blobStore.deleteTicket(webId, ticketUri) }
             return
         }
-        runCatching { ticketDao.updateSyncState(webId, ticketUri, SyncState.PENDING_DELETE) }
+        runCatching {
+            entityDao.updateSyncState(moduleId, webId, ticketUri, SyncState.PENDING_DELETE)
+        }
         enqueueTicketOp(
             webId,
             TicketOpType.DELETE,
@@ -184,41 +180,21 @@ class TicketsRepositoryImplementation @Inject constructor(
         )
     }
 
-    override suspend fun drainTicketOutbox(webId: String): Boolean {
-        val now = System.currentTimeMillis()
-        val ops = ticketOutboxDao.dueOps(webId, now)
-        var allOk = true
-        for (op in ops) {
-            val result = runCatching { executeTicketOp(webId, op) }
-            if (result.isSuccess) {
-                ticketOutboxDao.deleteById(op.id)
-            } else {
-                allOk = false
-                val attempts = op.attempts + 1
-                ticketOutboxDao.update(
-                    op.copy(
-                        status = OpStatus.FAILED,
-                        attempts = attempts,
-                        nextRetryAt = now + backoffMillis(attempts),
-                        lastError = result.exceptionOrNull()?.message,
-                        updatedAt = now,
-                    ),
-                )
-            }
-        }
-        return allOk
-    }
+    override val moduleId: String = DataModuleIds.TICKETS
 
-    override suspend fun clearCacheForWebId(webId: String) {
-        runCatching { ticketDao.deleteAllForWebId(webId) }
-        runCatching { ticketOutboxDao.deleteAllForWebId(webId) }
+    override suspend fun drain(webId: String): Boolean =
+        outbox.drain(moduleId, webId) { executeTicketOp(webId, it) }
+
+    override suspend fun clearCache(webId: String) {
+        runCatching { entityDao.deleteAllForWebId(moduleId, webId) }
+        runCatching { outbox.clear(moduleId, webId) }
         runCatching { blobStore.clearForWebId(webId) }
     }
 
     override suspend fun refreshIssuerPasses(webId: String) {
-        val candidates = ticketDao.getTickets(webId)
+        val candidates = entityDao.get(moduleId, webId)
             .filter { it.syncState == SyncState.SYNCED }
-            .mapNotNull { row -> runCatching { row.toDomain() }.getOrNull() }
+            .mapNotNull { row -> runCatching { row.toTicket() }.getOrNull() }
             .filter { ticket ->
                 ticket.source == TicketSource.PKPASS &&
                     ticket.voided != true &&
@@ -260,7 +236,7 @@ class TicketsRepositoryImplementation @Inject constructor(
             response.second?.let {
                 blobStore.writeText(webId, ticket.uri, TicketBlobStore.REFRESH_SINCE, it)
             }
-            ticketDao.upsert(refreshed.toCacheEntity(webId, System.currentTimeMillis()))
+            entityDao.upsert(refreshed.toCacheEntity(webId, System.currentTimeMillis()))
         }
     }
 
@@ -317,14 +293,14 @@ class TicketsRepositoryImplementation @Inject constructor(
             .unwrap()
             .toDomain()
         runCatching {
-            ticketDao.upsert(updated.toCacheEntity(webId, System.currentTimeMillis()))
+            entityDao.upsert(updated.toCacheEntity(webId, System.currentTimeMillis()))
         }
         return updated
     }
 
     override suspend fun deleteTicket(webId: String, ticketUri: String) {
         ticketsDataModule.tickets.delete(webId, ticketUri).unwrap()
-        runCatching { ticketDao.deleteByUri(webId, ticketUri) }
+        runCatching { entityDao.deleteByUri(moduleId, webId, ticketUri) }
         runCatching { blobStore.deleteTicket(webId, ticketUri) }
     }
 
@@ -428,7 +404,7 @@ class TicketsRepositoryImplementation @Inject constructor(
         }
     }
 
-    private fun writeVisuals(webId: String, ticketUri: String, visuals: PassImages) {
+    private suspend fun writeVisuals(webId: String, ticketUri: String, visuals: PassImages) {
         listOf(
             TicketBlobStore.LOGO to visuals.logo,
             TicketBlobStore.ICON to visuals.icon,
@@ -441,8 +417,17 @@ class TicketsRepositoryImplementation @Inject constructor(
         }
     }
 
-    private suspend fun executeTicketOp(webId: String, op: TicketOutboxOpEntity) {
-        when (op.type) {
+    private suspend fun readVisuals(webId: String, ticketUri: String): PassImages? = PassImages(
+        logo = blobStore.read(webId, ticketUri, TicketBlobStore.LOGO),
+        icon = blobStore.read(webId, ticketUri, TicketBlobStore.ICON),
+        strip = blobStore.read(webId, ticketUri, TicketBlobStore.STRIP),
+        thumbnail = blobStore.read(webId, ticketUri, TicketBlobStore.THUMBNAIL),
+        footer = blobStore.read(webId, ticketUri, TicketBlobStore.FOOTER),
+        background = blobStore.read(webId, ticketUri, TicketBlobStore.BACKGROUND),
+    ).takeIf { !it.isEmpty }
+
+    private suspend fun executeTicketOp(webId: String, op: ModuleOutboxOpEntity) {
+        when (TicketOpType.valueOf(op.type)) {
             TicketOpType.CREATE -> {
                 val payload =
                     payloadJson.decodeFromString(TicketCreatePayload.serializer(), op.payload)
@@ -464,9 +449,9 @@ class TicketsRepositoryImplementation @Inject constructor(
                 }
                 val created = createTicket(webId, payload.draft, artifact)
                 runCatching {
-                    ticketDao.deleteByUri(webId, payload.provisionalUri)
+                    entityDao.deleteByUri(moduleId, webId, payload.provisionalUri)
                     blobStore.move(webId, payload.provisionalUri, created.uri)
-                    ticketDao.upsert(created.toCacheEntity(webId, System.currentTimeMillis()))
+                    entityDao.upsert(created.toCacheEntity(webId, System.currentTimeMillis()))
                 }
             }
 
@@ -491,13 +476,11 @@ class TicketsRepositoryImplementation @Inject constructor(
     ) {
         runCatching {
             pendingCreateOps(webId, provisionalUri).forEach { (op, payload) ->
-                ticketOutboxDao.update(
-                    op.copy(
-                        payload = payloadJson.encodeToString(
-                            TicketCreatePayload.serializer(),
-                            payload.copy(draft = draft),
-                        ),
-                        updatedAt = System.currentTimeMillis(),
+                outbox.rewrite(
+                    op,
+                    payloadJson.encodeToString(
+                        TicketCreatePayload.serializer(),
+                        payload.copy(draft = draft),
                     ),
                 )
             }
@@ -506,18 +489,16 @@ class TicketsRepositoryImplementation @Inject constructor(
 
     private suspend fun dropPendingCreate(webId: String, provisionalUri: String) {
         runCatching {
-            pendingCreateOps(webId, provisionalUri).forEach { (op, _) ->
-                ticketOutboxDao.deleteById(op.id)
-            }
+            pendingCreateOps(webId, provisionalUri).forEach { (op, _) -> outbox.drop(op) }
         }
     }
 
     private suspend fun pendingCreateOps(
         webId: String,
         provisionalUri: String,
-    ): List<Pair<TicketOutboxOpEntity, TicketCreatePayload>> =
-        ticketOutboxDao.pendingOps(webId)
-            .filter { it.type == TicketOpType.CREATE }
+    ): List<Pair<ModuleOutboxOpEntity, TicketCreatePayload>> =
+        outbox.pendingOps(moduleId, webId)
+            .filter { it.type == TicketOpType.CREATE.name }
             .mapNotNull { op ->
                 runCatching {
                     payloadJson.decodeFromString(TicketCreatePayload.serializer(), op.payload)
@@ -525,25 +506,8 @@ class TicketsRepositoryImplementation @Inject constructor(
             }
 
     private suspend fun enqueueTicketOp(webId: String, type: TicketOpType, payload: String) {
-        val now = System.currentTimeMillis()
-        ticketOutboxDao.insert(
-            TicketOutboxOpEntity(
-                webId = webId,
-                type = type,
-                payload = payload,
-                status = OpStatus.PENDING,
-                attempts = 0,
-                nextRetryAt = 0,
-                lastError = null,
-                createdAt = now,
-                updatedAt = now,
-            ),
-        )
-        TicketOutboxWorker.enqueue(workManager)
+        outbox.enqueue(moduleId, webId, type.name, payload)
     }
-
-    private fun backoffMillis(attempts: Int): Long =
-        minOf(30_000L * (1L shl minOf(attempts, 6)), 3_600_000L)
 
     private fun PassImages.toLibImages(): NewTicketImages = NewTicketImages(
         logo = logo,

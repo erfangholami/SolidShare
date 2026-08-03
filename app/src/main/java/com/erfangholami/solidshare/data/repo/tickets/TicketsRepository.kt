@@ -1,5 +1,6 @@
 package com.erfangholami.solidshare.data.repo.tickets
 
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleLifecycle
 import com.erfangholami.solidshare.data.passimport.PassImages
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketDraft
@@ -8,7 +9,7 @@ import com.erfangholami.solidshare.domain.model.TicketImageUris
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import kotlinx.coroutines.flow.Flow
 
-interface TicketsRepository {
+interface TicketsRepository : DataModuleLifecycle {
 
     fun observeTickets(webId: String): Flow<List<TicketSummaryItem>>
 
@@ -22,11 +23,9 @@ interface TicketsRepository {
 
     suspend fun queueDelete(webId: String, ticketUri: String)
 
-    suspend fun drainTicketOutbox(webId: String): Boolean
 
     suspend fun refreshIssuerPasses(webId: String)
 
-    suspend fun clearCacheForWebId(webId: String)
 
     suspend fun createTicket(
         webId: String,

@@ -2,11 +2,6 @@ package com.erfangholami.solidshare.data.repo.outbox
 
 import android.content.Context
 import android.net.Uri
-import androidx.work.Constraints
-import androidx.work.ExistingWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.OneTimeWorkRequestBuilder
-import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.resource.SolidResourceManager
 import com.erfangholami.androidsolidservices.shared.http.HTTPAcceptType.OCTET_STREAM
 import com.erfangholami.androidsolidservices.shared.result.SolidError
@@ -32,7 +27,6 @@ import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.ResourceType
 import com.erfangholami.solidshare.domain.model.getResourceType
 import com.erfangholami.solidshare.util.NetworkMonitor
-import com.erfangholami.solidshare.worker.OutboxWorker
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import java.io.File
@@ -49,7 +43,7 @@ class OutboxRepositoryImplementation @Inject constructor(
     private val outboxDao: OutboxDao,
     private val keyManager: CacheKeyManager,
     private val networkMonitor: NetworkMonitor,
-    private val workManager: WorkManager,
+    private val trigger: OutboxTrigger,
     private val fileRepository: FileRepository,
     private val sharingRepository: SharingRepository,
 ) : OutboxRepository {
@@ -289,12 +283,11 @@ class OutboxRepositoryImplementation @Inject constructor(
 
     private suspend fun executeDelete(op: OutboxOpEntity) {
         when (val response = resourceManager.delete(op.webId, op.targetUri)) {
-            is SolidResult.Success -> removeResource(op.webId, op.targetUri)
+            is SolidResult.Success -> deleted(op)
             is SolidResult.Failure -> {
                 val error = response.error
                 when {
-                    error.code == SolidErrorCode.NOT_FOUND ->
-                        removeResource(op.webId, op.targetUri)
+                    error.code == SolidErrorCode.NOT_FOUND -> deleted(op)
 
                     error.httpStatus != null -> throw OutboxException(
                         "HTTP ${error.httpStatus}",
@@ -305,6 +298,10 @@ class OutboxRepositoryImplementation @Inject constructor(
                 }
             }
         }
+    }
+
+    private suspend fun deleted(op: OutboxOpEntity) {
+        removeResource(op.webId, op.targetUri)
     }
 
     private suspend fun executeCopy(op: OutboxOpEntity) {
@@ -365,12 +362,7 @@ class OutboxRepositoryImplementation @Inject constructor(
     }
 
     private fun triggerDrain() {
-        val request = OneTimeWorkRequestBuilder<OutboxWorker>()
-            .setConstraints(
-                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
-            )
-            .build()
-        workManager.enqueueUniqueWork(OutboxWorker.WORK_NAME, ExistingWorkPolicy.KEEP, request)
+        trigger.requestDrain(OutboxQueue.FILES)
     }
 
     private fun blobDir(): File = File(context.filesDir, BLOB_DIR).apply { mkdirs() }

@@ -4,11 +4,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
-import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
-import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleRegistry
 import com.erfangholami.solidshare.domain.model.PublicProfile
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,8 +24,7 @@ class ProfileViewModel @Inject constructor(
     private val settingsRepository: SettingsRepository,
     private val fileRepository: FileRepository,
     private val outboxRepository: OutboxRepository,
-    private val contactsRepository: ContactsRepository,
-    private val ticketsRepository: TicketsRepository,
+    private val dataModules: DataModuleRegistry,
 ) : ViewModel() {
 
     val accounts: StateFlow<List<PublicProfile>> = authRepository.loggedInProfilesFlow
@@ -71,8 +69,7 @@ class ProfileViewModel @Inject constructor(
             authRepository.removeProfile(webId)
             fileRepository.clearCacheForWebId(webId)
             outboxRepository.clearForWebId(webId)
-            contactsRepository.clearCacheForWebId(webId)
-            ticketsRepository.clearCacheForWebId(webId)
+            dataModules.clearCache(webId)
             logoutLoading.value = false
         }
     }
@@ -85,8 +82,7 @@ class ProfileViewModel @Inject constructor(
             webIds.forEach {
                 fileRepository.clearCacheForWebId(it)
                 outboxRepository.clearForWebId(it)
-                contactsRepository.clearCacheForWebId(it)
-                ticketsRepository.clearCacheForWebId(it)
+                dataModules.clearCache(it)
             }
             logoutLoading.value = false
         }

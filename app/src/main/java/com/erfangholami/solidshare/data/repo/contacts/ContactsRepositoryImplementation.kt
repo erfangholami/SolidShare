@@ -1,21 +1,17 @@
 package com.erfangholami.solidshare.data.repo.contacts
 
 import android.os.Parcelable
-import androidx.work.WorkManager
 import com.erfangholami.androidsolidservices.api.datamodule.contacts.SolidContactsDataModule
 import com.erfangholami.androidsolidservices.shared.result.SolidResult
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.local.ContactsMergePrefs
-import com.erfangholami.solidshare.data.local.cache.CachedContactEntity
-import com.erfangholami.solidshare.data.local.cache.ContactDao
-import com.erfangholami.solidshare.data.local.cache.ContactOpType
-import com.erfangholami.solidshare.data.local.cache.ContactOutboxDao
-import com.erfangholami.solidshare.data.local.cache.ContactOutboxOpEntity
+import com.erfangholami.solidshare.data.local.cache.CachedEntityDao
+import com.erfangholami.solidshare.data.local.cache.ModuleOutboxOpEntity
 import com.erfangholami.solidshare.data.local.cache.OpStatus
 import com.erfangholami.solidshare.data.local.cache.SyncState
-import com.erfangholami.solidshare.data.local.cache.toCacheEntity
-import com.erfangholami.solidshare.data.local.cache.toDomain
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.data.repo.datamodule.DataModuleIds
+import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
 import com.erfangholami.solidshare.domain.model.AddressBook
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactDraft
@@ -27,7 +23,6 @@ import com.erfangholami.solidshare.domain.model.ContactsOverview
 import com.erfangholami.solidshare.domain.model.MergeMember
 import com.erfangholami.solidshare.domain.model.MergeSuggestion
 import com.erfangholami.solidshare.util.StringProvider
-import com.erfangholami.solidshare.worker.ContactOutboxWorker
 import javax.inject.Inject
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -41,17 +36,16 @@ class ContactsRepositoryImplementation @Inject constructor(
     private val authRepository: AuthRepository,
     private val mergeEngine: ContactMergeEngine,
     private val mergePrefs: ContactsMergePrefs,
-    private val contactDao: ContactDao,
-    private val contactOutboxDao: ContactOutboxDao,
-    private val workManager: WorkManager,
+    private val entityDao: CachedEntityDao,
+    private val outbox: ModuleOutbox,
     private val stringProvider: StringProvider,
 ) : ContactsRepository {
 
     private val payloadJson = Json { ignoreUnknownKeys = true }
 
     override fun observeContacts(webId: String): Flow<List<ContactListEntry>> =
-        contactDao.observeContacts(webId).map { rows ->
-            rows.map { ContactListEntry(it.contactUri, it.bookUri, it.name) }
+        entityDao.observeBySortKey(moduleId, webId).map { rows ->
+            rows.map { ContactListEntry(it.uri, it.groupKey.orEmpty(), it.sortKey.orEmpty()) }
         }
 
     override suspend fun refreshContacts(webId: String): ContactsOverview {
@@ -66,13 +60,13 @@ class ContactsRepositoryImplementation @Inject constructor(
             }.awaitAll()
         }
         val entities = results.mapNotNull { it.getOrNull() }.flatten()
-        contactDao.upsertAll(entities)
+        entityDao.upsertAll(entities)
         val failures = results.mapNotNull { it.exceptionOrNull() }
         if (overview.books.isNotEmpty() && failures.size == overview.books.size) {
             throw failures.first()
         }
         if (overview.complete && failures.isEmpty() && overview.books.isNotEmpty()) {
-            contactDao.deleteSyncedNotIn(webId, entities.map { it.contactUri })
+            entityDao.deleteSyncedNotIn(moduleId, webId, entities.map { it.uri })
         }
         return overview
     }
@@ -134,7 +128,7 @@ class ContactsRepositoryImplementation @Inject constructor(
     }
 
     override suspend fun getContact(webId: String, contactUri: String): ContactDetail =
-        contactDao.findByUri(webId, contactUri)?.toDomain()
+        entityDao.findByUri(moduleId, webId, contactUri)?.toContactDetail()
             ?: contactsDataModule.contacts.get(webId, contactUri).unwrap().toDomain()
 
     override suspend fun getAllContacts(webId: String, bookUri: String): List<ContactDetail> =
@@ -152,7 +146,7 @@ class ContactsRepositoryImplementation @Inject constructor(
             .unwrap()
             .toDomain()
         runCatching {
-            contactDao.upsert(
+            entityDao.upsert(
                 created.toCacheEntity(
                     webId,
                     bookUri,
@@ -175,14 +169,14 @@ class ContactsRepositoryImplementation @Inject constructor(
             .unwrap()
             .toDomain()
         runCatching {
-            contactDao.upsert(updated.toCacheEntity(webId, bookUri, System.currentTimeMillis()))
+            entityDao.upsert(updated.toCacheEntity(webId, bookUri, System.currentTimeMillis()))
         }
         return updated
     }
 
     override suspend fun deleteContact(webId: String, bookUri: String, contactUri: String) {
         contactsDataModule.contacts.delete(webId, bookUri, contactUri).unwrap()
-        runCatching { contactDao.deleteByUri(webId, contactUri) }
+        runCatching { entityDao.deleteByUri(moduleId, webId, contactUri) }
     }
 
     override suspend fun deleteAllContacts(webId: String): Int {
@@ -196,9 +190,11 @@ class ContactsRepositoryImplementation @Inject constructor(
             val removed = runCatching {
                 contactsDataModule.books.delete(webId, bookUri).unwrap()
             }.isSuccess
-            if (removed) deleted += contactCount
+            if (removed) {
+                deleted += contactCount
+            }
         }
-        runCatching { contactDao.deleteAllForWebId(webId) }
+        runCatching { entityDao.deleteAllForWebId(moduleId, webId) }
         return deleted
     }
 
@@ -256,9 +252,9 @@ class ContactsRepositoryImplementation @Inject constructor(
     }
 
     override suspend fun findMergeSuggestions(webId: String): List<MergeSuggestion> {
-        val cached = contactDao.getContacts(webId)
-        val bookByContact = cached.associate { it.contactUri to it.bookUri }
-        val contacts = cached.map { it.toDomain() }
+        val cached = entityDao.get(moduleId, webId)
+        val bookByContact = cached.associate { it.uri to it.groupKey.orEmpty() }
+        val contacts = cached.map { it.toContactDetail() }
 
         val clusters = mergeEngine.cluster(contacts)
         val suggestions = clusters.map { cluster ->
@@ -279,7 +275,9 @@ class ContactsRepositoryImplementation @Inject constructor(
     }
 
     override suspend fun queueDelete(webId: String, ref: ContactRef) {
-        runCatching { contactDao.updateSyncState(webId, ref.contactUri, SyncState.PENDING_DELETE) }
+        runCatching {
+            entityDao.updateSyncState(moduleId, webId, ref.contactUri, SyncState.PENDING_DELETE)
+        }
         enqueueContactOp(
             webId,
             ContactOpType.DELETE,
@@ -289,7 +287,9 @@ class ContactsRepositoryImplementation @Inject constructor(
 
     override suspend fun queueMerge(webId: String, survivor: ContactRef, losers: List<ContactRef>) {
         losers.forEach {
-            runCatching { contactDao.updateSyncState(webId, it.contactUri, SyncState.PENDING_DELETE) }
+            runCatching {
+                entityDao.updateSyncState(moduleId, webId, it.contactUri, SyncState.PENDING_DELETE)
+            }
         }
         enqueueContactOp(
             webId,
@@ -303,40 +303,20 @@ class ContactsRepositoryImplementation @Inject constructor(
 
     override suspend fun queueDeleteAll(webId: String) {
         runCatching {
-            contactDao.getContacts(webId).forEach {
-                contactDao.updateSyncState(webId, it.contactUri, SyncState.PENDING_DELETE)
+            entityDao.get(moduleId, webId).forEach {
+                entityDao.updateSyncState(moduleId, webId, it.uri, SyncState.PENDING_DELETE)
             }
         }
         enqueueContactOp(webId, ContactOpType.DELETE_ALL, "{}")
     }
 
-    override suspend fun drainContactOutbox(webId: String): Boolean {
-        val now = System.currentTimeMillis()
-        val ops = contactOutboxDao.dueOps(webId, now)
-        var allOk = true
-        for (op in ops) {
-            val result = runCatching { executeContactOp(webId, op) }
-            if (result.isSuccess) {
-                contactOutboxDao.deleteById(op.id)
-            } else {
-                allOk = false
-                val attempts = op.attempts + 1
-                contactOutboxDao.update(
-                    op.copy(
-                        status = OpStatus.FAILED,
-                        attempts = attempts,
-                        nextRetryAt = now + backoffMillis(attempts),
-                        lastError = result.exceptionOrNull()?.message,
-                        updatedAt = now,
-                    ),
-                )
-            }
-        }
-        return allOk
-    }
+    override val moduleId: String = DataModuleIds.CONTACTS
 
-    private suspend fun executeContactOp(webId: String, op: ContactOutboxOpEntity) {
-        when (op.type) {
+    override suspend fun drain(webId: String): Boolean =
+        outbox.drain(moduleId, webId) { executeContactOp(webId, it) }
+
+    private suspend fun executeContactOp(webId: String, op: ModuleOutboxOpEntity) {
+        when (ContactOpType.valueOf(op.type)) {
             ContactOpType.DELETE -> {
                 val ref = payloadJson.decodeFromString(ContactRef.serializer(), op.payload)
                 deleteContact(webId, ref.bookUri, ref.contactUri)
@@ -354,29 +334,12 @@ class ContactsRepositoryImplementation @Inject constructor(
     }
 
     private suspend fun enqueueContactOp(webId: String, type: ContactOpType, payload: String) {
-        val now = System.currentTimeMillis()
-        contactOutboxDao.insert(
-            ContactOutboxOpEntity(
-                webId = webId,
-                type = type,
-                payload = payload,
-                status = OpStatus.PENDING,
-                attempts = 0,
-                nextRetryAt = 0,
-                lastError = null,
-                createdAt = now,
-                updatedAt = now,
-            ),
-        )
-        ContactOutboxWorker.enqueue(workManager)
+        outbox.enqueue(moduleId, webId, type.name, payload)
     }
 
-    private fun backoffMillis(attempts: Int): Long =
-        minOf(30_000L * (1L shl minOf(attempts, 6)), 3_600_000L)
-
-    override suspend fun clearCacheForWebId(webId: String) {
-        runCatching { contactDao.deleteAllForWebId(webId) }
-        runCatching { contactOutboxDao.deleteAllForWebId(webId) }
+    override suspend fun clearCache(webId: String) {
+        runCatching { entityDao.deleteAllForWebId(moduleId, webId) }
+        runCatching { outbox.clear(moduleId, webId) }
     }
 
     override suspend fun getGroups(webId: String, bookUri: String): List<ContactGroup> {

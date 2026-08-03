@@ -2,6 +2,9 @@ package com.erfangholami.solidshare.data.local.cache
 
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import com.erfangholami.solidshare.data.repo.outbox.ModuleOutbox
+import com.erfangholami.solidshare.data.repo.outbox.OutboxQueue
+import com.erfangholami.solidshare.data.repo.outbox.OutboxTrigger
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.domain.model.ResourceType
 
@@ -13,6 +16,13 @@ fun inMemoryCacheDb(): SolidCacheDatabase =
         ApplicationProvider.getApplicationContext(),
         SolidCacheDatabase::class.java,
     ).allowMainThreadQueries().build()
+
+fun testOutbox(db: SolidCacheDatabase): ModuleOutbox =
+    ModuleOutbox(db.moduleOutboxDao(), NoOutboxTrigger)
+
+object NoOutboxTrigger : OutboxTrigger {
+    override fun requestDrain(queue: OutboxQueue) = Unit
+}
 
 fun resourceEntity(
     name: String,
