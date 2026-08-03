@@ -150,6 +150,26 @@ class SharedTicketRepositoryTest {
         }
 
     @Test
+    fun `getSharedTicket resolves a publicly shared pass file by parsing it`() = runTest {
+        coEvery { store.get(webId, sharedArtifact) } returns SolidResult.Failure(
+            com.erfangholami.androidsolidservices.shared.result.SolidError.fromHttp(
+                406,
+                "Unable to produce an RDF response",
+            ),
+        )
+        coEvery { store.getArtifact(webId, sharedArtifact) } returns SolidResult.Success(
+            TicketArtifact(sharedArtifact, "application/vnd.apple.pkpass", passFile("Coldplay")),
+        )
+
+        val ticket = repo.getSharedTicket(webId, sharedArtifact)
+
+        assertEquals(sharedArtifact, ticket.uri)
+        assertEquals(sharedArtifact, ticket.artifactUri)
+        assertEquals("Coldplay", ticket.title)
+        assertNull(db.cachedEntityDao().findByUri(DataModuleIds.TICKETS, webId, sharedArtifact))
+    }
+
+    @Test
     fun `getSharedTicketImages derives visuals from the pass file when no image links exist`() =
         runTest {
             val icon = byteArrayOf(0x50, 0x4E, 0x47)

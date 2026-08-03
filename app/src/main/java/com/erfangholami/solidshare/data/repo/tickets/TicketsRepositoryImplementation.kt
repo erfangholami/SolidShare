@@ -88,8 +88,18 @@ class TicketsRepositoryImplementation @Inject constructor(
         if (target.endsWith("/")) {
             ticketsDataModule.tickets.findInContainer(webId, target).unwrap().toDomain()
         } else {
-            fetchRemoteTicket(webId, target)
+            runCatching { fetchRemoteTicket(webId, target) }.getOrElse { rdfFailure ->
+                ticketFromSharedArtifact(webId, target) ?: throw rdfFailure
+            }
         }
+
+    private suspend fun ticketFromSharedArtifact(webId: String, artifactUri: String): Ticket? {
+        val artifact = runCatching { getSharedTicketArtifact(webId, artifactUri) }.getOrNull()
+            ?: return null
+        val parsed = runCatching { parseTicketFile(artifact.bytes) }.getOrNull()
+            ?.firstOrNull() ?: return null
+        return parsed.draft.toProvisionalTicket(artifactUri).copy(artifactUri = artifactUri)
+    }
 
     override suspend fun getSharedTicketImages(webId: String, ticket: Ticket): PassImages? {
         fetchSharedImageBytes(webId, ticket)?.let { return it }
