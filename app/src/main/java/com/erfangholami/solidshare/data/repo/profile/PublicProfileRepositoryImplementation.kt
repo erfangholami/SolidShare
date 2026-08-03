@@ -54,8 +54,10 @@ class PublicProfileRepositoryImplementation @Inject constructor(
             organization = null,
             role = null,
             oidcIssuer = null,
+            sessionError = profile.sessionError,
         )
         return mapWebId(webIdString, webIdString.substringBefore("#"), webId)
+            .copy(sessionError = profile.sessionError)
     }
 
     override suspend fun updateProfile(

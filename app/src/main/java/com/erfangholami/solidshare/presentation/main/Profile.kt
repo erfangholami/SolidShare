@@ -1,5 +1,9 @@
 package com.erfangholami.solidshare.presentation.main
 
+import android.content.Context
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +32,7 @@ import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.QrCode2
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -37,8 +42,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -96,17 +104,60 @@ fun Profile(
 
     LaunchedEffect(navigateToLogin) {
         if (navigateToLogin) {
+            viewModel.onKickedToLogin()
             navController.navigate(AuthNavItem) {
                 popUpTo(navController.graph.id) { inclusive = true }
             }
         }
     }
 
+    val reconnectInBrowser = rememberLauncherForActivityResult(object :
+        ActivityResultContract<Intent, Intent?>() {
+        override fun createIntent(context: Context, input: Intent): Intent = input
+        override fun parseResult(resultCode: Int, intent: Intent?): Intent? = intent
+    }) { intent: Intent? ->
+        if (intent != null) {
+            viewModel.handleReconnectResult(intent)
+        } else {
+            viewModel.onReconnectAborted()
+        }
+    }
+
+    LaunchedEffect(viewModel.reconnectBrowserIntent.value) {
+        viewModel.reconnectBrowserIntent.value?.let { intent ->
+            reconnectInBrowser.launch(intent)
+            viewModel.reconnectBrowserIntent.value = null
+        }
+    }
+
+    val snackbarHostState = remember { SnackbarHostState() }
+    val reconnectFailedMessage = stringResource(R.string.error_login_problem)
+    LaunchedEffect(viewModel.reconnectError.value) {
+        if (viewModel.reconnectError.value) {
+            snackbarHostState.showSnackbar(reconnectFailedMessage)
+            viewModel.reconnectError.value = false
+        }
+    }
+
+    if (viewModel.refreshlessReconnectWarning.value) {
+        AlertDialog(
+            onDismissRequest = viewModel::acknowledgeRefreshlessReconnect,
+            title = { Text(stringResource(R.string.login_no_refresh_title)) },
+            text = { Text(stringResource(R.string.login_no_refresh_message)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::acknowledgeRefreshlessReconnect) {
+                    Text(stringResource(R.string.got_it))
+                }
+            },
+        )
+    }
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.surface,
         contentWindowInsets = WindowInsets(0),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
-        if (viewModel.logoutLoading.value) {
+        if (viewModel.logoutLoading.value || viewModel.reconnectLoading.value) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -181,9 +232,7 @@ fun Profile(
                     onAddAccount = {
                         navController.navigate(AuthNavItem.Login(isAddingAccount = true))
                     },
-                    onReconnectAccount = {
-                        navController.navigate(AuthNavItem.Login(isAddingAccount = true))
-                    },
+                    onReconnectAccount = viewModel::reconnectAccount,
                     isOnline = isOnline,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
@@ -260,7 +309,11 @@ private fun AccountsCard(
                     isActive = false,
                     onClick = { onReconnectAccount(profile.webId) },
                     enabled = isOnline,
-                    statusText = stringResource(R.string.account_session_expired),
+                    statusText = if (profile.sessionError?.startsWith("session_expired") == true) {
+                        stringResource(R.string.account_session_expired_no_refresh)
+                    } else {
+                        stringResource(R.string.account_session_expired)
+                    },
                 )
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))

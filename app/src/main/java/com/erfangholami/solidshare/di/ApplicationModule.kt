@@ -2,6 +2,9 @@ package com.erfangholami.solidshare.di
 
 import android.content.Context
 import androidx.work.WorkManager
+import com.google.firebase.FirebaseApp
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.crashlytics.FirebaseCrashlytics
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,4 +21,22 @@ object ApplicationModule {
     fun provideWorkManager(
         @ApplicationContext context: Context,
     ): WorkManager = WorkManager.getInstance(context)
+
+    @Provides
+    @Singleton
+    fun provideFirebaseAnalytics(
+        @ApplicationContext context: Context,
+    ): FirebaseAnalytics {
+        FirebaseApp.initializeApp(context)
+        return FirebaseAnalytics.getInstance(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideFirebaseCrashlytics(
+        @ApplicationContext context: Context,
+    ): FirebaseCrashlytics {
+        FirebaseApp.initializeApp(context)
+        return FirebaseCrashlytics.getInstance()
+    }
 }

@@ -16,6 +16,7 @@ data class PublicProfile(
     val organization: String?,
     val role: String?,
     val oidcIssuer: String?,
+    val sessionError: String? = null,
 ) {
     val displayName: String
         get() = name?.takeIf { it.isNotBlank() }

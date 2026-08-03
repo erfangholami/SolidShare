@@ -34,6 +34,10 @@ mlkitBarcode = "17.3.0"
 
 ass = "0.6.1"
 
+googleServices = "4.5.0"
+firebaseCrashlyticsPlugin = "3.0.7"
+firebaseBom = "34.17.0"
+
 room = "2.8.4"
 androidxSqlite = "2.7.0"
 sqlcipher = "4.17.0"
@@ -51,6 +55,10 @@ kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-
 
 #AndroidSolidServices
 erfangholami-ass-solidandroidapi = { group = "com.erfangholami.androidsolidservices", name = "api", version.ref = "ass" }
+
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-analytics = { group = "com.google.firebase", name = "firebase-analytics" }
+firebase-crashlytics = { group = "com.google.firebase", name = "firebase-crashlytics" }
 
 #Lifecycle
 androidx-lifecycle-viewmodel-ktx = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-ktx", version.ref = "lifecycle-ktx" }
@@ -122,3 +130,5 @@ google-devtools-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 
 
 google-hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "googleDagger" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }
+firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebaseCrashlyticsPlugin" }

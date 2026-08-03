@@ -5,4 +5,6 @@ plugins {
     alias(libs.plugins.compose.compiler) apply false
     alias(libs.plugins.google.hilt.android) apply false
     alias(libs.plugins.jetbrains.kotlin.serialization) apply false
+    alias(libs.plugins.google.services) apply false
+    alias(libs.plugins.firebase.crashlytics) apply false
 }

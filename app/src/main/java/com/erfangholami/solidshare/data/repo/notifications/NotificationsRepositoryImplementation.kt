@@ -62,6 +62,8 @@ class NotificationsRepositoryImplementation @Inject constructor(
             summary = summary,
             publishedAt = publishedAt,
             requestUri = null,
+            resourceName = resourceName,
+            resourceType = resourceType,
         )
     }
 

@@ -10,11 +10,14 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
+import com.erfangholami.androidsolidservices.shared.telemetry.Telemetry
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
 import com.erfangholami.solidshare.sync.ContactsAccountManager
-import com.erfangholami.solidshare.worker.NotificationPollingWorker
+import com.erfangholami.solidshare.telemetry.AuthAnalytics
+import com.erfangholami.solidshare.telemetry.FirebaseTelemetrySink
 import com.erfangholami.solidshare.worker.ModuleOutboxWorker
+import com.erfangholami.solidshare.worker.NotificationPollingWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
 import com.erfangholami.solidshare.worker.PassRefreshWorker
 import dagger.Lazy
@@ -42,6 +45,12 @@ class SolidShareApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var contactsAccountManager: Lazy<ContactsAccountManager>
 
+    @Inject
+    lateinit var telemetrySink: Lazy<FirebaseTelemetrySink>
+
+    @Inject
+    lateinit var authAnalytics: Lazy<AuthAnalytics>
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override val workManagerConfiguration: Configuration
@@ -51,12 +60,14 @@ class SolidShareApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        runCatching { Telemetry.install(telemetrySink.get()) }
         NotificationHelper.createChannels(this)
         scheduleNotificationPolling()
         scheduleOutboxDrain()
         ModuleOutboxWorker.enqueue(workManager.get())
         PassRefreshWorker.schedulePeriodic(workManager.get())
         reconcileSolidAccounts()
+        watchSessionExpiry()
     }
 
     private fun scheduleNotificationPolling() {
@@ -97,6 +108,30 @@ class SolidShareApplication : Application(), Configuration.Provider {
             }.collect { webIds ->
                 runCatching {
                     contactsAccountManager.get().reconcile(webIds)
+                }
+            }
+        }
+    }
+
+    private fun watchSessionExpiry() {
+        applicationScope.launch {
+            var knownExpired: Set<String>? = null
+            combine(
+                authRepository.get().loggedInProfilesFlow,
+                authRepository.get().expiredProfilesFlow,
+            ) { loggedIn, expired -> loggedIn to expired }.collect { (loggedIn, expired) ->
+                runCatching {
+                    authAnalytics.get().accountsSnapshot(loggedIn.size, expired.size)
+                    val expiredIds = expired.map { it.webId }.toSet()
+                    val previous = knownExpired
+                    knownExpired = expiredIds
+                    if (previous == null) return@runCatching
+                    expired.filter { it.webId in expiredIds - previous }.forEach { profile ->
+                        authAnalytics.get().sessionExpired(
+                            AuthAnalytics.issuerHost(profile.oidcIssuer),
+                            profile.sessionError,
+                        )
+                    }
                 }
             }
         }

@@ -3,14 +3,15 @@ package com.erfangholami.solidshare.presentation.startup
 import androidx.lifecycle.ViewModel
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
+import com.erfangholami.solidshare.telemetry.AuthAnalytics
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 @HiltViewModel
 class StartupViewModel @Inject constructor(
     private val authRepository: AuthRepository,
+    private val authAnalytics: AuthAnalytics,
     val settingsRepository: SettingsRepository,
 ) : ViewModel() {
 
@@ -19,8 +20,11 @@ class StartupViewModel @Inject constructor(
     }
 
     suspend fun isLoggedIn(): Boolean {
-        return authRepository.activeWebIdFlow.map {
-            !it.isNullOrEmpty()
-        }.first()
+        authRepository.getActiveWebId()
+        return authRepository.isUserAuthorized()
+    }
+
+    fun reportStartupRoute(destination: String) {
+        authAnalytics.startupRouted(destination)
     }
 }

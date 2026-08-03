@@ -39,6 +39,13 @@ fun Startup(
                 OnBoarding
             }
         }
+        viewModel.reportStartupRoute(
+            when (destination) {
+                MainNavItem -> "main"
+                AuthNavItem -> "login"
+                else -> "onboarding"
+            },
+        )
         navController.navigate(destination) {
             popUpTo(navController.graph.id) {
                 inclusive = true

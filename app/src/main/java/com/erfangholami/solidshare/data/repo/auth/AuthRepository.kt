@@ -38,4 +38,8 @@ interface AuthRepository {
     suspend fun removeAllProfiles()
 
     suspend fun reloadProfile(webId: String): PublicProfile
+
+    suspend fun hasRefreshableSession(webId: String): Boolean
+
+    suspend fun oidcIssuerHost(webId: String): String?
 }

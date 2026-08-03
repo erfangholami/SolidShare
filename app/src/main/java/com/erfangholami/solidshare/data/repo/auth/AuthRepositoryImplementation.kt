@@ -93,4 +93,12 @@ class AuthRepositoryImplementation @Inject constructor(
     override suspend fun reloadProfile(webId: String): PublicProfile =
         publicProfileRepository.fromProfile(authenticator.reloadProfile(webId))
             ?: error("Couldn't load profile for $webId")
+
+    override suspend fun hasRefreshableSession(webId: String): Boolean =
+        runCatching { authenticator.getProfile(webId).hasRefreshToken }.getOrDefault(true)
+
+    override suspend fun oidcIssuerHost(webId: String): String? = runCatching {
+        authenticator.getProfile(webId).webId?.getOidcIssuers()?.firstOrNull()
+            ?.let { java.net.URI(it.toString()).host }
+    }.getOrNull()
 }

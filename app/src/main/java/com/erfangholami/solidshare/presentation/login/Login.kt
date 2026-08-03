@@ -44,7 +44,9 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -146,6 +148,19 @@ fun Login(
         if (!messageToShow.isNullOrEmpty()) {
             scope.launch { snackbarHostState.showSnackbar(messageToShow) }
         }
+    }
+
+    if (viewModel.refreshlessLoginWarning.value) {
+        AlertDialog(
+            onDismissRequest = viewModel::acknowledgeRefreshlessLogin,
+            title = { Text(stringResource(R.string.login_no_refresh_title)) },
+            text = { Text(stringResource(R.string.login_no_refresh_message)) },
+            confirmButton = {
+                TextButton(onClick = viewModel::acknowledgeRefreshlessLogin) {
+                    Text(stringResource(R.string.got_it))
+                }
+            },
+        )
     }
 
     Scaffold(

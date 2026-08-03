@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.compose.compiler)
     alias(libs.plugins.google.hilt.android)
     alias(libs.plugins.jetbrains.kotlin.serialization)
+    alias(libs.plugins.google.services)
+    alias(libs.plugins.firebase.crashlytics)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
@@ -98,6 +100,10 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.erfangholami.ass.solidandroidapi)
+
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.analytics)
+    implementation(libs.firebase.crashlytics)
 
     //Lifecycle
     implementation(libs.androidx.lifecycle.viewmodel.ktx)

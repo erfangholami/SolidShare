@@ -11,6 +11,7 @@ import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
+import com.erfangholami.solidshare.telemetry.AuthAnalytics
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +23,7 @@ import javax.inject.Inject
 class LoginViewModel @Inject constructor(
     private val stringProvider: StringProvider,
     private val authRepository: AuthRepository,
+    private val authAnalytics: AuthAnalytics,
     savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
 
@@ -53,6 +55,7 @@ class LoginViewModel @Inject constructor(
     val loginBrowserIntentErrorMessage = mutableStateOf<String?>(null)
     val loginLoading = mutableStateOf(false)
     val loginResult = mutableStateOf(false)
+    val refreshlessLoginWarning = mutableStateOf(false)
 
     private fun launchLogin(block: suspend () -> Pair<Intent?, String?>) {
         viewModelScope.launch {
@@ -96,22 +99,32 @@ class LoginViewModel @Inject constructor(
 
     fun submitAuthorizationResponse(responseData: Intent?) {
         viewModelScope.launch {
-            authRepository.submitAuthorizationResponse(responseData)
+            val webId = authRepository.submitAuthorizationResponse(responseData)
 
             loginLoading.value = false
             loginBrowserIntent.value = null
-            if (isLoggedIn()) {
+            if (!webId.isNullOrEmpty()) {
                 loginBrowserIntentErrorMessage.value = null
-                loginResult.value = true
+                val issuerHost = authRepository.oidcIssuerHost(webId)
+                val refreshable = authRepository.hasRefreshableSession(webId)
+                authAnalytics.loginSucceeded(issuerHost, refreshable)
+                if (refreshable) {
+                    loginResult.value = true
+                } else {
+                    authAnalytics.loginNoRefreshToken(issuerHost)
+                    refreshlessLoginWarning.value = true
+                }
             } else {
+                authAnalytics.loginFailed()
                 loginResult.value = false
                 loginBrowserIntentErrorMessage.value = stringProvider.getString(R.string.error_login_problem)
             }
         }
     }
 
-    fun isLoggedIn(): Boolean {
-        return authRepository.isUserAuthorized()
+    fun acknowledgeRefreshlessLogin() {
+        refreshlessLoginWarning.value = false
+        loginResult.value = true
     }
 
     private fun tintForProvider(url: String): Color {
