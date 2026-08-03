@@ -30,12 +30,15 @@ object BarcodeRenderer {
                 }
             }
             val matrix = MultiFormatWriter().encode(payload, zxingFormat, widthPx, heightPx, hints)
-            val bitmap = createBitmap(matrix.width, matrix.height)
-            for (x in 0 until matrix.width) {
-                for (y in 0 until matrix.height) {
-                    bitmap.setPixel(x, y, if (matrix[x, y]) Color.BLACK else Color.WHITE)
+            val pixels = IntArray(matrix.width * matrix.height)
+            for (y in 0 until matrix.height) {
+                val row = y * matrix.width
+                for (x in 0 until matrix.width) {
+                    pixels[row + x] = if (matrix[x, y]) Color.BLACK else Color.WHITE
                 }
             }
+            val bitmap = createBitmap(matrix.width, matrix.height)
+            bitmap.setPixels(pixels, 0, matrix.width, 0, 0, matrix.width, matrix.height)
             bitmap
         }.getOrNull()
     }

@@ -19,7 +19,9 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @HiltViewModel
 class TicketDetailViewModel @Inject constructor(
@@ -77,7 +79,7 @@ class TicketDetailViewModel @Inject constructor(
                 ticketsRepository.getTicketImages(webId, ticket.uri, ticket.images)
                     ?: ticket.artifactUri?.let { artifactUri ->
                         val file = ticketsRepository.getTicketArtifact(webId, ticket.uri, artifactUri)
-                        PkpassImages.forTicketFile(file.bytes)
+                        withContext(Dispatchers.Default) { PkpassImages.forTicketFile(file.bytes) }
                     }
             }.getOrNull()
         }

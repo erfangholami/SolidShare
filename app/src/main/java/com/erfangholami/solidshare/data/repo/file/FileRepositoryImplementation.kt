@@ -1,5 +1,7 @@
 package com.erfangholami.solidshare.data.repo.file
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -247,8 +249,10 @@ class FileRepositoryImplementation @Inject constructor(
                 }
                 val etag = resource.getHeaders().getETag()
                 val openFile = openTempFile(webId, fileUrl, filename)
-                resource.use { r ->
-                    openFile.outputStream().use { output -> r.getEntity().copyTo(output) }
+                withContext(Dispatchers.IO) {
+                    resource.use { r ->
+                        openFile.outputStream().use { output -> r.getEntity().copyTo(output) }
+                    }
                 }
                 persistBlob(webId, fileUrl, openFile, mimeType, etag)
                 DownloadedFile(path = openFile.absolutePath, mimeType = mimeType, etag = etag)
@@ -277,7 +281,9 @@ class FileRepositoryImplementation @Inject constructor(
     }
 
     override suspend fun clearCacheForWebId(webId: String) {
-        blobDao.forWebId(webId).forEach { File(it.localPath).delete() }
+        withContext(Dispatchers.IO) {
+            blobDao.forWebId(webId).forEach { File(it.localPath).delete() }
+        }
         blobDao.purgeRowsForWebId(webId)
         resourceDao.purgeForWebId(webId)
     }
@@ -291,7 +297,9 @@ class FileRepositoryImplementation @Inject constructor(
     ) {
         val wasPinned = blobDao.find(webId, fileUrl)?.pinned == true
         val encrypted = blobFileFor(webId, fileUrl)
-        plaintext.inputStream().use { keyManager.encryptStream(it, encrypted) }
+        withContext(Dispatchers.IO) {
+            plaintext.inputStream().use { keyManager.encryptStream(it, encrypted) }
+        }
         blobDao.upsert(
             CachedBlobEntity(
                 webId = webId,
@@ -308,10 +316,14 @@ class FileRepositoryImplementation @Inject constructor(
         enforceBlobBudget()
     }
 
-    private fun decryptToOpenTemp(webId: String, fileUrl: String, encrypted: File): File {
+    private suspend fun decryptToOpenTemp(
+        webId: String,
+        fileUrl: String,
+        encrypted: File,
+    ): File = withContext(Dispatchers.IO) {
         val temp = openTempFile(webId, fileUrl, fileNameFor(fileUrl))
         temp.outputStream().use { keyManager.decryptStream(encrypted, it) }
-        return temp
+        temp
     }
 
     private suspend fun enforceBlobBudget() {
@@ -382,20 +394,22 @@ class FileRepositoryImplementation @Inject constructor(
 
                 val outputStream = context.contentResolver.openOutputStream(destUri)
                     ?: throw IllegalStateException("Could not open output stream for the download")
-                outputStream.use { output ->
-                    var bytesWritten = 0L
-                    val buffer = ByteArray(8 * 1024)
-                    resource.use { r ->
-                        val input = r.getEntity()
-                        var read: Int
-                        while (input.read(buffer).also { read = it } != -1) {
-                            output.write(buffer, 0, read)
-                            bytesWritten += read
-                            if (contentLength > 0) {
-                                onProgress(
-                                    50 + ((bytesWritten * 50) / contentLength).toInt()
-                                        .coerceIn(0, 49)
-                                )
+                withContext(Dispatchers.IO) {
+                    outputStream.use { output ->
+                        var bytesWritten = 0L
+                        val buffer = ByteArray(8 * 1024)
+                        resource.use { r ->
+                            val input = r.getEntity()
+                            var read: Int
+                            while (input.read(buffer).also { read = it } != -1) {
+                                output.write(buffer, 0, read)
+                                bytesWritten += read
+                                if (contentLength > 0) {
+                                    onProgress(
+                                        50 + ((bytesWritten * 50) / contentLength).toInt()
+                                            .coerceIn(0, 49)
+                                    )
+                                }
                             }
                         }
                     }

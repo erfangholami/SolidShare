@@ -1,6 +1,8 @@
 package com.erfangholami.solidshare.data.local.cache
 
 import android.content.Context
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
@@ -15,52 +17,57 @@ class TicketBlobStore @Inject constructor(
     private val keyManager: CacheKeyManager,
 ) {
 
-    fun write(webId: String, ticketUri: String, name: String, bytes: ByteArray) {
-        val file = fileFor(webId, ticketUri, name)
-        file.parentFile?.mkdirs()
-        keyManager.encryptStream(ByteArrayInputStream(bytes), file)
-    }
-
-    fun read(webId: String, ticketUri: String, name: String): ByteArray? {
-        val file = fileFor(webId, ticketUri, name)
-        if (!file.exists()) return null
-        return runCatching {
-            val out = ByteArrayOutputStream()
-            keyManager.decryptStream(file, out)
-            out.toByteArray()
-        }.getOrElse {
-            file.delete()
-            null
+    suspend fun write(webId: String, ticketUri: String, name: String, bytes: ByteArray) {
+        withContext(Dispatchers.IO) {
+            val file = fileFor(webId, ticketUri, name)
+            file.parentFile?.mkdirs()
+            keyManager.encryptStream(ByteArrayInputStream(bytes), file)
         }
     }
 
-    fun writeText(webId: String, ticketUri: String, name: String, value: String) {
+    suspend fun read(webId: String, ticketUri: String, name: String): ByteArray? =
+        withContext(Dispatchers.IO) {
+            val file = fileFor(webId, ticketUri, name)
+            if (!file.exists()) return@withContext null
+            runCatching {
+                val out = ByteArrayOutputStream()
+                keyManager.decryptStream(file, out)
+                out.toByteArray()
+            }.getOrElse {
+                file.delete()
+                null
+            }
+        }
+
+    suspend fun writeText(webId: String, ticketUri: String, name: String, value: String) {
         write(webId, ticketUri, name, value.toByteArray(Charsets.UTF_8))
     }
 
-    fun readText(webId: String, ticketUri: String, name: String): String? =
+    suspend fun readText(webId: String, ticketUri: String, name: String): String? =
         read(webId, ticketUri, name)?.toString(Charsets.UTF_8)
 
-    fun has(webId: String, ticketUri: String, name: String): Boolean =
-        fileFor(webId, ticketUri, name).exists()
+    suspend fun has(webId: String, ticketUri: String, name: String): Boolean =
+        withContext(Dispatchers.IO) { fileFor(webId, ticketUri, name).exists() }
 
-    fun move(webId: String, fromTicketUri: String, toTicketUri: String) {
-        val from = ticketDir(webId, fromTicketUri)
-        if (!from.exists()) return
-        val to = ticketDir(webId, toTicketUri)
-        to.parentFile?.mkdirs()
-        if (!from.renameTo(to)) {
-            from.copyRecursively(to, overwrite = true)
-            from.deleteRecursively()
+    suspend fun move(webId: String, fromTicketUri: String, toTicketUri: String) {
+        withContext(Dispatchers.IO) {
+            val from = ticketDir(webId, fromTicketUri)
+            if (!from.exists()) return@withContext
+            val to = ticketDir(webId, toTicketUri)
+            to.parentFile?.mkdirs()
+            if (!from.renameTo(to)) {
+                from.copyRecursively(to, overwrite = true)
+                from.deleteRecursively()
+            }
         }
     }
 
-    fun deleteTicket(webId: String, ticketUri: String) {
-        ticketDir(webId, ticketUri).deleteRecursively()
+    suspend fun deleteTicket(webId: String, ticketUri: String) {
+        withContext(Dispatchers.IO) { ticketDir(webId, ticketUri).deleteRecursively() }
     }
 
-    fun clearForWebId(webId: String) {
-        File(rootDir(), hash(webId)).deleteRecursively()
+    suspend fun clearForWebId(webId: String) {
+        withContext(Dispatchers.IO) { File(rootDir(), hash(webId)).deleteRecursively() }
     }
 
     private fun fileFor(webId: String, ticketUri: String, name: String): File =

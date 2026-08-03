@@ -1,5 +1,9 @@
 package com.erfangholami.solidshare.presentation.wallet
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -513,13 +517,16 @@ private fun BarcodePanel(data: PassCardData) {
 
 @Composable
 private fun rememberPassBitmap(bytes: ByteArray?): ImageBitmap? {
-    return remember(bytes) {
-        bytes?.let {
-            runCatching {
-                BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap()
-            }.getOrNull()
+    val bitmap by produceState<ImageBitmap?>(null, bytes) {
+        value = bytes?.let {
+            withContext(Dispatchers.Default) {
+                runCatching {
+                    BitmapFactory.decodeByteArray(it, 0, it.size)?.asImageBitmap()
+                }.getOrNull()
+            }
         }
     }
+    return bitmap
 }
 
 @Composable

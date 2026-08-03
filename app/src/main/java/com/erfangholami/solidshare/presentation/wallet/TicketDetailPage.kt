@@ -1,5 +1,8 @@
 package com.erfangholami.solidshare.presentation.wallet
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.produceState
 import android.graphics.Bitmap
 import android.app.Activity
 import android.content.Context
@@ -506,8 +509,10 @@ internal fun TicketBarcode(
     val is2d = format.is2d()
     val widthPx = with(density) { 280.dp.roundToPx() }
     val heightPx = with(density) { (if (is2d) 280.dp else 96.dp).roundToPx() }
-    val bitmap = remember(token, format, encoding) {
-        BarcodeRenderer.render(token, format, widthPx, heightPx, encoding)
+    val bitmap by produceState<Bitmap?>(null, token, format, encoding) {
+        value = withContext(Dispatchers.Default) {
+            BarcodeRenderer.render(token, format, widthPx, heightPx, encoding)
+        }
     }
     Column(
         modifier = Modifier
@@ -517,9 +522,10 @@ internal fun TicketBarcode(
             .padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        if (bitmap != null) {
+        val rendered = bitmap
+        if (rendered != null) {
             Image(
-                bitmap = bitmap.asImageBitmap(),
+                bitmap = rendered.asImageBitmap(),
                 contentDescription = stringResource(R.string.ticket_barcode_description),
                 contentScale = ContentScale.Fit,
                 modifier = if (is2d) {

@@ -177,7 +177,7 @@ class TicketsRepositoryImplementation @Inject constructor(
                     artifact.contentType,
                 )
                 if (artifact.contentType == PkpassParser.MIME_TYPE) {
-                    PkpassImages.extract(artifact.bytes)
+                    withContext(Dispatchers.Default) { PkpassImages.extract(artifact.bytes) }
                         ?.let { writeVisuals(webId, provisionalUri, it) }
                 }
             }
@@ -448,13 +448,15 @@ class TicketsRepositoryImplementation @Inject constructor(
     override suspend fun parseTicketFile(
         bytes: ByteArray,
         fileName: String?,
-    ): List<ParsedTicketFile> = when (TicketFileSniffer.detect(bytes)) {
-        TicketFileType.PKPASS -> listOfNotNull(parsedPass(bytes))
+    ): List<ParsedTicketFile> = withContext(Dispatchers.Default) {
+        when (TicketFileSniffer.detect(bytes)) {
+            TicketFileType.PKPASS -> listOfNotNull(parsedPass(bytes))
 
-        TicketFileType.PKPASSES ->
-            TicketFileSniffer.allPassesOfBundle(bytes).mapNotNull { parsedPass(it) }
+            TicketFileType.PKPASSES ->
+                TicketFileSniffer.allPassesOfBundle(bytes).mapNotNull { parsedPass(it) }
 
-        else -> emptyList()
+            else -> emptyList()
+        }
     }
 
     private suspend fun fetchRemoteTicket(webId: String, ticketUri: String): Ticket =
