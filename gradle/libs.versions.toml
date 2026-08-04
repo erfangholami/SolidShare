@@ -32,7 +32,7 @@ zxingCpp = "3.1.1"
 
 cameraX = "1.6.1"
 
-ass = "0.6.1"
+ass = "0.7.0"
 
 googleServices = "4.5.0"
 firebaseCrashlyticsPlugin = "3.0.7"
