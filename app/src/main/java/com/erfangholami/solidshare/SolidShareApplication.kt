@@ -10,12 +10,11 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
-import com.erfangholami.androidsolidservices.shared.telemetry.Telemetry
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.notification.NotificationHelper
 import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.telemetry.AuthAnalytics
-import com.erfangholami.solidshare.telemetry.FirebaseTelemetrySink
+import com.erfangholami.solidshare.telemetry.TelemetryInstaller
 import com.erfangholami.solidshare.worker.ModuleOutboxWorker
 import com.erfangholami.solidshare.worker.NotificationPollingWorker
 import com.erfangholami.solidshare.worker.OutboxWorker
@@ -46,7 +45,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
     lateinit var contactsAccountManager: Lazy<ContactsAccountManager>
 
     @Inject
-    lateinit var telemetrySink: Lazy<FirebaseTelemetrySink>
+    lateinit var telemetryInstaller: Lazy<TelemetryInstaller>
 
     @Inject
     lateinit var authAnalytics: Lazy<AuthAnalytics>
@@ -60,7 +59,7 @@ class SolidShareApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        runCatching { Telemetry.install(telemetrySink.get()) }
+        runCatching { telemetryInstaller.get().install() }
         NotificationHelper.createChannels(this)
         scheduleNotificationPolling()
         scheduleOutboxDrain()

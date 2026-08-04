@@ -32,6 +32,14 @@ android {
         manifestPlaceholders["appAuthRedirectScheme"] = namespace.toString()
     }
 
+    // `foss` carries no Firebase or Google Play Services dependency, because F-Droid rejects apps
+    // containing proprietary analytics outright. `gms` is what ships to Google Play.
+    flavorDimensions += "distribution"
+    productFlavors {
+        create("gms") { dimension = "distribution" }
+        create("foss") { dimension = "distribution" }
+    }
+
     signingConfigs {
         if (keystorePropertiesFile.exists()) {
             create("release") {
@@ -46,10 +54,16 @@ android {
     buildTypes {
         debug {
             enableUnitTestCoverage = true
+            manifestPlaceholders["crashlyticsEnabled"] = false
+            manifestPlaceholders["performanceEnabled"] = false
+            buildConfigField("boolean", "TELEMETRY_ENABLED", "false")
         }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
+            manifestPlaceholders["crashlyticsEnabled"] = true
+            manifestPlaceholders["performanceEnabled"] = true
+            buildConfigField("boolean", "TELEMETRY_ENABLED", "true")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -59,6 +73,7 @@ android {
     }
 
     buildFeatures {
+        buildConfig = true
         compose = true
     }
 
@@ -91,6 +106,25 @@ composeCompiler {
 
 }
 
+// The google-services and Crashlytics plugins register a task per variant and cannot be applied
+// per flavour, so they also run for `foss` — where google-services.json deliberately does not exist
+// and there is no Firebase SDK to read the resources or consume the mapping upload. Disabling their
+// foss tasks keeps them working for `gms` without leaking a Firebase config into the F-Droid build.
+//
+// The firebase-perf *plugin* is deliberately NOT applied at all. It instruments bytecode through
+// AGP's Instrumentation API rather than a discrete task, so a gate like this cannot stop it: it
+// rewrote AppAuth's `url.openConnection()` into `FirebasePerfUrlConnection` in the foss build too,
+// which then crashed with NoClassDefFoundError because foss carries no Firebase. The SDK is still
+// on gms for custom traces; only automatic HTTP/screen instrumentation is given up.
+tasks
+    .matching { task ->
+        task.name.contains("Foss") &&
+            (
+                task.name.endsWith("GoogleServices") ||
+                    task.name.contains("Crashlytics")
+            )
+    }.configureEach { enabled = false }
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -101,9 +135,11 @@ dependencies {
 
     implementation(libs.erfangholami.ass.solidandroidapi)
 
-    implementation(platform(libs.firebase.bom))
-    implementation(libs.firebase.analytics)
-    implementation(libs.firebase.crashlytics)
+    // Firebase reaches only the gms flavour; foss must stay free of it to be F-Droid-eligible.
+    "gmsImplementation"(platform(libs.firebase.bom))
+    "gmsImplementation"(libs.firebase.analytics)
+    "gmsImplementation"(libs.firebase.crashlytics)
+    "gmsImplementation"(libs.firebase.performance)
 
     //Lifecycle
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
