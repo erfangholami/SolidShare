@@ -4,7 +4,6 @@ import android.content.Context
 import android.util.Size
 import androidx.camera.core.CameraControl
 import androidx.camera.core.CameraSelector
-import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
@@ -14,17 +13,16 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
-import com.google.mlkit.vision.barcode.BarcodeScanner
-import com.google.mlkit.vision.common.InputImage
+import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import java.util.concurrent.Executors
 
 internal fun bindCamera(
     context: Context,
     lifecycleOwner: LifecycleOwner,
     previewView: PreviewView,
-    scanner: BarcodeScanner,
+    decoder: BarcodeDecoder,
     onCameraControl: (CameraControl) -> Unit,
-    onScan: (String, Int) -> Unit,
+    onScan: (String, TicketBarcodeFormat) -> Unit,
 ) {
     val providerFuture = ProcessCameraProvider.getInstance(context)
     providerFuture.addListener({
@@ -48,7 +46,7 @@ internal fun bindCamera(
 
         val executor = Executors.newSingleThreadExecutor()
         analyzer.setAnalyzer(executor) { proxy: ImageProxy ->
-            processImageProxy(proxy, scanner, onScan)
+            processImageProxy(proxy, decoder, onScan)
         }
 
         try {
@@ -65,24 +63,15 @@ internal fun bindCamera(
     }, ContextCompat.getMainExecutor(context))
 }
 
-@androidx.annotation.OptIn(markerClass = [ExperimentalGetImage::class])
 private fun processImageProxy(
     proxy: ImageProxy,
-    scanner: BarcodeScanner,
-    onScan: (String, Int) -> Unit,
+    decoder: BarcodeDecoder,
+    onScan: (String, TicketBarcodeFormat) -> Unit,
 ) {
-    val mediaImage = proxy.image
-    if (mediaImage == null) {
+    try {
+        val hit = decoder.decode(proxy)
+        if (hit != null) onScan(hit.value, hit.format)
+    } finally {
         proxy.close()
-        return
     }
-    val input = InputImage.fromMediaImage(mediaImage, proxy.imageInfo.rotationDegrees)
-    scanner.process(input)
-        .addOnSuccessListener { barcodes ->
-            val hit = barcodes.firstNotNullOfOrNull { barcode ->
-                barcode.rawValue?.takeIf { it.isNotBlank() }?.let { it to barcode.format }
-            }
-            if (hit != null) onScan(hit.first, hit.second)
-        }
-        .addOnCompleteListener { proxy.close() }
 }

@@ -6,7 +6,11 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.ImageDecoder
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -21,14 +25,12 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,7 +38,9 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.FlashOff
@@ -97,15 +101,14 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.model.TicketBarcodeFormat
 import com.erfangholami.solidshare.presentation.navigation.ConfirmAccessRoute
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.util.pasteText
-import com.google.mlkit.vision.barcode.BarcodeScannerOptions
-import com.google.mlkit.vision.barcode.BarcodeScanning
-import com.google.mlkit.vision.barcode.common.Barcode
-import com.google.mlkit.vision.common.InputImage
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 private val CameraViewHeight = 400.dp
 private val ScanWindowSize = 270.dp
@@ -172,7 +175,7 @@ fun ScanPage(
 
     var scanResetToken by remember { mutableIntStateOf(0) }
 
-    val onResult: (String, Int) -> Unit = { raw, _ ->
+    val onResult: (String, TicketBarcodeFormat) -> Unit = { raw, _ ->
         when (val target = viewModel.classify(raw)) {
             is ScanViewModel.ScanTarget.Share ->
                 navController.navigate(
@@ -257,8 +260,8 @@ internal fun ScannerContent(
     subtitle: String,
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
-    onResult: (String, Int) -> Unit,
-    barcodeFormats: IntArray = intArrayOf(Barcode.FORMAT_QR_CODE),
+    onResult: (String, TicketBarcodeFormat) -> Unit,
+    barcodeFormats: List<TicketBarcodeFormat> = listOf(TicketBarcodeFormat.QR_CODE),
     submitLabel: String = stringResource(R.string.open_share),
 ) {
     val context = LocalContext.current
@@ -290,19 +293,7 @@ internal fun ScannerContent(
         label = "scanLine",
     )
 
-    val scanner = remember(barcodeFormats) {
-        BarcodeScanning.getClient(
-            BarcodeScannerOptions.Builder()
-                .setBarcodeFormats(
-                    barcodeFormats.first(),
-                    *barcodeFormats.drop(1).toIntArray(),
-                )
-                .build(),
-        )
-    }
-    DisposableEffect(scanner) {
-        onDispose { scanner.close() }
-    }
+    val decoder = remember(barcodeFormats) { BarcodeDecoder(barcodeFormats) }
 
     val cameraControlHolder = remember { mutableStateOf<CameraControl?>(null) }
 
@@ -311,19 +302,14 @@ internal fun ScannerContent(
     ) { uri ->
         if (uri != null) {
             scope.launch {
-                runCatching { InputImage.fromFilePath(context, uri) }
-                    .onSuccess { input ->
-                        scanner.process(input).addOnSuccessListener { barcodes ->
-                            val hit = barcodes.firstNotNullOfOrNull { barcode ->
-                                barcode.rawValue?.takeIf { it.isNotBlank() }
-                                    ?.let { it to barcode.format }
-                            }
-                            if (hit != null && !hasFired) {
-                                hasFired = true
-                                onResult(hit.first, hit.second)
-                            }
-                        }
-                    }
+                val hit = withContext(Dispatchers.Default) {
+                    runCatching { loadBitmap(context, uri) }.getOrNull()
+                        ?.let { bitmap -> decoder.decode(bitmap) }
+                }
+                if (hit != null && !hasFired) {
+                    hasFired = true
+                    onResult(hit.value, hit.format)
+                }
             }
         }
     }
@@ -336,7 +322,7 @@ internal fun ScannerContent(
         val value = linkInput.trim()
         if (value.isNotEmpty() && !hasFired) {
             hasFired = true
-            onResult(value, Barcode.FORMAT_QR_CODE)
+            onResult(value, TicketBarcodeFormat.QR_CODE)
         }
     }
 
@@ -363,7 +349,7 @@ internal fun ScannerContent(
                                 context = ctx,
                                 lifecycleOwner = lifecycleOwner,
                                 previewView = preview,
-                                scanner = scanner,
+                                decoder = decoder,
                                 onCameraControl = { cameraControlHolder.value = it },
                                 onScan = { raw, format ->
                                     if (!hasFired) {
@@ -560,3 +546,14 @@ private fun ScannerContentPreview() {
         )
     }
 }
+
+private fun loadBitmap(context: android.content.Context, uri: Uri): Bitmap? =
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri)) { d, _, _ ->
+            d.isMutableRequired = false
+            d.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+        }
+    } else {
+        @Suppress("DEPRECATION")
+        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+    }

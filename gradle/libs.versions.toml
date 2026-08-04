@@ -28,9 +28,9 @@ datasource = "1.2.1"
 workManager = "2.11.2"
 
 zxing = "3.5.4"
+zxingCpp = "3.1.1"
 
 cameraX = "1.6.1"
-mlkitBarcode = "17.3.0"
 
 ass = "0.6.1"
 
@@ -104,14 +104,13 @@ androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx"
 
 #QR generation
 zxing-core = { group = "com.google.zxing", name = "core", version.ref = "zxing" }
+zxing-cpp-android = { group = "io.github.zxing-cpp", name = "android", version.ref = "zxingCpp" }
 
 #CameraX
 androidx-camera-camera2 = { group = "androidx.camera", name = "camera-camera2", version.ref = "cameraX" }
 androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", version.ref = "cameraX" }
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "cameraX" }
 
-#ML Kit Barcode (bundled model, works offline)
-google-mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
 
 
 #Test

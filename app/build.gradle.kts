@@ -177,8 +177,10 @@ dependencies {
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
 
-    //ML Kit Barcode (QR decoding from camera frames + gallery images)
-    implementation(libs.google.mlkit.barcode.scanning)
+    // Barcode decoding, every distribution. zxing-cpp is free software; ML Kit was dropped because
+    // it is proprietary, pulls Google Play Services in (which F-Droid rejects) and added ~20 MB of
+    // native libraries.
+    implementation(libs.zxing.cpp.android)
 
     //Navigation
     implementation(libs.androidx.navigation.compose)
