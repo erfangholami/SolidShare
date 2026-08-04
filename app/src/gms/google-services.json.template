@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "757384024360",
-    "project_id": "solid-share-503813",
-    "storage_bucket": "solid-share-503813.firebasestorage.app"
+    "project_number": "000000000000",
+    "project_id": "YOUR-FIREBASE-PROJECT-ID",
+    "storage_bucket": "YOUR-FIREBASE-PROJECT-ID.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:757384024360:android:7c92ada219d6fe1c0f401d",
+        "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
         "android_client_info": {
           "package_name": "com.erfangholami.solidshare"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyANF_Rx_Wt74arKgpaifGmnWpV4Rc-0MXw"
+          "current_key": "YOUR_ANDROID_API_KEY"
         }
       ],
       "services": {

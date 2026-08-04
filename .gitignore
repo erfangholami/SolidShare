@@ -15,3 +15,6 @@ local.properties
 /captures
 .externalNativeBuild
 .cxx
+# Firebase config for the gms flavour — supplied locally or by CI, never committed.
+# Copy google-services.json.template and fill it in, or export it from the Firebase console.
+app/src/gms/google-services.json
