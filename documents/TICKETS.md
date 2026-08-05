@@ -101,18 +101,25 @@ and `TicketFileSniffer`. `util/BarcodeRenderer.kt` renders the token with ZXing;
 Every route ends at the same place — a pre-filled `TicketEditPage` the user confirms — so nothing
 is written to the pod without being seen.
 
-| Route | What happens |
-|---|---|
-| **Scan any barcode** | The payload is stored verbatim in `schema:ticketToken` with its symbology in `solidshare:barcodeFormat`. Unrecognized content is still a valid ticket: a token and a title |
-| **A Solid Share ticket QR** | `TicketQrCodec` decodes the JSON and fills the whole form (§ below) |
-| **`.pkpass` / `.pkpasses`** | Unzipped, `pass.json` mapped best-effort, images extracted, and — for a boarding pass — the barcode token decoded with `BcbpParser` for the fields Apple leaves inside it. The **original bytes are kept** as `solidshare:artifact`. A `.pkpasses` bundle yields up to ten passes |
-| **Open-with** | The same path, entered from another app's share sheet, routed through `TicketScanContributor` |
+| Route                                            | What happens                                                                                                                                                                                                                                                                         |
+|--------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Import a pass file** (Wallet → **+** → Import) | A `.pkpass` is unzipped, `pass.json` mapped, images extracted, and — for a boarding pass — the barcode token decoded with `BcbpParser` for the fields Apple leaves inside it. The **original bytes are kept** as `solidshare:artifact`. A `.pkpasses` bundle yields up to ten passes |
+| **Open-with**                                    | The same path, entered from another app's share sheet or a file manager, routed through `TicketScanContributor.classifyContent`                                                                                                                                                      |
+| **A Solid Share ticket QR**                      | Scanned with the universal scanner (the bottom-bar **+**) or tapped as a `solidshare.app/t` link: `TicketQrCodec` decodes the JSON and fills the whole form (§ below)                                                                                                                |
+| **By hand** (Wallet → **+** → Add manually)      | The same form, empty                                                                                                                                                                                                                                                                 |
 
 `TicketFileSniffer` classifies by magic bytes rather than by file name, because a pass arriving
 from a messaging app is frequently named something else.
 
 Signatures are **not** verified. Import is transcription, not validation: the pod is the user's own
 store, and a pass they chose to keep is theirs to keep.
+
+**Acquisition is deliberately narrow.** An earlier version also scanned arbitrary barcodes with a
+wallet camera, extracted tickets from PDFs and screenshots with OCR, and imported Google Wallet
+save-links. All of it was removed. Each produced a *plausible* ticket rather than a correct one —
+an OCR'd date or a bare token with a guessed title is a pass that fails at the gate, and failing at
+the gate is worse than never having offered. What is left are the two sources that carry
+structured, issuer-authored data: a pass file, and a QR that was written to be read.
 
 ### The Solid Share ticket QR format
 
@@ -183,10 +190,11 @@ where the signal is worst.
 - **`TicketScanContributor`** claims QR payloads, deep links and open-with files, so `ScanRouter`
   routes them without the scanner knowing tickets exist. **`TicketSharedEntityUi`** contributes the
   home card, the icon and the shared-ticket routes.
-- **Google Wallet save-links were supported and removed.** The JWT decode was best-effort and
-  unverifiable, "skinny" JWTs carried nothing but a server reference, and the result was a draft
-  with a link in the notes — a feature that looked like an import and was not. Stated here so the
-  absence reads as a decision.
+- **Removed on purpose, and not to be re-added casually**: Google Wallet save-links (the JWT decode
+  was unverifiable and "skinny" JWTs carried nothing but a server reference), PDF and screenshot
+  extraction with OCR, link import, and the wallet's own barcode scanner. `TicketSource` still
+  carries `SCAN` and `GOOGLE_WALLET` so tickets written by earlier builds keep reading; nothing
+  writes `GOOGLE_WALLET` today. Stated here so the absences read as decisions.
 
 ## 6. Tests
 

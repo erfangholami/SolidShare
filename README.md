@@ -13,49 +13,97 @@ The goal is to make Solid accessible to regular people: a smooth, familiar mobil
 
 ## Features
 
-### Unreleased
+### v0.4.0 - Current
 
-**Wallet**
+The release that turns Solid Share from a pod file browser into a pod **data** app: a wallet and an
+address book of your own, everything usable offline, and sharing that understands what it is
+sharing.
+
+**Wallet — new**
 
 - **Tickets and passes on your pod** — event tickets, boarding passes, cinema tickets, loyalty
-  cards and coupons stored as ordinary Solid resources you own, laid out in five Apple-parity pass
-  designs
-- **Add a pass any way you have one** — scan any barcode, import an Apple Wallet `.pkpass` or a
-  `.pkpasses` bundle (the original file is kept alongside the ticket), open one from another app,
-  or enter it by hand
-- **An open ticket-QR format** — any issuer can offer one-tap add-to-pod with no integration and no
-  server of ours involved
-- **Passes that stay current** — a pass carrying an issuer web service refreshes itself in the
-  background
+  cards and coupons stored as ordinary Solid resources you own, registered in your type index so
+  any Solid app can find them
+- **Passes that look like passes** — five Apple-parity layouts (boarding, coupon, event, store
+  card, generic) with the issuer's own colours and artwork, a tear-line barcode panel, and a
+  faded treatment once a pass has expired
+- **Apple Wallet import, with nothing dropped** — a `.pkpass` or a `.pkpasses` bundle is read in
+  full: pass identity, all seven field tiers, reservation, membership and Wi-Fi details, locations
+  and beacons, relevancy dates and voided state. The original file is kept on the pod beside the
+  ticket
+- **Barcodes re-rendered byte-faithfully** in the symbology the issuer used, so gate scanners read
+  the identical code, with a screen-brightness boost when you open one
+- **Boarding passes understood** — IATA boarding-pass barcodes are decoded for the details Apple
+  leaves inside the token
+- **Journeys** — transport mode, from and to, departure and arrival for flights, trains, buses and
+  boats, editable on the ticket, and travel tickets sorted by departure time
+- **Issuer jargon translated** into plain, localized labels — doors, boarding, gate closes, cabin
+  classes
+- **Passes that stay current** — a pass carrying an issuer web service refreshes itself on wallet
+  open and twice a day
+- **An open ticket-QR format** — any issuer can offer one-tap add-to-pod, with no integration and
+  no server of ours involved
+- **Open a pass from anywhere** — a `.pkpass` shared or opened from any app lands in a preview of
+  what was read, to add as-is or edit first
 
-**Contacts**
+**Contacts — new**
 
-- **Your address book on your pod**, in the standard vCard vocabulary, discoverable by any Solid
-  client through the type index
-- **Two-way sync with the phone's Contacts app** — pod contacts appear under a Solid Share account
-  and editing them anywhere pushes back
-- **Import and export** — bring in the phone's own contacts or a `.vcf` file, export everything as
-  vCard
-- **Duplicate review** — near-duplicates are suggested, never merged silently
+- **Your address book on your pod**, in the standard vCard vocabulary, registered in the type index
+  and round-tripped in full, so nothing another app wrote is lost when Solid Share writes back
+- **Two-way sync with the phone's Contacts app** — one Android account per pod, contacts appear
+  everywhere on the device, and editing or deleting them in any app pushes back to the pod
+- **Bring contacts in** — import the phone's own contacts from any account, or a `.vcf` file
+- **Take them out** — export everything as vCard
+- **Duplicate review** — near-duplicates are suggested and merged only when you say so, never
+  silently
+- **Address books** — create private or public books, rename and delete them
+- **Contacts in sharing** — pick a share receiver from your address book instead of pasting a WebID
 
 **Sharing data, not just files**
 
-- **Share a ticket or a contact as a thing** — the receiver sees a real pass or contact card and
-  can add it to their own wallet or address book, owning their copy
+- **Share a ticket or a contact as a thing** — the receiver is told "Alice shared a ticket with
+  you", sees a real pass or contact card, and can add it to their own wallet or address book,
+  owning their copy
+- **A public pass link** — publish a single pass by link, revocable with a switch
+- **Send a copy of a file to another app** from the file actions sheet
+- **Open a shared resource's container** straight from the Share tab
 
 **Offline-first**
 
-- **Everything you have seen is on the device**, encrypted, and opens with no connection
-- **Every write queues** — upload, delete, create a folder, add or edit a ticket or contact — and
-  drains when the connection comes back
+- **Everything you have seen is on the device**, in an encrypted database, and opens with no
+  connection
+- **Every write queues** — upload, delete, create a folder, duplicate, add or edit a ticket or
+  contact — and drains by itself when the connection comes back
 - **Make available offline** — pin a file so its content is always there
-- **One clear affordance** on the few surfaces that genuinely need a connection
+- **One clear affordance** on the few surfaces that genuinely need a connection, instead of
+  buttons that fail
+- **Long jobs run in the background** — contacts import and export survive leaving the app, and
+  report progress in the notification shade
+
+**Accounts and notifications**
+
+- **An expired session is a state, not a logout** — the account stays on your Profile page and
+  reconnects in one tap, keeping its device contacts until you actually sign out
+- **Notifications per account**, so switching accounts switches what you see
+- **Notifications that look like Solid Share** — the app's own mark in the status bar, and file
+  transfers branded to match
 
 **Under the hood**
 
 - **Two distributions** — a Play build with crash reporting, and a fully free-software build with
-  no proprietary dependency at all
+  no proprietary dependency linked at all (F-Droid ready)
+- **Barcode decoding by zxing-cpp** instead of ML Kit, so both builds scan identically and neither
+  ships a proprietary blob
 - **Error messages written for people**, produced by one layer instead of by each screen
+- **A smoother app** — barcode rendering, pass parsing and file decryption moved off the main
+  thread
+- **Data modules register themselves**, so a future kind of data plugs in without editing the home
+  screen, navigation or scanner
+- **Layering enforced by tests** with shrink-only baselines, so the structure cannot quietly rot
+- **One version, one source** — `versionCode` is derived from the version name and a pushed tag
+  cuts the release
+- **Built against AndroidSolidServices 0.7.0** from Maven Central, so a clean checkout builds
+- **A documentation page per feature**, in a reading order — see below
 
 ### v0.3.0
 
