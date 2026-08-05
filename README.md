@@ -100,8 +100,8 @@ sharing.
 - **Data modules register themselves**, so a future kind of data plugs in without editing the home
   screen, navigation or scanner
 - **Layering enforced by tests** with shrink-only baselines, so the structure cannot quietly rot
-- **One version, one source** — `versionCode` is derived from the version name and a pushed tag
-  cuts the release
+- **The tag is the version** — nothing writes it down, so a release can't disagree with itself, and
+  pushing a tag cuts the release
 - **Built against AndroidSolidServices 0.7.0** from Maven Central, so a clean checkout builds
 - **A documentation page per feature**, in a reading order — see below
 
@@ -300,11 +300,13 @@ root, which must exist for any Gradle task:
 ./gradlew :app:bundleGmsRelease      # the Play upload artifact
 ```
 
-The version lives in one place — `appVersionName` in `app/build.gradle.kts` — and `versionCode` is
-derived from it, because F-Droid builds the tag on its own servers and whatever it checks out has
-to already know its own version. Pushing a matching `v` tag is the whole publish step: CI checks
-the tag against the version, builds both flavours, gates the FOSS APK for proprietary code, and
-attaches the artifacts to a GitHub release. The full procedure is in
+**The release tag is the version.** Nothing in the source declares it: the build resolves it with
+`git describe` and derives `versionCode` from it, so a tag and a build can never disagree. Check
+what a checkout resolves to with `./gradlew -q :app:printVersion`, and override it with
+`-PappVersionName=0.4.0` when building from a source archive that carries no git metadata.
+
+Pushing a `v` tag is therefore the whole publish step: CI builds both flavours, gates the FOSS APK
+for proprietary code, and attaches the artifacts to a GitHub release. The full procedure is in
 [documents/PUBLISHING.md](documents/PUBLISHING.md).
 
 ## Project Structure

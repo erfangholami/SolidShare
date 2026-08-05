@@ -10,30 +10,62 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
-// The one place the app's version is declared. A release is cut by bumping this and pushing the
-// matching `v` tag; CI refuses to publish if the two disagree.
+// The app's version is the release tag. Nothing declares it in the source, so a tag and a build
+// can no longer disagree — cutting a release is pushing `v0.4.0` and nothing else.
 //
-// It has to live in the source rather than come from the tag, because F-Droid builds from the tag
-// on its own servers and never runs our workflow — whatever it checks out must already know its
-// own version.
-val appVersionName = "0.3.0"
+// Resolution order, first hit wins:
+//   1. -PappVersionName=0.4.0, or APP_VERSION_NAME in the environment. The escape hatch for a
+//      build from a source archive, which carries no git metadata at all.
+//   2. The tag on the commit being built (`--exact-match`) — what a release build resolves to.
+//   3. The most recent tag before it, so a development build reports the release it descends from.
+//   4. DEV_VERSION_NAME, for a checkout that has no tags yet.
+//
+// F-Droid builds from the tag in a real git clone, so (2) answers there; if their builder ever
+// hands us a tree without git, (1) is how the metadata supplies the version.
+val DEV_VERSION_NAME = "0.0.0"
+
+fun gitOutput(vararg args: String): String? = runCatching {
+    val output = providers.exec {
+        commandLine("git", *args)
+        isIgnoreExitValue = true
+    }
+    if (output.result.get().exitValue != 0) {
+        null
+    } else {
+        output.standardOutput.asText.get().trim().ifEmpty { null }
+    }
+}.getOrNull()
+
+val appVersionName = (
+    providers.gradleProperty("appVersionName")
+        .orElse(providers.environmentVariable("APP_VERSION_NAME"))
+        .orNull
+        ?: gitOutput("describe", "--tags", "--exact-match")
+        ?: gitOutput("describe", "--tags", "--abbrev=0")
+        ?: DEV_VERSION_NAME
+    ).removePrefix("v")
 
 // major * 10000 + minor * 100 + patch, so 1.2.3 is 10203. Deriving it means it can never drift
 // from the name, and it stays monotonic for as long as minor and patch stay below 100 — both
 // stores permanently reject a build whose versionCode did not increase.
+//
+// The failures below are all about the tag, because that is where the version now comes from: a
+// tag of the wrong shape has to fail the build rather than quietly ship as something else.
 val appVersionCode = appVersionName.split(".").let { parts ->
     require(parts.size == 3) {
-        "appVersionName must be MAJOR.MINOR.PATCH, was \"$appVersionName\""
+        "the version must be MAJOR.MINOR.PATCH, was \"$appVersionName\" — tag releases as vX.Y.Z"
     }
     val (major, minor, patch) = parts.map {
         it.toIntOrNull() ?: throw GradleException(
-            "appVersionName has a non-numeric part: \"$appVersionName\"",
+            "the version has a non-numeric part: \"$appVersionName\" — tag releases as vX.Y.Z, " +
+                "with no suffix",
         )
     }
     require(minor in 0..99 && patch in 0..99) {
         "minor and patch must each stay below 100 to keep versionCode ordered, was \"$appVersionName\""
     }
-    major * 10000 + minor * 100 + patch
+    // The untagged fallback would otherwise be 0, which no device will install.
+    (major * 10000 + minor * 100 + patch).coerceAtLeast(1)
 }
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")

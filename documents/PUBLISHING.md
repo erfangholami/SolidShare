@@ -96,20 +96,31 @@ unzip -l app/build/outputs/apk/foss/release/app-foss-release.apk \
 
 ### Versioning
 
-`appVersionName` at the top of `app/build.gradle.kts` is the only place a version is written.
-`versionCode` is **derived** from it as `major * 10000 + minor * 100 + patch` — so `1.2.3` is
-`10203` — and the build refuses a name that is not `MAJOR.MINOR.PATCH`, or whose minor or patch
-reaches 100 (that would break the ordering both stores require). Check what a bump produces with
-`./gradlew -q :app:printVersion`.
+**The tag is the version.** Nothing in the source declares it: `app/build.gradle.kts` resolves it
+with `git describe`, and `versionCode` is derived as `major * 10000 + minor * 100 + patch` — so
+`1.2.3` is `10203`. The build refuses a version that is not `MAJOR.MINOR.PATCH`, or whose minor or
+patch reaches 100 (that would break the ordering both stores require). Check what a tag produces
+with `./gradlew -q :app:printVersion`.
 
-The version lives in the source rather than being read off the tag because **F-Droid builds the tag
-on its own servers and never runs our workflow** — whatever it checks out has to already know its
-own version. The tag is the trigger, not the source of truth, and CI fails the release if the two
-disagree.
+Resolution order, first hit wins:
+
+1. `-PappVersionName=0.4.0`, or `APP_VERSION_NAME` in the environment — the escape hatch for a
+   build from a source archive with no git metadata.
+2. The tag on the commit being built (`git describe --tags --exact-match`). This is what a release
+   build resolves to.
+3. The most recent tag before it, so a development build reports the release it descends from.
+4. `0.0.0`, for a checkout with no tags at all.
+
+This removes the failure mode where a tag and a hardcoded name disagree and the release aborts
+half-way. It costs one thing worth knowing: **the build now needs git metadata.** F-Droid builds
+from the tag in a real git clone, so (2) answers there; if their builder ever hands over a tree
+without `.git`, supply (1) from the metadata's build recipe rather than reintroducing a written-down
+version. In CI the `Checkout` step must keep `fetch-depth: 0`, or `git describe` answers with an
+older release and the workflow's version check stops the run.
 
 ### Cutting a release
 
-- [ ] Bump `appVersionName` in `app/build.gradle.kts` (nothing else — `versionCode` follows)
+- [ ] Nothing to bump — the tag you push at the end *is* the version
 - [ ] Confirm `targetSdk` still meets Play's current requirement (it rises roughly annually; the app
       is on 35, `compileSdk` 37 — re-check before each submission)
 - [ ] `./gradlew test lint` clean
@@ -117,12 +128,21 @@ disagree.
 - [ ] Install both release builds on a device and smoke-test login, share, contacts sync, wallet
 - [ ] Verify the FOSS APK really has no Firebase: `unzip -l app-foss-release.apk | grep -i firebase`
       should return nothing
-- [ ] Commit the bump, then push the matching tag: `git tag v0.x.y && git push origin v0.x.y`
+- [ ] Push the tag: `git tag v0.x.y && git push origin v0.x.y`
 
-Pushing the tag is the whole publish step. The `Release` workflow checks the tag against
-`appVersionName`, builds both flavours, gates the FOSS APK for proprietary code, and attaches
-`solidshare-<version>-foss.apk`, `-gms.apk` and `-gms.aab` to a GitHub release. Re-run it from the
-Actions tab with the `tag` input if it fails after the tag is already pushed.
+Pushing the tag is the whole publish step — it *is* the version, so there is no bump to commit
+first. The `Release` workflow resolves the version from the tag, builds both flavours, gates the
+FOSS APK for proprietary code, and attaches `solidshare-<version>-foss.apk`, `-gms.apk` and
+`-gms.aab` to a GitHub release. Re-run it from the Actions tab with the `tag` input if it fails
+after the tag is already pushed.
+
+**Retagging.** A tag that pointed at the wrong commit is moved, not worked around:
+
+```bash
+git push origin :refs/tags/v0.x.y   # drop the remote tag
+git tag -d v0.x.y                   # and the local one
+git tag v0.x.y && git push origin v0.x.y
+```
 
 ---
 
@@ -243,8 +263,8 @@ credentials, but an *unrestricted* key can be billed against other Google Cloud 
   `applicationId`, incompatible signatures — a user cannot update across stores, they must uninstall
   and reinstall. This is normal and worth stating in the README.
 - **`versionCode` shared.** Both stores read the same derived value, so a version bump is monotonic
-  across both by construction. The one way to break it is to go *backwards* in `appVersionName`, or
-  to release `0.99.x` and then `0.100.0` — the build blocks the latter.
+  across both by construction. The two ways to break it are to tag *backwards*, or to release
+  `0.99.x` and then `0.100.0` — the build blocks the latter.
 - **OAuth redirect.** The redirect URI and the hosted Client ID Document are tied to
   `com.erfangholami.solidshare` and `solidshare.app`. Do **not** add an `applicationIdSuffix` per
   flavour — it would break Solid-OIDC login and the App Links verification.
