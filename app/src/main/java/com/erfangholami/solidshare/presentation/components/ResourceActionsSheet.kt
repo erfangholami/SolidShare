@@ -14,6 +14,7 @@ import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DownloadForOffline
+import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.ManageAccounts
 import androidx.compose.material.icons.outlined.PersonRemove
@@ -50,6 +51,7 @@ enum class ResourceAction(
     OPEN_IN(R.string.open_in, Icons.AutoMirrored.Filled.OpenInNew),
     INFO(R.string.info, Icons.Outlined.Info),
     SHOW_SHARE_LINK(R.string.show_share_link, Icons.Outlined.QrCodeScanner),
+    OPEN_IN_CONTAINER(R.string.open_in_container, Icons.Outlined.FolderOpen),
     RESHARE(R.string.reshare, Icons.Outlined.ShareOutlined),
     REMOVE_FROM_LIST(R.string.remove_from_list, Icons.Outlined.PersonRemove),
     DELETE(R.string.delete, Icons.Outlined.Delete, destructive = true),
@@ -88,8 +90,11 @@ object ResourceActions {
             if (canEdit) add(ResourceAction.DELETE)
         }
 
-    val sharedByMe: List<ResourceAction> =
-        listOf(ResourceAction.SHOW_SHARE_LINK, ResourceAction.MANAGE_ACCESS)
+    val sharedByMe: List<ResourceAction> = listOf(
+        ResourceAction.SHOW_SHARE_LINK,
+        ResourceAction.MANAGE_ACCESS,
+        ResourceAction.OPEN_IN_CONTAINER,
+    )
 
     fun sharedWithMe(isContainer: Boolean, canEdit: Boolean): List<ResourceAction> =
         buildList {

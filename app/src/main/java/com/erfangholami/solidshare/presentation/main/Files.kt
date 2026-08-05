@@ -87,6 +87,15 @@ fun Files(
         },
         contentWindowInsets = WindowInsets(0),
     ) { padding ->
+        val pendingContainer by shareViewModel.pendingContainer.collectAsStateWithLifecycle()
+        LaunchedEffect(pendingContainer) {
+            val target = pendingContainer ?: return@LaunchedEffect
+            containerNavController.navigate(ContainerNested(containerUrl = target)) {
+                launchSingleTop = true
+            }
+            shareViewModel.consumePendingContainer()
+        }
+
         NavHost(
             navController = containerNavController,
             startDestination = ContainerRoot,

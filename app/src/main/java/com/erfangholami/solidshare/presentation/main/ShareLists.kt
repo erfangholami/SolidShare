@@ -63,6 +63,7 @@ internal fun GivenList(
     isOnline: Boolean,
     onShowQr: (String) -> Unit,
     onManage: (String) -> Unit,
+    onOpenInContainer: (String) -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
     entityUiFor: (String?) -> SharedEntityUi? = { null },
 ) {
@@ -85,6 +86,7 @@ internal fun GivenList(
                 isOnline = isOnline,
                 onShowQr = { onShowQr(resourceUri) },
                 onManage = { onManage(resourceUri) },
+                onOpenInContainer = { onOpenInContainer(resourceUri) },
                 loadMeta = loadMeta,
                 entityUi = entityUiFor(recipients.firstNotNullOfOrNull { it.resourceType }),
             )
@@ -146,6 +148,7 @@ private fun GivenResourceRow(
     isOnline: Boolean,
     onShowQr: () -> Unit,
     onManage: () -> Unit,
+    onOpenInContainer: () -> Unit,
     loadMeta: suspend (String) -> ContainerItem?,
     entityUi: SharedEntityUi? = null,
 ) {
@@ -222,6 +225,7 @@ private fun GivenResourceRow(
                 when (action) {
                     ResourceAction.SHOW_SHARE_LINK -> onShowQr()
                     ResourceAction.MANAGE_ACCESS -> onManage()
+                    ResourceAction.OPEN_IN_CONTAINER -> onOpenInContainer()
                     else -> Unit
                 }
             },
@@ -355,6 +359,7 @@ private fun GivenListPreview() {
             isOnline = true,
             onShowQr = {},
             onManage = {},
+            onOpenInContainer = {},
             loadMeta = { PreviewSamples.file() },
         )
     }
@@ -394,6 +399,7 @@ private fun GivenResourceRowPreview() {
             isOnline = true,
             onShowQr = {},
             onManage = {},
+            onOpenInContainer = {},
             loadMeta = { PreviewSamples.file() },
         )
     }
@@ -458,6 +464,7 @@ private fun GivenTicketRowPreview() {
             isOnline = true,
             onShowQr = {},
             onManage = {},
+            onOpenInContainer = {},
             loadMeta = { null },
             entityUi = previewTicketEntityUi,
         )

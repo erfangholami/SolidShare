@@ -126,6 +126,25 @@ class ShareViewModel @Inject constructor(
     private val _noAccessShare = MutableStateFlow<NoAccessTarget?>(null)
     val noAccessShare: StateFlow<NoAccessTarget?> = _noAccessShare.asStateFlow()
 
+    private val _pendingContainer = MutableStateFlow<String?>(null)
+
+    /**
+     * Container the Files tab should open next, set by "Open in container" on a share row.
+     *
+     * The Files tab owns its own nested NavHost, so the request travels through this shared
+     * view model rather than a navigation argument: `MainPage` switches to the tab and `Files`
+     * consumes the value.
+     */
+    val pendingContainer: StateFlow<String?> = _pendingContainer.asStateFlow()
+
+    fun openInContainer(resourceUri: String) {
+        _pendingContainer.value = containerOf(resourceUri)
+    }
+
+    fun consumePendingContainer() {
+        _pendingContainer.value = null
+    }
+
     private val _ownedResource = MutableStateFlow<String?>(null)
     val ownedResource: StateFlow<String?> = _ownedResource.asStateFlow()
 
@@ -521,4 +540,17 @@ class ShareViewModel @Inject constructor(
             error = UiError(e.toSharingErrorMessage(stringProvider), action),
         )
     }
+}
+
+/**
+ * The container a resource lives in: its parent, so the resource itself is visible in the listing.
+ *
+ * A trailing slash is dropped first, so a shared folder resolves to its parent rather than to
+ * itself — which is what makes a missing resource obvious when the listing opens.
+ */
+private fun containerOf(resourceUri: String): String {
+    val withoutFragment = resourceUri.substringBefore('#')
+    val trimmed = withoutFragment.trimEnd('/')
+    val cut = trimmed.lastIndexOf('/')
+    return if (cut <= 0) trimmed else trimmed.substring(0, cut + 1)
 }

@@ -190,6 +190,7 @@
     <string name="rebuild_share_index">Rebuild share index</string>
     <string name="scan_or_paste">Scan or paste</string>
     <string name="show_share_link">Show share link</string>
+    <string name="open_in_container">Open in container</string>
     <string name="reshare">Reshare</string>
     <string name="remove_from_list">Remove from list</string>
     <string name="from_webid">from %1$s</string>

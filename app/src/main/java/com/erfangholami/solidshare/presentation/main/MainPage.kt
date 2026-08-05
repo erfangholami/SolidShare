@@ -92,6 +92,8 @@ fun MainPage(
         )
     }
 
+    val pendingContainer by shareViewModel.pendingContainer.collectAsStateWithLifecycle()
+
     val changeTab: (t: Any) -> Unit = { tabRoute ->
         nestedNavController.navigate(tabRoute) {
             popUpTo(nestedNavController.graph.findStartDestination().id) {
@@ -100,6 +102,10 @@ fun MainPage(
             launchSingleTop = true
             restoreState = true
         }
+    }
+
+    LaunchedEffect(pendingContainer) {
+        if (pendingContainer != null) changeTab(MainNavItem.Directory)
     }
 
     val openProfileTab: () -> Unit = { changeTab(MainNavItem.Profile) }

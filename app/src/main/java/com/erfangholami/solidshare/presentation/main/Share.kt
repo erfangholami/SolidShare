@@ -315,6 +315,9 @@ fun Share(
                                     bareUrl = viewModel.bareUrlFor(resourceUri),
                                 )
                             },
+                            onOpenInContainer = { resourceUri ->
+                                viewModel.openInContainer(resourceUri)
+                            },
                             onManage = { resourceUri ->
                                 val entityUi = viewModel.entityUiFor(
                                     state.given
