@@ -14,12 +14,6 @@ pluginManagement {
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        // Local AndroidSolidServices builds (0.6.0-dev); remove once published to Maven Central.
-        mavenLocal {
-            content {
-                includeGroup("com.erfangholami.androidsolidservices")
-            }
-        }
         google()
         mavenCentral()
     }
