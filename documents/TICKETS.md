@@ -1,173 +1,217 @@
-# Tickets (Wallet) in Solid Share
+# Wallet (tickets)
 
-Solid Share stores wallet-style tickets and passes (event tickets, boarding passes, cinema
-tickets, loyalty cards, coupons…) as plain Solid resources on the user's own pod. This document
-specifies the data model, the container layout, the open **Solid Share ticket QR format** issuers
-can adopt for one-tap "add to wallet", and how imports from existing wallet artifacts work.
+*Part of the [Solid Share documentation set](README.md).*
 
-The implementation lives in two places:
+The Wallet holds event tickets, boarding passes, cinema tickets, loyalty cards and coupons as
+ordinary Solid resources on the user's own pod — not in a vendor's cloud, and not in an app-private
+database. A pass added on one device is on every device signed into that pod, is readable by any
+Solid client that understands the vocabulary, and stays after Solid Share is uninstalled.
 
-- **AndroidSolidServices** (`api` ≥ 0.6.0): `SolidTicketsDataModule` — CRUD + index + typeIndex
-  registration (`api/…/datamodule/tickets/`), models in `shared/model/tickets/`, RDF codecs in
-  `shared/rdf/tickets/`.
-- **Solid Share app**: `TicketsRepository` (thin delegation), the Wallet UI
-  (`presentation/wallet/`), barcode rendering (`util/BarcodeRenderer.kt`, ZXing), scanning
-  (ML Kit, all common symbologies), and the pass importers (`data/passimport/`).
+Two rules shape everything below. **The barcode payload is sacred**: whatever the issuer encoded is
+stored verbatim and re-rendered in the symbology it was captured in, or the gate scanner rejects
+it. And **a pass is a document, not a screenshot**: the wallet stores the structured fields, so it
+can lay a pass out properly, refresh it from its issuer, and share it as a thing rather than a file.
 
-## 1. Pod layout
+The pod model and store API belong to the library and are documented at
+[androidsolidservices.erfangholami.com/build/tickets](https://androidsolidservices.erfangholami.com/build/tickets/).
+The normative term dictionary is [TICKET_VOCAB.md](TICKET_VOCAB.md) — read that before adding a
+field, because most of what a source can yield already has a term.
+
+## 1. Pod shape
 
 ```
-{storage}tickets/                     ← container, bootstrapped on first ticket
-├── index.ttl                         ← tickets index (one cached row per ticket)
-├── {uuid}.ttl                        ← one RDF document per ticket (subject #this)
-└── {uuid}.pkpass                     ← optional original imported artifact
+{storage}datamodule/tickets/         ← container, allocated on first ticket, type-index registered
+├── index                            ← one cached row per ticket, so the list is a single GET
+└── {uuid}/                          ← one container per ticket
+    ├── ticket                       ← the RDF document, primary subject #this
+    ├── {artifact}.pkpass            ← the original imported file, kept verbatim
+    └── {logo,icon,strip,…}          ← the pass images
 ```
 
-The container is registered in the user's **type index** as a `solid:instanceContainer` for
-`schema:Ticket` (private index by default), so any Solid app can discover the user's tickets.
-Listing reads every registered container's `index.ttl` — a single GET per container.
+The index document and the ticket document are **extension-less on purpose**: they are linked data
+reached by URL — the type index links to the index, its rows link to each ticket — so the URI never
+encodes a representation. Discovery always follows the registered URL, whatever it is named.
 
-## 2. Ticket resource model
+Giving every ticket its own container is what makes sharing work: granting View on `{uuid}/` covers
+the document, the artifact and the images in one grant, and they inherit it through WAC
+`acl:default` / ACP `acp:memberAccessControl`.
 
-One ticket is one document, primary subject `{doc}#this`, typed `schema:Ticket`
-(namespace `https://schema.org/`). Wallet-specific terms come from the Solid Share namespace
-`https://solidshare.com/ns#` (prefixed `solidshare:` below). Sub-entities are fragment nodes of
-the same document.
+A ticket is `schema:Ticket` with the schema.org vocabulary wherever schema.org has a term, and
+`solidshare:` only where it demonstrably does not:
 
 ```turtle
 <#this>  a schema:Ticket ;
     schema:name              "Coldplay — Music of the Spheres" ;
-    schema:description       "Gate opens 18:00" ;
     schema:ticketNumber      "TKT-0042" ;
-    schema:ticketToken       "c3RhZGl1bS10aWNrZXQ…" ;          # exact barcode payload
-    solidshare:barcodeFormat "AZTEC" ;                          # symbology of the token
+    schema:ticketToken       "c3RhZGl1bS10aWNrZXQ…" ;   # the exact issuer payload
+    solidshare:barcodeFormat "AZTEC" ;                   # the symbology it was captured in
     solidshare:category      "EVENT" ;
     schema:issuedBy          <#issuer> ;
     schema:underName         <#underName> ;
     schema:ticketedSeat      <#seat> ;
-    schema:totalPrice        "89.50" ;
-    schema:priceCurrency     "EUR" ;
-    schema:dateIssued        "2026-06-01T10:00:00Z"^^xsd:dateTime ;
     solidshare:event         <#event> ;
     schema:validFrom         "2026-07-14T17:00:00Z"^^xsd:dateTime ;
     schema:validThrough      "2026-07-14T23:59:00Z"^^xsd:dateTime ;
-    solidshare:source        "PKPASS" ;                         # MANUAL|SCAN|PKPASS|GOOGLE_WALLET
-    solidshare:artifact      <{uuid}.pkpass> ;                  # original imported file
-    dcterms:created          "2026-07-02T09:15:00Z"^^xsd:dateTime ;
-    dcterms:modified         "2026-07-02T09:15:00Z"^^xsd:dateTime .
-
-<#issuer>    a schema:Organization ; schema:name "Ticketmaster" .
-<#underName> a schema:Person ;       schema:name "Erfan Gholami" .
-<#seat>      a schema:Seat ;
-    schema:seatNumber "27" ; schema:seatRow "F" ; schema:seatSection "B12" .
-<#event>     a schema:Event ;
-    schema:name      "Music of the Spheres Tour" ;
-    schema:startDate "2026-07-14T19:30:00Z"^^xsd:dateTime ;
-    schema:endDate   "2026-07-14T23:00:00Z"^^xsd:dateTime ;
-    schema:location  <#place> .
-<#place>     a schema:Place ;
-    schema:name "Johan Cruijff ArenA" ; schema:address "Arena Boulevard 1, Amsterdam" .
+    solidshare:source        "PKPASS" ;                  # MANUAL | SCAN | PKPASS
+    solidshare:artifact      <boarding.pkpass> ;
+    dcterms:source           <originalUri> ;             # present on a copy of a shared ticket
+    dcterms:created          "2026-07-02T09:15:00Z"^^xsd:dateTime .
 ```
 
-Enumerations (stored as string literals, unknown values tolerated on read):
+Sub-entities (`#issuer`, `#underName`, `#seat`, `#event`, `#place`) are fragment nodes of the same
+document. Enumerations are stored as string literals and unknown values are tolerated on read, so a
+future category never makes a ticket unreadable. Every property is optional except `schema:name`.
 
-| Term | Values |
+## 2. Surface
+
+### Screens — `presentation/wallet/`
+
+| Screen | What it does |
 |---|---|
-| `solidshare:category` | `EVENT FLIGHT TRAIN BUS CINEMA LOYALTY COUPON GENERIC` |
-| `solidshare:barcodeFormat` | `QR_CODE AZTEC PDF_417 CODE_128 CODE_39 CODE_93 EAN_13 EAN_8 UPC_A UPC_E ITF CODABAR DATA_MATRIX NONE` |
-| `solidshare:source` | `MANUAL SCAN PKPASS GOOGLE_WALLET` |
+| `WalletPage` | Upcoming and past passes, rendered as cards |
+| `PassCard` | The pass itself — five Apple-parity layouts, see §3 |
+| `TicketDetailPage` | The pass back: barcode with a brightness boost, the fields, share, edit, delete |
+| `TicketEditPage` | The one form: manual entry, and the confirmation step for every import |
+| `TicketImportPage` | What a `.pkpass` or `.pkpasses` bundle yielded, before it is written |
+| `TicketSharingPage` | People with access, plus the public pass link — see [ENTITY_SHARING.md](ENTITY_SHARING.md) |
+| `SharedTicketPage` | A pass someone shared, with "Add to my wallet" |
 
-**`schema:ticketToken` is sacred**: it is the exact payload the issuer encoded and is re-rendered
-verbatim (via ZXing, in the symbology recorded by `solidshare:barcodeFormat`) so gate scanners
-read the identical barcode.
+### Repository — `data/repo/tickets/`
 
-## 3. Tickets index
+`TicketsRepository` implements `DataModuleLifecycle`. Its verbs split into the queued writes
+(`queueCreate`, `queueUpdate`, `queueDelete` — the only write path), the reads
+(`observeTickets`, `getTicket`, `getTicketImages`, `getTicketArtifact`), the shared-entity verbs
+(`getSharedTicket`, `getSharedTicketImages`, `addSharedTicketToWallet`, `findTicketCopiedFrom`),
+the parsers (`parseTicketQr`, `parseTicketFile`) and `refreshIssuerPasses`.
 
-`{container}index.ttl` caches one row per ticket so the wallet list renders from a single GET
-(the `people.ttl` idiom of the contacts module):
+`TicketBlobStore` (`data/local/cache/`) holds artifacts, pass images and the refresh bookkeeping as
+encrypted files keyed by `(webId, ticketUri, role)`, which is what lets a pass render with no
+connection.
 
-```turtle
-<{uuid}.ttl#this> a schema:Ticket ;
-    schema:name         "Coldplay — Music of the Spheres" ;
-    solidshare:category "EVENT" ;
-    schema:startDate    "2026-07-14T19:30:00Z"^^xsd:dateTime ;
-    solidshare:issuer   "Ticketmaster" ;
-    schema:validThrough "2026-07-14T23:59:00Z"^^xsd:dateTime .
+### Import and rendering
+
+`data/passimport/` holds `PkpassParser`, `PkpassImages`, `BcbpParser` (IATA boarding-pass barcodes)
+and `TicketFileSniffer`. `util/BarcodeRenderer.kt` renders the token with ZXing;
+`presentation/sharing/BarcodeDecoder.kt` decodes with zxing-cpp.
+
+## 3. How it flows
+
+### Getting a pass in
+
+Every route ends at the same place — a pre-filled `TicketEditPage` the user confirms — so nothing
+is written to the pod without being seen.
+
+| Route | What happens |
+|---|---|
+| **Scan any barcode** | The payload is stored verbatim in `schema:ticketToken` with its symbology in `solidshare:barcodeFormat`. Unrecognized content is still a valid ticket: a token and a title |
+| **A Solid Share ticket QR** | `TicketQrCodec` decodes the JSON and fills the whole form (§ below) |
+| **`.pkpass` / `.pkpasses`** | Unzipped, `pass.json` mapped best-effort, images extracted, and — for a boarding pass — the barcode token decoded with `BcbpParser` for the fields Apple leaves inside it. The **original bytes are kept** as `solidshare:artifact`. A `.pkpasses` bundle yields up to ten passes |
+| **Open-with** | The same path, entered from another app's share sheet, routed through `TicketScanContributor` |
+
+`TicketFileSniffer` classifies by magic bytes rather than by file name, because a pass arriving
+from a messaging app is frequently named something else.
+
+Signatures are **not** verified. Import is transcription, not validation: the pod is the user's own
+store, and a pass they chose to keep is theirs to keep.
+
+### The Solid Share ticket QR format
+
+Any issuer can offer one-tap add-to-pod, with no integration and no server of ours involved, by
+encoding a ticket as JSON in either of two equivalent forms:
+
+```
+https://solidshare.app/t#<base64url(JSON)>        ← also an App Link: any camera app opens Solid Share
+{ "solidshare": "ticket", "v": 1, "title": …, "token": …, "format": "AZTEC", … }
 ```
 
-The data module rewrites the row on every create/update/delete.
+`title` is required; everything else is optional; unknown fields are ignored and `v` allows the
+format to evolve. `token` is what the venue scanner expects and `format` names its symbology
+(defaulting to `QR_CODE`). Dates are ISO-8601. In the link form the payload lives in the
+**fragment**, so it never reaches the solidshare.app server — the link is a container for the
+ticket, not a lookup of it.
 
-## 4. The Solid Share ticket QR format ("add to wallet")
+The full field list is in [TICKET_VOCAB.md](TICKET_VOCAB.md); the parser is
+`data/repo/tickets/TicketQrCodec.kt`.
 
-Any issuer can offer one-tap add-to-pod by encoding a ticket in one of two equivalent forms:
+### Rendering a pass
 
-**Link form** (doubles as an App Link — scanning with any camera app opens Solid Share):
+`PassCard` reproduces the five Apple Wallet layouts — **boarding, coupon, event, store card,
+generic** — chosen from `solidshare:category`, because a boarding pass that looks like a loyalty
+card reads as wrong even when every field is present. The colour comes from the pass where the
+artifact carried one and from the category otherwise. The barcode is rendered off the main thread
+via a bulk `setPixels` (a per-pixel loop was ~78k JNI calls during composition, and it showed), and
+opening a pass boosts screen brightness so a gate scanner can read it.
 
-```
-https://solidshare.app/t#<base64url(JSON)>
-```
+### Refreshing from the issuer
 
-**Bare JSON form** (any QR with this marker):
+A `.pkpass` may carry a PassKit web service URL and an authentication token. `PassRefreshWorker`
+runs on wallet open and every 12 hours, both network-constrained, and for each such ticket issues
+`GET {webServiceUrl}/v1/passes/{passTypeId}/{serialNumber}` with `Authorization: ApplePass <token>`
+and an `If-Modified-Since` from the last refresh. A 200 means a new pass file: the ticket's fields,
+its artifact and its images are all replaced, and the new `Last-Modified` is stored for next time.
+Anything else — 304, an error, no network — leaves the ticket exactly as it was.
 
-```json
-{
-  "solidshare": "ticket",
-  "v": 1,
-  "title": "Coldplay — Music of the Spheres",
-  "category": "EVENT",
-  "token": "c3RhZGl1bS10aWNrZXQ…",
-  "format": "AZTEC",
-  "number": "TKT-0042",
-  "holder": "Erfan Gholami",
-  "issuer": "Ticketmaster",
-  "price": "89.50",
-  "currency": "EUR",
-  "description": "Gate opens 18:00",
-  "event": {
-    "name": "Music of the Spheres Tour",
-    "start": "2026-07-14T19:30:00Z",
-    "end": "2026-07-14T23:00:00Z",
-    "venue": "Johan Cruijff ArenA",
-    "address": "Arena Boulevard 1, Amsterdam"
-  },
-  "seat": { "section": "B12", "row": "F", "number": "27" },
-  "validFrom": "2026-07-14T17:00:00Z",
-  "validThrough": "2026-07-14T23:59:00Z",
-  "issued": "2026-06-01T10:00:00Z"
-}
-```
+This is poll-only. Apple's push channel needs an APNs registration and a server we do not run, and
+polling twice a day is enough for a gate change.
 
-Rules:
+## 4. Offline and failure behaviour
 
-- `title` is required; everything else is optional.
-- `token` is the payload the venue scanner expects; `format` names its symbology (defaults to
-  `QR_CODE` when a token is present). Dates are ISO-8601.
-- Unknown fields are ignored (`v` allows evolution).
-- The link form is `base64url` (no padding required) of the UTF-8 JSON, carried in the URI
-  fragment — it never reaches the solidshare.app server.
-- Parser: `TicketQrCodec` (`data/repo/tickets/TicketQrCodec.kt`). Recognized by the universal
-  scanner (the bottom-bar **+**), the Wallet scanner, and clicked links (App Links, `/t` path).
+The wallet is the feature that most has to work offline — a pass is needed at a gate, and a gate is
+where the signal is worst.
 
-## 5. Importing existing wallet artifacts
+- **Everything renders offline.** Rows come from `cached_entity`; images and artifacts come from
+  `TicketBlobStore`; the barcode is rendered locally from the stored token.
+- **Every write queues.** There is no online-only write path: `queueCreate` mints a **provisional
+  URI**, writes the optimistic row and the blobs under it, and enqueues into `module_outbox_op`.
+  On drain the real resource is created and the provisional row is replaced. Editing a
+  still-queued create rewrites that op instead of adding a second; deleting one drops it.
+- **A shared pass is never cached.** `getSharedTicket` reads a foreign ticket without writing
+  `cached_entity`, so someone else's pass cannot end up in your wallet by accident.
+- **A publicly shared `.pkpass` that refuses an RDF read** (a bare artifact URL answered with 406)
+  falls back to fetching the binary and parsing the pass file, so a public pass link still opens.
+- **Import is off the main thread** — parsing, image extraction and blob writes all run on
+  background dispatchers.
+- **Sharing is online-only**, with the standard `RequiresConnection` affordance.
 
-- **Apple Wallet `.pkpass`** (`PkpassParser`): the file is unzipped, `pass.json` is mapped
-  best-effort (description→title, organizationName→issuer, serialNumber→number, first
-  `barcodes[]` entry→token+format, pass style→category, `relevantDate`→event start,
-  `expirationDate`→valid-until, field labels/values→notes). The **original `.pkpass` bytes are
-  preserved on the pod** as `solidshare:artifact` next to the ticket. Entry points: Wallet →
-  Import pass file, or opening/sharing a `.pkpass` with Solid Share from any app.
-  Signatures are *not* verified — import is transcription, not validation.
-- **Google Wallet save-links** (`GoogleWalletParser`): links of the form
-  `https://pay.google.com/gp/v/save/<JWT>` are recognized when scanned or pasted; the JWT payload
-  is base64-decoded **without signature verification** and the first pass object
-  (`eventTicketObjects`, `flightObjects`, …) is mapped best-effort. "Skinny" JWTs that only
-  reference server-side objects degrade to a draft with the link in the notes.
+## 5. Extension points
 
-Every import lands in the pre-filled ticket form for the user to confirm before anything is
-written to the pod.
+- **A new import source** implements a parser in `data/passimport/`, produces a `TicketDraft`, and
+  enters through the same confirm-then-write path. Add a sniffer case if it is a file type.
+- **A new pass layout**: `PassLayout` in `PassCard.kt`, selected from the category.
+- **A new field**: check [TICKET_VOCAB.md](TICKET_VOCAB.md) first. It is a library change (model
+  plus RDF codec), then the form, the pass back, and the vocabulary table.
+- **`TicketScanContributor`** claims QR payloads, deep links and open-with files, so `ScanRouter`
+  routes them without the scanner knowing tickets exist. **`TicketSharedEntityUi`** contributes the
+  home card, the icon and the shared-ticket routes.
+- **Google Wallet save-links were supported and removed.** The JWT decode was best-effort and
+  unverifiable, "skinny" JWTs carried nothing but a server reference, and the result was a draft
+  with a link in the notes — a feature that looked like an import and was not. Stated here so the
+  absence reads as a decision.
 
-## 6. Sharing
+## 6. Tests
 
-Tickets are ordinary pod resources, so the existing Solid Share sharing pipeline applies
-unchanged: the ticket detail page's share action opens Manage access for the ticket document,
-grants land in WAC/ACP as usual, and the receiver gets the standard notification.
+- `data/passimport/PkpassParserTest`, `BcbpParserTest`, `TicketFileSnifferTest` — the mapping from
+  a real pass file to a draft, boarding-pass barcode decoding, and classification by magic bytes.
+- `data/repo/tickets/TicketsRepositoryOfflineTest` — the queue behaviours that are easy to break: a
+  provisional row appears immediately, drain replaces it with the server one, editing a queued
+  create rewrites rather than duplicates, a stale provisional row is cleaned up.
+- `TicketsRepositoryImagesTest` — images survive the queue, including for a ticket with no pkpass.
+- `SharedTicketRepositoryTest` — a foreign ticket never touches the cache; a copy records
+  `dcterms:source`, which is what makes the "already in your wallet" guard possible.
+- `presentation/wallet/PassCardLogicTest`, `PassVocabularyTest`, `TicketInstantTest`,
+  `WithDerivedEventStartTest` — layout selection, field vocabulary, and the date derivations that
+  decide whether a pass is upcoming or past.
+
+## 7. Specifications
+
+- [schema.org](https://schema.org/Ticket) — `schema:Ticket` and its neighbours; the vocabulary is
+  schema.org first, and every `solidshare:` mint is justified in [TICKET_VOCAB.md](TICKET_VOCAB.md).
+- [Solid type index](https://github.com/solid/type-indexes) — how the tickets container is
+  discovered by any Solid client rather than found at a guessed path.
+- [Apple PassKit](https://developer.apple.com/documentation/walletpasses) — the `.pkpass` package
+  and the web-service refresh protocol. Solid Share reads passes and refreshes them; it does not
+  sign or issue them.
+- [IATA Resolution 792 (BCBP)](https://www.iata.org/en/programs/passenger/common-use/) — the
+  boarding-pass barcode format decoded out of pass tokens.
+- [WAC](https://solidproject.org/TR/wac) / [ACP](https://solidproject.org/TR/acp) — the grants a
+  ticket share writes over the ticket's container.

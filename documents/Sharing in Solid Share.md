@@ -1,5 +1,10 @@
 # Sharing in Solid Share
-**An standard for sharing resources in Solid project**
+**A standard for sharing resources in Solid project**
+
+> *Historical document, part of the [Solid Share documentation set](README.md).* This is the
+> original R&D proposal. The implementation has moved on in several places — §6 of
+> [share.md](share.md) compares the two criterion by criterion. Read this for the reasoning behind
+> the design, and [share.md](share.md) for what the code does today.
 
 **Authors**
 - [Yashar PourMohamad](https://github.com/yasharpm/)

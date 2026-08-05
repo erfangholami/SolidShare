@@ -1,12 +1,17 @@
-# Sharing in SolidShare
+# Sharing
 
-> A high-level reference for how resource sharing works in **SolidShare** (the
+*Part of the [Solid Share documentation set](README.md).*
+
+> A high-level reference for how resource sharing works in **Solid Share** (the
 > Android app) and how the **AndroidSolidServices (ASS)** library structures the
 > sharing engine beneath it.
 >
-> This is the on-ramp. For the exhaustive design history read `SHAREV2.md`; for
-> the original proposal read `Sharing in Solid Share.md`. This document is the
-> map, not the territory.
+> This is the on-ramp — the map, not the territory. Sharing a ticket or a contact
+> as a *thing* rather than a file is the typed layer on top, in
+> [ENTITY_SHARING.md](ENTITY_SHARING.md). The original R&D proposal this grew out
+> of is [Sharing in Solid Share.md](<Sharing in Solid Share.md>), and §6 compares
+> the two. The library's own reference is at
+> [androidsolidservices.erfangholami.com/build/sharing](https://androidsolidservices.erfangholami.com/build/sharing/).
 
 ## Abstract
 
@@ -129,9 +134,10 @@ From a file/folder's actions sheet (or the Share tab), the user opens
 
 ### Receive a share
 
-1. **Scan or tap.** The unified **ScanPage** (CameraX + ML Kit) auto-detects what
-   was scanned: a share link, a profile WebID, or something unrecognized. Tapping a
-   share deep link opens the app directly via HTTPS App Links.
+1. **Scan or tap.** The unified **ScanPage** (CameraX for the preview, zxing-cpp
+   for decoding) auto-detects what was scanned: a share link, a profile WebID, a
+   payload a data module claims, or something unrecognized. Tapping a share deep
+   link opens the app directly via HTTPS App Links.
 2. **Choose account** (deep-link path). A tap routes through **ChooseReceiverDialog**,
    which lists logged-in accounts; picking one *switches the active account* and
    proceeds. (This replaced an older silent auto-add.)
@@ -302,12 +308,20 @@ pair reuses the node. A representative `given_shares.ttl` record:
 
 ```turtle
 <#share-…>
-    rdf:type            solidshare:Share ;
-    solidshare:resource <resourceUri> ;
-    solidshare:receiver <receiver> ;     # WebID, group URI, or foaf:Agent (public)
-    acl:mode            acl:Read , acl:Append ;
-    dcterms:created     "2026-06-04T12:00:00Z"^^xsd:dateTime .
+    rdf:type                solidshare:Share ;
+    solidshare:resource     <resourceUri> ;
+    solidshare:receiver     <receiver> ;     # WebID, group URI, or foaf:Agent (public)
+    acl:mode                acl:Read , acl:Append ;
+    dcterms:created         "2026-06-04T12:00:00Z"^^xsd:dateTime ;
+    solidshare:resourceType <https://schema.org/Ticket> ;   # optional — typed shares only
+    dcterms:title           "Coldplay — Music of the Spheres" .
 ```
+
+The last two are optional and type-open: they say *what kind of thing* a share points at, so the
+Share tab can render "Ticket · Coldplay" instead of a file row and route the tap to a pass view.
+A row without them renders generically, which is how every pre-existing share kept working. The
+same pair travels on the `as:Offer` (as an object description) and, type only, on the deep link.
+[ENTITY_SHARING.md](ENTITY_SHARING.md) covers that layer.
 
 `received_shares.ttl` is symmetric but uses `solidshare:owner` (the resource owner)
 instead of `solidshare:receiver`. Group receivers add a `<groupUri> rdf:type
@@ -497,7 +511,20 @@ algorithm.
 
 ---
 
-## 7. Known limitations & open items
+## 7. Offline behaviour
+
+Sharing is **online-only**, deliberately and in full: creating, changing, revoking, adding a
+received share, scanning and confirming access all require live reads and writes. A grant is a
+WAC/ACP write on a pod, a receiver WebID needs canonicalizing against a live profile, and an offer
+is a POST to the receiver's inbox — none of which can be faked locally, and a share that silently
+did not happen is worse than one that refused.
+
+Every such surface carries the same `RequiresConnection` affordance: disabled with an inline
+explanation, never hidden. The pure string codecs (`parseDeepLink`, `deepLinkFor`, `bareUrlFor`)
+need no gate. The Share tab's stored rows come from the pod index, so with no connection the lists
+show their offline state rather than a stale list. See [OFFLINE.md](OFFLINE.md).
+
+## 8. Known limitations & open items
 
 - **Group sharing has no creation UI.** `GroupReceiver` exists in the model and is
   rendered defensively, but the SolidShare screens only ever create WebID and Public
@@ -522,5 +549,7 @@ algorithm.
 
 ---
 
-*Cross-references: `SHAREV2.md` (full canonical design, ~2500 lines), `SHAREV1.md`
-(the pre-code plan), and `Sharing in Solid Share.md` (the original R&D standard).*
+*Cross-references: [ENTITY_SHARING.md](ENTITY_SHARING.md) for typed shares,
+[NOTIFICATIONS.md](NOTIFICATIONS.md) for the inbox hub, [FILES.md](FILES.md) for
+where sharing is entered from, and [Sharing in Solid Share.md](<Sharing in Solid Share.md>)
+for the original R&D standard.*
