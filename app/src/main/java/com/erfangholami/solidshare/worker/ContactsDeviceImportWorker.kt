@@ -44,13 +44,14 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
     override suspend fun doWork(): Result {
         val webId = inputData.getString(KEY_WEB_ID) ?: return Result.failure()
 
-        setForeground(foregroundInfo(indeterminateText(), 0, 0))
+        setForeground(foregroundInfo(webId, indeterminateText(), 0, 0))
 
         val rawIds = runCatching {
             deviceContactsSource.listImportableRawContactIds(SolidAccounts.ACCOUNT_TYPE)
         }.getOrDefault(emptyList())
         if (rawIds.isEmpty()) {
             postComplete(
+                webId,
                 applicationContext.getString(R.string.contacts_import_complete_title),
                 applicationContext.getString(R.string.contacts_device_import_empty),
                 openContacts = false,
@@ -73,6 +74,7 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
             rawIds.forEachIndexed { index, rawId ->
                 setForeground(
                     foregroundInfo(
+                        webId,
                         applicationContext.getString(
                             R.string.contacts_import_progress,
                             index + 1,
@@ -121,6 +123,7 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
                 summary
             }
             postComplete(
+                webId,
                 applicationContext.getString(R.string.contacts_import_complete_title),
                 completeText,
                 openContacts = duplicates > 0,
@@ -129,7 +132,7 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             val failure = errors.present(e, AppOperation.IMPORT_CONTACTS)
-            postComplete(failure.title, failure.message, openContacts = false)
+            postComplete(webId, failure.title, failure.message, openContacts = false)
             Result.failure()
         }
     }
@@ -148,32 +151,33 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
     private fun indeterminateText(): String =
         applicationContext.getString(R.string.contacts_import_progress, 0, 0)
 
-    private fun postComplete(title: String, text: String, openContacts: Boolean) {
+    private fun postComplete(webId: String, title: String, text: String, openContacts: Boolean) {
         if (!NotificationHelper.canPost(applicationContext)) return
         nm.notify(
-            NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_COMPLETE,
+            NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_COMPLETE, webId),
             NotificationHelper.buildContactsCompleteNotification(
-                applicationContext, title, text, openContacts,
+                applicationContext, title, text, openContacts, webId,
             ),
         )
     }
 
-    private fun foregroundInfo(text: String, current: Int, total: Int): ForegroundInfo {
+    private fun foregroundInfo(webId: String, text: String, current: Int, total: Int): ForegroundInfo {
         val notification = NotificationHelper.buildContactsProgressNotification(
             applicationContext,
             applicationContext.getString(R.string.contacts_device_import_notification_title),
             text,
             current,
             total,
+            webId,
+        )
+        val id = NotificationHelper.idFor(
+            NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS,
+            webId,
         )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(
-                NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
+            ForegroundInfo(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            ForegroundInfo(NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS, notification)
+            ForegroundInfo(id, notification)
         }
     }
 }

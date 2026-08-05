@@ -57,11 +57,11 @@ class NotificationPollingWorker @AssistedInject constructor(
             .filter { it.second.isAfter(threshold) }
         if (fresh.isEmpty()) return
 
-        fresh.forEach { (item, _) -> if (item.kind.isAlertable()) notify(item, accountLabel) }
+        fresh.forEach { (item, _) -> if (item.kind.isAlertable()) notify(webId, item, accountLabel) }
         settingsRepository.setNotificationsLastNotified(webId, fresh.maxOf { it.second }.toString())
     }
 
-    private fun notify(item: NotificationItem, accountLabel: String) {
+    private fun notify(webId: String, item: NotificationItem, accountLabel: String) {
         if (!NotificationHelper.canPost(applicationContext)) return
         val title = applicationContext.getString(
             titleResFor(item.kind),
@@ -69,13 +69,14 @@ class NotificationPollingWorker @AssistedInject constructor(
         )
         nm.notify(
             item.id,
-            NotificationHelper.NOTIFICATION_ID_SHARING,
+            NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_SHARING, webId),
             NotificationHelper.buildSharingNotification(
                 context = applicationContext,
                 title = title,
                 text = resourceName(item.resourceUri),
                 account = accountLabel,
                 highPriority = item.kind == NotificationKind.ACCESS_REQUEST,
+                webId = webId,
             ),
         )
     }

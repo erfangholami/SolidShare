@@ -45,7 +45,7 @@ class DownloadWorker @AssistedInject constructor(
         val fileName = inputData.getString(KEY_FILE_NAME) ?: return Result.failure()
         val mimeType = inputData.getString(KEY_MIME_TYPE) ?: OCTET_STREAM
 
-        setForeground(buildForegroundInfo(fileName, -1))
+        setForeground(buildForegroundInfo(webId, fileName, -1))
 
         return try {
             val uri = fileRepository.downloadToDevice(
@@ -55,18 +55,21 @@ class DownloadWorker @AssistedInject constructor(
                 mimeType = mimeType,
                 onProgress = { pct ->
                     post(
-                        NotificationHelper.NOTIFICATION_ID_DOWNLOAD_PROGRESS,
-                        NotificationHelper.buildProgressNotification(
-                            applicationContext, "Downloading $fileName", pct,
+                        NotificationHelper.idFor(
+                            NotificationHelper.NOTIFICATION_ID_DOWNLOAD_PROGRESS,
+                            webId,
+                        ),
+                        NotificationHelper.buildDownloadProgressNotification(
+                            applicationContext, fileName, pct, webId,
                         ),
                     )
                 },
             )
 
             post(
-                NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE,
+                NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE, webId),
                 NotificationHelper.buildDownloadCompleteNotification(
-                    applicationContext, fileName, uri, mimeType,
+                    applicationContext, fileName, uri, mimeType, webId,
                 ),
             )
 
@@ -75,9 +78,9 @@ class DownloadWorker @AssistedInject constructor(
             e.rethrowIfCancellation()
             val failure = errors.present(e, AppOperation.DOWNLOAD_FILE, fileName, fileUrl)
             post(
-                NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE,
+                NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE, webId),
                 NotificationHelper.buildErrorNotification(
-                    applicationContext, failure.title, failure.message,
+                    applicationContext, failure.title, failure.message, webId,
                 ),
             )
             Result.failure(workDataOf("error" to failure.summary))
@@ -88,18 +91,15 @@ class DownloadWorker @AssistedInject constructor(
         if (NotificationHelper.canPost(applicationContext)) nm.notify(id, notification)
     }
 
-    private fun buildForegroundInfo(fileName: String, progress: Int): ForegroundInfo {
-        val notification = NotificationHelper.buildProgressNotification(
-            applicationContext, "Downloading $fileName", progress,
+    private fun buildForegroundInfo(webId: String, fileName: String, progress: Int): ForegroundInfo {
+        val notification = NotificationHelper.buildDownloadProgressNotification(
+            applicationContext, fileName, progress, webId,
         )
+        val id = NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_DOWNLOAD_PROGRESS, webId)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(
-                NotificationHelper.NOTIFICATION_ID_DOWNLOAD_PROGRESS,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
+            ForegroundInfo(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            ForegroundInfo(NotificationHelper.NOTIFICATION_ID_DOWNLOAD_PROGRESS, notification)
+            ForegroundInfo(id, notification)
         }
     }
 }

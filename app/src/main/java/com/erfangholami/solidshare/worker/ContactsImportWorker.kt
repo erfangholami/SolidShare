@@ -45,7 +45,7 @@ class ContactsImportWorker @AssistedInject constructor(
         val sourceUri = inputData.getString(KEY_SOURCE_URI)?.let(Uri::parse)
             ?: return Result.failure()
 
-        setForeground(foregroundInfo(indeterminateText(), 0, 0))
+        setForeground(foregroundInfo(webId, indeterminateText(), 0, 0))
 
         val text = runCatching {
             applicationContext.contentResolver.openInputStream(sourceUri)?.use {
@@ -55,6 +55,7 @@ class ContactsImportWorker @AssistedInject constructor(
         val cards = text?.let { runCatching { VCardReader.parse(it) }.getOrNull() }.orEmpty()
         if (cards.isEmpty()) {
             postComplete(
+                webId,
                 applicationContext.getString(R.string.contacts_import_complete_title),
                 applicationContext.getString(R.string.contacts_vcf_invalid),
                 openContacts = false,
@@ -96,6 +97,7 @@ class ContactsImportWorker @AssistedInject constructor(
                 }
                 setForeground(
                     foregroundInfo(
+                        webId,
                         applicationContext.getString(
                             R.string.contacts_import_progress,
                             index + 1,
@@ -119,6 +121,7 @@ class ContactsImportWorker @AssistedInject constructor(
                 summary
             }
             postComplete(
+                webId,
                 applicationContext.getString(R.string.contacts_import_complete_title),
                 completeText,
                 openContacts = duplicates > 0,
@@ -127,7 +130,7 @@ class ContactsImportWorker @AssistedInject constructor(
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             val failure = errors.present(e, AppOperation.IMPORT_CONTACTS)
-            postComplete(failure.title, failure.message, openContacts = false)
+            postComplete(webId, failure.title, failure.message, openContacts = false)
             Result.failure()
         }
     }
@@ -142,32 +145,33 @@ class ContactsImportWorker @AssistedInject constructor(
     private fun indeterminateText(): String =
         applicationContext.getString(R.string.contacts_import_progress, 0, 0)
 
-    private fun postComplete(title: String, text: String, openContacts: Boolean) {
+    private fun postComplete(webId: String, title: String, text: String, openContacts: Boolean) {
         if (!NotificationHelper.canPost(applicationContext)) return
         nm.notify(
-            NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_COMPLETE,
+            NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_COMPLETE, webId),
             NotificationHelper.buildContactsCompleteNotification(
-                applicationContext, title, text, openContacts,
+                applicationContext, title, text, openContacts, webId,
             ),
         )
     }
 
-    private fun foregroundInfo(text: String, current: Int, total: Int): ForegroundInfo {
+    private fun foregroundInfo(webId: String, text: String, current: Int, total: Int): ForegroundInfo {
         val notification = NotificationHelper.buildContactsProgressNotification(
             applicationContext,
             applicationContext.getString(R.string.contacts_import_notification_title),
             text,
             current,
             total,
+            webId,
+        )
+        val id = NotificationHelper.idFor(
+            NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS,
+            webId,
         )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(
-                NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
+            ForegroundInfo(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            ForegroundInfo(NotificationHelper.NOTIFICATION_ID_CONTACTS_IMPORT_PROGRESS, notification)
+            ForegroundInfo(id, notification)
         }
     }
 }

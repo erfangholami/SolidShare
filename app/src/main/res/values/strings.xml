@@ -354,6 +354,12 @@
     <string name="notifications_reject_reason_prompt">Optionally send %1$s a reason.</string>
     <string name="notifications_summary_quoted">\"%1$s\"</string>
 
+    <!-- Transfer notifications -->
+    <string name="transfer_downloading">Downloading %1$s</string>
+    <string name="transfer_uploading">Uploading…</string>
+    <string name="transfer_download_complete">Download complete</string>
+    <string name="transfer_upload_complete">Upload complete</string>
+
     <!-- Sharing notices -->
     <string name="added_to_shares">Added to your shares</string>
     <string name="access_request_sent">Access request sent</string>

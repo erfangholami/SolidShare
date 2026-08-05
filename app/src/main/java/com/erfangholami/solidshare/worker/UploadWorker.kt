@@ -47,14 +47,14 @@ class UploadWorker @AssistedInject constructor(
         val fileName = inputData.getString(KEY_FILE_NAME) ?: return Result.failure()
         val mimeType = inputData.getString(KEY_MIME_TYPE) ?: OCTET_STREAM
 
-        setForeground(buildForegroundInfo(fileName, 0))
+        setForeground(buildForegroundInfo(webId, fileName, 0))
 
         return try {
-            updateProgress(fileName, 10)
+            updateProgress(webId, fileName, 10)
             applicationContext.contentResolver
                 .openInputStream(fileUriStr.toUri())
                 ?.use { stream ->
-                    updateProgress(fileName, 50)
+                    updateProgress(webId, fileName, 50)
                     fileRepository.uploadFile(
                         webId = webId,
                         containerUrl = containerUrl,
@@ -62,14 +62,14 @@ class UploadWorker @AssistedInject constructor(
                         mimeType = mimeType,
                         inputStream = stream,
                         onProgress = { pct ->
-                            updateProgress(fileName, 50 + pct / 2)
+                            updateProgress(webId, fileName, 50 + pct / 2)
                         },
                     )
                 } ?: return Result.failure(workDataOf("error" to "Cannot open file"))
 
             post(
-                NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE,
-                NotificationHelper.buildUploadCompleteNotification(applicationContext, fileName),
+                NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE, webId),
+                NotificationHelper.buildUploadCompleteNotification(applicationContext, fileName, webId),
             )
 
             Result.success()
@@ -77,19 +77,21 @@ class UploadWorker @AssistedInject constructor(
             e.rethrowIfCancellation()
             val failure = errors.present(e, AppOperation.UPLOAD_FILE, fileName)
             post(
-                NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE,
+                NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_UPLOAD_COMPLETE, webId),
                 NotificationHelper.buildErrorNotification(
-                    applicationContext, failure.title, failure.message,
+                    applicationContext, failure.title, failure.message, webId,
                 ),
             )
             Result.failure(workDataOf("error" to failure.summary))
         }
     }
 
-    private fun updateProgress(fileName: String, pct: Int) {
+    private fun updateProgress(webId: String, fileName: String, pct: Int) {
         post(
-            NotificationHelper.NOTIFICATION_ID_UPLOAD_PROGRESS,
-            NotificationHelper.buildUploadProgressNotification(applicationContext, fileName, pct),
+            NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_UPLOAD_PROGRESS, webId),
+            NotificationHelper.buildUploadProgressNotification(
+                applicationContext, fileName, pct, webId,
+            ),
         )
     }
 
@@ -97,18 +99,15 @@ class UploadWorker @AssistedInject constructor(
         if (NotificationHelper.canPost(applicationContext)) nm.notify(id, notification)
     }
 
-    private fun buildForegroundInfo(fileName: String, progress: Int): ForegroundInfo {
+    private fun buildForegroundInfo(webId: String, fileName: String, progress: Int): ForegroundInfo {
         val notification = NotificationHelper.buildUploadProgressNotification(
-            applicationContext, fileName, progress,
+            applicationContext, fileName, progress, webId,
         )
+        val id = NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_UPLOAD_PROGRESS, webId)
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(
-                NotificationHelper.NOTIFICATION_ID_UPLOAD_PROGRESS,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
+            ForegroundInfo(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            ForegroundInfo(NotificationHelper.NOTIFICATION_ID_UPLOAD_PROGRESS, notification)
+            ForegroundInfo(id, notification)
         }
     }
 }

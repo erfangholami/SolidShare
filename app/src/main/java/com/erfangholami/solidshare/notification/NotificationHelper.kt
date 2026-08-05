@@ -44,6 +44,48 @@ object NotificationHelper {
     const val NOTIFICATION_ID_CONTACTS_EXPORT_PROGRESS = 3003
     const val NOTIFICATION_ID_CONTACTS_EXPORT_COMPLETE = 3004
 
+    private const val ID_ACCOUNT_STRIDE = 100_000
+
+    /**
+     * A notification id unique to [base] and [webId].
+     *
+     * Ids used to be plain constants, so two accounts running the same job — importing contacts
+     * from two pods, say — posted to the same id and each replaced the other's notification, with
+     * their progress bars interleaving. Every base gets its own block of [ID_ACCOUNT_STRIDE] ids
+     * and the account picks a slot inside it, so the two coexist.
+     */
+    fun idFor(base: Int, webId: String?): Int =
+        if (webId == null) base else base * ID_ACCOUNT_STRIDE + webId.hashCode().mod(ID_ACCOUNT_STRIDE)
+
+    /**
+     * Short, recognisable form of [webId] for the notification's sub-text.
+     *
+     * A WebID is a URL, and the part that identifies the person sits in the host for some pod
+     * servers (`alice.solidcommunity.net`) and in the path for others (`pod.example/alice`), so
+     * both are kept and the boilerplate `/profile/card#me` tail is dropped.
+     */
+    fun accountLabel(webId: String?): String? {
+        if (webId.isNullOrBlank()) return null
+        val withoutScheme = webId.substringAfter("://", webId).substringBefore('#')
+        val parts = withoutScheme.trim('/').split('/')
+        val host = parts.firstOrNull()?.takeIf { it.isNotBlank() } ?: return webId
+        val segment = parts.drop(1).firstOrNull { it.isNotBlank() && it != "profile" }
+        return if (segment == null) host else "$host/$segment"
+    }
+
+    /**
+     * Names the account a notification belongs to and bundles it with that account's others.
+     *
+     * The sub-text is the only place the account is visible once the notification is collapsed in
+     * the shade, and it is what tells two concurrent jobs apart at a glance.
+     */
+    private fun NotificationCompat.Builder.attributeToAccount(
+        webId: String?,
+    ): NotificationCompat.Builder = apply {
+        accountLabel(webId)?.let { setSubText(it) }
+        webId?.takeIf { it.isNotBlank() }?.let { setGroup(it) }
+    }
+
     private const val CONTACTS_CONTENT_REQUEST_CODE = 3100
 
     private const val SHARING_CONTENT_REQUEST_CODE = 2100
@@ -111,11 +153,13 @@ object NotificationHelper {
         text: String,
         current: Int,
         total: Int,
+        webId: String? = null,
     ): Notification {
         val indeterminate = total <= 0
         return NotificationCompat.Builder(context, CHANNEL_CONTACTS_PROGRESS)
             .setContentTitle(title)
             .setContentText(text)
+            .attributeToAccount(webId)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .setProgress(if (indeterminate) 0 else total, if (indeterminate) 0 else current, indeterminate)
@@ -130,11 +174,16 @@ object NotificationHelper {
         title: String,
         text: String,
         openContacts: Boolean,
+        webId: String? = null,
     ): Notification {
+        val account = accountLabel(webId)
+        val style = NotificationCompat.BigTextStyle().bigText(text)
+        if (account != null) style.setSummaryText(account)
         val builder = NotificationCompat.Builder(context, CHANNEL_CONTACTS)
             .setContentTitle(title)
             .setContentText(text)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setStyle(style)
+            .attributeToAccount(webId)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .setAutoCancel(true)
@@ -161,6 +210,7 @@ object NotificationHelper {
         text: String,
         account: String,
         highPriority: Boolean,
+        webId: String? = null,
     ): Notification {
         val intent = Intent(context, MainActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
@@ -186,6 +236,7 @@ object NotificationHelper {
             .setPriority(
                 if (highPriority) NotificationCompat.PRIORITY_HIGH else NotificationCompat.PRIORITY_DEFAULT,
             )
+            .apply { webId?.takeIf { it.isNotBlank() }?.let { setGroup(it) } }
             .build()
     }
 
@@ -194,20 +245,22 @@ object NotificationHelper {
         ContextCompat.getDrawable(context, R.drawable.logo)?.toBitmap(width = 128, height = 128)
     }.getOrNull()
 
-    fun buildProgressNotification(
+    fun buildDownloadProgressNotification(
         context: Context,
-        title: String,
+        fileName: String,
         progress: Int,
+        webId: String? = null,
     ): Notification {
         val indeterminate = progress < 0
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle(title)
+            .setContentTitle(context.getString(R.string.transfer_downloading, fileName))
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .setProgress(100, if (indeterminate) 0 else progress, indeterminate)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
+            .attributeToAccount(webId)
             .build()
     }
 
@@ -215,10 +268,11 @@ object NotificationHelper {
         context: Context,
         fileName: String,
         progress: Int,
+        webId: String? = null,
     ): Notification {
         val indeterminate = progress < 0
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Uploading…")
+            .setContentTitle(context.getString(R.string.transfer_uploading))
             .setContentText(fileName)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
@@ -226,6 +280,7 @@ object NotificationHelper {
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
+            .attributeToAccount(webId)
             .build()
     }
 
@@ -234,6 +289,7 @@ object NotificationHelper {
         fileName: String,
         fileUri: Uri,
         mimeType: String,
+        webId: String? = null,
     ): Notification {
         val openIntent = Intent(Intent.ACTION_VIEW).apply {
             setDataAndType(fileUri, mimeType)
@@ -246,25 +302,28 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Download complete")
+            .setContentTitle(context.getString(R.string.transfer_download_complete))
             .setContentText(fileName)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .setAutoCancel(true)
             .setContentIntent(pending)
+            .attributeToAccount(webId)
             .build()
     }
 
     fun buildUploadCompleteNotification(
         context: Context,
         fileName: String,
+        webId: String? = null,
     ): Notification {
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
-            .setContentTitle("Upload complete")
+            .setContentTitle(context.getString(R.string.transfer_upload_complete))
             .setContentText(fileName)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .setAutoCancel(true)
+            .attributeToAccount(webId)
             .build()
     }
 
@@ -272,6 +331,7 @@ object NotificationHelper {
         context: Context,
         title: String,
         message: String,
+        webId: String? = null,
     ): Notification {
         return NotificationCompat.Builder(context, NOTIFICATION_CHANNEL_ID)
             .setContentTitle(title)
@@ -279,6 +339,7 @@ object NotificationHelper {
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(BRAND_COLOR)
             .setAutoCancel(true)
+            .attributeToAccount(webId)
             .build()
     }
 }

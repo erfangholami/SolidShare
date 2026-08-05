@@ -41,7 +41,7 @@ class ContactsExportWorker @AssistedInject constructor(
         val webId = inputData.getString(KEY_WEB_ID) ?: return Result.failure()
         val destUri = inputData.getString(KEY_DEST_URI)?.let(Uri::parse) ?: return Result.failure()
 
-        setForeground(foregroundInfo(0, 0))
+        setForeground(foregroundInfo(webId, 0, 0))
 
         return try {
             val overview = contactsRepository.getOverview(webId)
@@ -55,7 +55,7 @@ class ContactsExportWorker @AssistedInject constructor(
                     runCatching { contactsRepository.getContactPhoto(webId, uri) }.getOrNull()
                 }
                 withPhotos.add(contact to photo)
-                setForeground(foregroundInfo(index + 1, contacts.size))
+                setForeground(foregroundInfo(webId, index + 1, contacts.size))
             }
             val vcard = VCardWriter.write(withPhotos)
             val written = applicationContext.contentResolver.openOutputStream(destUri)?.use {
@@ -64,6 +64,7 @@ class ContactsExportWorker @AssistedInject constructor(
             } ?: false
             if (!written) error("no stream")
             postComplete(
+                webId,
                 applicationContext.getString(R.string.contacts_export_complete_title),
                 applicationContext.getString(R.string.contacts_export_saved),
             )
@@ -71,37 +72,38 @@ class ContactsExportWorker @AssistedInject constructor(
         } catch (e: Exception) {
             e.rethrowIfCancellation()
             val failure = errors.present(e, AppOperation.EXPORT_CONTACTS)
-            postComplete(failure.title, failure.message)
+            postComplete(webId, failure.title, failure.message)
             Result.failure()
         }
     }
 
-    private fun postComplete(title: String, text: String) {
+    private fun postComplete(webId: String, title: String, text: String) {
         if (!NotificationHelper.canPost(applicationContext)) return
         nm.notify(
-            NotificationHelper.NOTIFICATION_ID_CONTACTS_EXPORT_COMPLETE,
+            NotificationHelper.idFor(NotificationHelper.NOTIFICATION_ID_CONTACTS_EXPORT_COMPLETE, webId),
             NotificationHelper.buildContactsCompleteNotification(
-                applicationContext, title, text, openContacts = false,
+                applicationContext, title, text, openContacts = false, webId,
             ),
         )
     }
 
-    private fun foregroundInfo(current: Int, total: Int): ForegroundInfo {
+    private fun foregroundInfo(webId: String, current: Int, total: Int): ForegroundInfo {
         val notification = NotificationHelper.buildContactsProgressNotification(
             applicationContext,
             applicationContext.getString(R.string.contacts_export_notification_title),
             applicationContext.getString(R.string.contacts_export_progress, current, total),
             current,
             total,
+            webId,
+        )
+        val id = NotificationHelper.idFor(
+            NotificationHelper.NOTIFICATION_ID_CONTACTS_EXPORT_PROGRESS,
+            webId,
         )
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            ForegroundInfo(
-                NotificationHelper.NOTIFICATION_ID_CONTACTS_EXPORT_PROGRESS,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC,
-            )
+            ForegroundInfo(id, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
         } else {
-            ForegroundInfo(NotificationHelper.NOTIFICATION_ID_CONTACTS_EXPORT_PROGRESS, notification)
+            ForegroundInfo(id, notification)
         }
     }
 }
