@@ -11,7 +11,19 @@ on:
         required: true
 
 jobs:
+  # The quality gate, shared with every push and pull request. It runs against the tag being
+  # released, and the build job below cannot start until it passes — a release is never the first
+  # time the suite has run on this tree, and never publishes past a red one.
+  verify:
+    uses: ./.github/workflows/verify.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ github.event.inputs.tag || github.ref }}
+    secrets: inherit
+
   build-and-release:
+    needs: verify
     runs-on: ubuntu-latest
     permissions:
       contents: write

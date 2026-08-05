@@ -1,0 +1,120 @@
+name: Verify
+
+# The quality gate, in one place. It runs on every push and pull request, and the Release workflow
+# calls it before it builds anything — so nothing is ever published that has not been through it.
+#
+# What it checks:
+#   * both flavours compile, because `gms` and `foss` bind different telemetry implementations and
+#     compiling only one is how the other breaks;
+#   * the unit suite, which includes the architecture rules (layering, no raw throwable messages,
+#     no library error types above the data layer, no comments in production code) — those are the
+#     style checks that matter here, and they have shrink-only baselines, so a regression fails;
+#   * Android Lint on the release variants, which is the shape of check a linter would otherwise
+#     do by hand.
+#
+# Tag pushes are not listed: `branches` already excludes them, and Release calls this workflow for
+# the tag itself, so a release verifies exactly once.
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Ref to verify. Defaults to the calling ref.'
+        required: false
+        type: string
+
+# Pushing three times in a minute should leave one run standing, not three. A release run is
+# grouped by its own ref, so it is never cancelled by branch activity.
+concurrency:
+  group: verify-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    steps:
+      # A release run verifies the tag it is about to publish, not whatever the default branch
+      # holds. fetch-depth: 0 because the version is resolved with `git describe`.
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+          fetch-depth: 0
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      # The gms flavour cannot even configure without this file, and it is gitignored. It is
+      # present for our own pushes and releases, and absent for a pull request from a fork — so the
+      # gms half is skipped there rather than failing a contributor's PR for a secret they cannot
+      # have. The foss half always runs, and it is the one F-Droid builds.
+      - name: Restore Firebase config for the gms flavour
+        id: gms
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -z "$GOOGLE_SERVICES_JSON" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No GOOGLE_SERVICES_JSON available — verifying the foss flavour only."
+            exit 0
+          fi
+          echo "$GOOGLE_SERVICES_JSON" | base64 --decode > app/src/gms/google-services.json
+          python3 -c "import json,sys; json.load(open('app/src/gms/google-services.json'))" \
+            || { echo "::error::GOOGLE_SERVICES_JSON did not decode to valid JSON"; exit 1; }
+          echo "available=true" >> "$GITHUB_OUTPUT"
+
+      - name: Report the version this run resolves to
+        run: |
+          chmod +x gradlew
+          ./gradlew -q :app:printVersion \
+            -Dorg.gradle.java.installations.auto-detect=false \
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+
+      # Includes ArchitectureTest: the layering, error-handling and comment rules with shrink-only
+      # baselines. A baseline that grows fails here.
+      - name: Unit tests — foss
+        run: |
+          ./gradlew :app:testFossDebugUnitTest \
+            -Dorg.gradle.java.installations.auto-detect=false \
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+
+      - name: Unit tests — gms
+        if: steps.gms.outputs.available == 'true'
+        run: |
+          ./gradlew :app:testGmsDebugUnitTest \
+            -Dorg.gradle.java.installations.auto-detect=false \
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+
+      - name: Lint — foss release
+        run: |
+          ./gradlew :app:lintFossRelease \
+            -Dorg.gradle.java.installations.auto-detect=false \
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+
+      - name: Lint — gms release
+        if: steps.gms.outputs.available == 'true'
+        run: |
+          ./gradlew :app:lintGmsRelease \
+            -Dorg.gradle.java.installations.auto-detect=false \
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+
+      # Reports are only interesting when something failed, and a failed run is exactly when you
+      # cannot reproduce it locally.
+      - name: Upload reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-reports
+          path: |
+            app/build/reports/tests/
+            app/build/reports/lint-results-*.html
+            app/build/reports/lint-results-*.txt
+          retention-days: 14
+          if-no-files-found: ignore

@@ -42,12 +42,11 @@ makes the feature pages read as arbitrary. After that, any feature page stands a
 
 ## Process
 
-| # | Page | Read it for |
-|---|---|---|
-| 14 | [TESTING.md](TESTING.md) | What the suite pins and how to run it — the architecture rules with shrink-only baselines, the stateful fake pod, and the Robolectric/Room/jacoco gotchas that waste an afternoon each |
-| 15 | [PUBLISHING.md](PUBLISHING.md) | Shipping to Google Play and F-Droid: the two distributions, the version-from-source rule, and the store checklists. Working document — tick as things land |
-| 16 | [MODULARIZATION_PLAN.md](MODULARIZATION_PLAN.md) | The record of the plan that produced the current structure across both repos, phase by phase, with what actually landed. History, not instructions |
-| 17 | [FEATURE_DOC_TEMPLATE.md](FEATURE_DOC_TEMPLATE.md) | The seven sections every feature page above follows. Start a new page by copying it |
+| #  | Page                                               | Read it for                                                                                                                                                                            |
+|----|----------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 14 | [TESTING.md](TESTING.md)                           | What the suite pins and how to run it — the architecture rules with shrink-only baselines, the stateful fake pod, and the Robolectric/Room/jacoco gotchas that waste an afternoon each |
+| 15 | [MODULARIZATION_PLAN.md](MODULARIZATION_PLAN.md)   | The record of the plan that produced the current structure across both repos, phase by phase, with what actually landed. History, not instructions                                     |
+| 16 | [FEATURE_DOC_TEMPLATE.md](FEATURE_DOC_TEMPLATE.md) | The seven sections every feature page above follows. Start a new page by copying it                                                                                                    |
 
 ## Conventions
 

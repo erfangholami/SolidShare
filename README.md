@@ -194,7 +194,6 @@ page stands alone.
 | 11 | [Data modules](documents/DATA_MODULES.md) | The framework the last two are built on, and what adding a third actually costs |
 | 12 | [Ticket vocabulary](documents/TICKET_VOCAB.md) | The normative term dictionary for a ticket on a pod, and why each minted term exists |
 | 13 | [Testing](documents/TESTING.md) | What the suite pins, how to run it, and the gotchas that cost an afternoon each |
-| 14 | [Publishing](documents/PUBLISHING.md) | Shipping to Google Play and F-Droid, and the version-from-source rule behind it |
 
 The full index — including the original sharing R&D standard and the modularization record — is in
 [documents/README.md](documents/README.md). The library that talks to the pod documents itself
@@ -305,9 +304,9 @@ root, which must exist for any Gradle task:
 what a checkout resolves to with `./gradlew -q :app:printVersion`, and override it with
 `-PappVersionName=0.4.0` when building from a source archive that carries no git metadata.
 
-Pushing a `v` tag is therefore the whole publish step: CI builds both flavours, gates the FOSS APK
-for proprietary code, and attaches the artifacts to a GitHub release. The full procedure is in
-[documents/PUBLISHING.md](documents/PUBLISHING.md).
+Pushing a `v` tag is therefore the whole publish step. The `Release` workflow runs the same
+verification as every pull request, builds both flavours, checks that the FOSS APK carries no
+proprietary code, and attaches the artifacts to a GitHub release.
 
 ## Project Structure
 
@@ -404,7 +403,8 @@ Contributions are welcome! The project is open source under the MIT License.
 3. Read the [page for the feature you are changing](documents/README.md) — each one names the seams
    a change is expected to use, and the decisions it should not quietly reverse
 4. Make your changes, and update that page if the behaviour it describes moved
-5. Run `./gradlew compileFossDebugKotlin` and `./gradlew testFossDebugUnitTest testGmsDebugUnitTest`
+5. Run `./gradlew testFossDebugUnitTest lintFossRelease` — the same checks CI runs on your pull
+   request, and the ones a release has to pass before it can publish
 6. Submit a pull request
 
 ## License
