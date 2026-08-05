@@ -6,7 +6,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.Share
@@ -48,7 +48,7 @@ enum class ResourceAction(
     MAKE_OFFLINE(R.string.make_available_offline, Icons.Outlined.DownloadForOffline),
     REMOVE_OFFLINE(R.string.remove_offline_copy, Icons.Outlined.CloudOff),
     COPY_LINK(R.string.copy_link, Icons.Filled.Link),
-    OPEN_IN(R.string.open_in, Icons.AutoMirrored.Filled.OpenInNew),
+    SEND_COPY(R.string.send_a_copy, Icons.AutoMirrored.Filled.Send),
     INFO(R.string.info, Icons.Outlined.Info),
     SHOW_SHARE_LINK(R.string.show_share_link, Icons.Outlined.QrCodeScanner),
     OPEN_IN_CONTAINER(R.string.open_in_container, Icons.Outlined.FolderOpen),
@@ -75,7 +75,7 @@ object ResourceActions {
                 ResourceAction.DOWNLOAD,
                 ResourceAction.MAKE_OFFLINE,
                 ResourceAction.COPY_LINK,
-                ResourceAction.OPEN_IN,
+                ResourceAction.SEND_COPY,
                 ResourceAction.INFO,
                 ResourceAction.DELETE,
             )
@@ -85,7 +85,7 @@ object ResourceActions {
         buildList {
             if (!isContainer) add(ResourceAction.DOWNLOAD)
             add(ResourceAction.COPY_LINK)
-            if (!isContainer) add(ResourceAction.OPEN_IN)
+            if (!isContainer) add(ResourceAction.SEND_COPY)
             add(ResourceAction.INFO)
             if (canEdit) add(ResourceAction.DELETE)
         }
@@ -102,7 +102,6 @@ object ResourceActions {
             add(ResourceAction.RESHARE)
             if (!isContainer) add(ResourceAction.DOWNLOAD)
             add(ResourceAction.COPY_LINK)
-            if (!isContainer) add(ResourceAction.OPEN_IN)
             add(ResourceAction.INFO)
             if (canEdit) add(ResourceAction.DELETE)
         }

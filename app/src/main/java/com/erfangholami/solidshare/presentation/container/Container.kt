@@ -2,6 +2,7 @@ package com.erfangholami.solidshare.presentation.container
 
 import android.Manifest
 import android.content.ActivityNotFoundException
+import android.content.ClipData
 import android.content.Intent
 import android.os.Build
 import androidx.compose.foundation.layout.Box
@@ -71,10 +72,10 @@ fun Container(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val openWithChooser = stringResource(R.string.open_with_chooser)
+    val sendCopyChooser = stringResource(R.string.send_a_copy_chooser)
     val noAppMsg = stringResource(R.string.no_app_to_open)
     val clipboard = LocalClipboard.current
     val linkCopiedMsg = stringResource(R.string.link_copied)
-    val openInUnavailableMsg = stringResource(R.string.open_in_unavailable)
 
     var showDeleteResourceDialog by rememberSaveable { mutableStateOf(false) }
     var shareItemUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -97,8 +98,11 @@ fun Container(
                         "${context.packageName}.provider",
                         event.file,
                     )
+                    val type = event.mimeType
+                        .takeIf { it.isNotBlank() && it != "application/octet-stream" }
+                        ?: "*/*"
                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                        setDataAndType(uri, event.mimeType)
+                        setDataAndType(uri, type)
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     try {
@@ -107,6 +111,28 @@ fun Container(
                         scope.launch {
                             snackbarHostState.showSnackbar(noAppMsg)
                         }
+                    }
+                }
+
+                is ContainerViewModel.FileOpenEvent.SendCopy -> {
+                    val uri = FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.provider",
+                        event.file,
+                    )
+                    val type = event.mimeType
+                        .takeIf { it.isNotBlank() && it != "application/octet-stream" }
+                        ?: "*/*"
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        setDataAndType(uri, type)
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        clipData = ClipData.newRawUri(event.file.name, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    try {
+                        context.startActivity(Intent.createChooser(intent, sendCopyChooser))
+                    } catch (_: ActivityNotFoundException) {
+                        scope.launch { snackbarHostState.showSnackbar(noAppMsg) }
                     }
                 }
 
@@ -142,7 +168,7 @@ fun Container(
 
     val content = when (val state = uiState) {
         is ContainerViewModel.UiState.Loading -> ContainerContent.Loading
-        is ContainerViewModel.UiState.Error -> ContainerContent.Error(state.message)
+        is ContainerViewModel.UiState.Error -> ContainerContent.Error(state.error)
         is ContainerViewModel.UiState.Success -> ContainerContent.Items(state.items)
     }
 
@@ -246,8 +272,7 @@ fun Container(
                             snackbarHostState.showSnackbar(linkCopiedMsg)
                         }
 
-                        ResourceAction.OPEN_IN ->
-                            scope.launch { snackbarHostState.showSnackbar(openInUnavailableMsg) }
+                        ResourceAction.SEND_COPY -> viewModel.onSendCopy(actionItem)
 
                         ResourceAction.INFO -> onResourceInfo(actionItem)
                         ResourceAction.DELETE -> showDeleteResourceDialog = true

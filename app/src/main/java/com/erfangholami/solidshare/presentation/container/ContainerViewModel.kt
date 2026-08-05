@@ -70,6 +70,14 @@ class ContainerViewModel @Inject constructor(
 
     sealed class FileOpenEvent {
         data class OpenFile(val file: File, val mimeType: String) : FileOpenEvent()
+        /**
+         * A downloaded copy to hand to another app through the system share sheet.
+         *
+         * The receiver is given a FileProvider `content://` URI as both `EXTRA_STREAM` and
+         * `clipData` — some targets read the read-permission grant from the clip rather than the
+         * extra, and get a SecurityException without it.
+         */
+        data class SendCopy(val file: File, val mimeType: String) : FileOpenEvent()
         data class Error(val message: String) : FileOpenEvent()
     }
 
@@ -196,7 +204,18 @@ class ContainerViewModel @Inject constructor(
             operation,
         ).summary
 
-    fun onFileClick(item: ContainerItem) {
+    fun onFileClick(item: ContainerItem) =
+        downloadThen(item, AppOperation.OPEN_FILE, FileOpenEvent::OpenFile)
+
+    /** Exports a copy so another app can receive it — the system share sheet, not a viewer. */
+    fun onSendCopy(item: ContainerItem) =
+        downloadThen(item, AppOperation.SEND_FILE_COPY, FileOpenEvent::SendCopy)
+
+    private fun downloadThen(
+        item: ContainerItem,
+        operation: AppOperation,
+        event: (File, String) -> FileOpenEvent,
+    ) {
         if (item.isContainer || _screenState.value.isDownloading) return
         viewModelScope.launch {
             _screenState.update { it.copy(isDownloading = true) }
@@ -204,20 +223,18 @@ class ContainerViewModel @Inject constructor(
                 val webId = _activeWebId.value ?: run {
                     _fileOpenEvent.emit(
                         FileOpenEvent.Error(
-                            errors.present(AppError.NoActiveAccount, AppOperation.OPEN_FILE).summary,
+                            errors.present(AppError.NoActiveAccount, operation).summary,
                         ),
                     )
                     return@launch
                 }
                 val downloaded = fileRepository.downloadFile(webId, item.identifier)
-                _fileOpenEvent.emit(
-                    FileOpenEvent.OpenFile(File(downloaded.path), downloaded.mimeType),
-                )
+                _fileOpenEvent.emit(event(File(downloaded.path), downloaded.mimeType))
             } catch (e: Exception) {
                 e.rethrowIfCancellation()
                 _fileOpenEvent.emit(
                     FileOpenEvent.Error(
-                        errors.message(e, AppOperation.OPEN_FILE, item.name, item.identifier),
+                        errors.message(e, operation, item.name, item.identifier),
                     ),
                 )
             } finally {

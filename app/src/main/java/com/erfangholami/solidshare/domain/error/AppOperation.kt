@@ -23,6 +23,7 @@ enum class AppOperation(@param:StringRes val titleRes: Int) {
     CREATE_FOLDER(R.string.op_create_folder),
     UPLOAD_FILE(R.string.op_upload_file),
     DOWNLOAD_FILE(R.string.op_download_file),
+    SEND_FILE_COPY(R.string.op_send_file_copy),
     DELETE_RESOURCE(R.string.op_delete_resource),
     DUPLICATE_RESOURCE(R.string.op_duplicate_resource),
     LOAD_RESOURCE_DETAILS(R.string.op_load_resource_details),

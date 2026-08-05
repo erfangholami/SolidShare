@@ -187,7 +187,6 @@
     <string name="rebuild_share_index">Rebuild share index</string>
     <string name="scan_or_paste">Scan or paste</string>
     <string name="show_share_link">Show share link</string>
-    <string name="open_in">Open in</string>
     <string name="open_in_container">Open in container</string>
     <string name="reshare">Reshare</string>
     <string name="remove_from_list">Remove from list</string>
@@ -285,6 +284,8 @@
     <string name="saved_for_offline">Saved for offline use</string>
     <string name="offline_copy_removed">Offline copy removed</string>
     <string name="shared_with_offline">You\'re offline. Connect to see who has access.</string>
+    <string name="send_a_copy">Send a copy</string>
+    <string name="send_a_copy_chooser">Send a copy…</string>
     <string name="duplicating">Duplicating…</string>
     <string name="resource_duplicated">Copy created</string>
     <string name="qr_saved_to_gallery">QR code saved to Pictures/SolidShare</string>
@@ -378,6 +379,7 @@
     <string name="op_create_folder">Couldn\'t create the folder</string>
     <string name="op_upload_file">Couldn\'t upload</string>
     <string name="op_download_file">Couldn\'t download</string>
+    <string name="op_send_file_copy">Couldn\'t send a copy</string>
     <string name="op_delete_resource">Couldn\'t delete</string>
     <string name="op_duplicate_resource">Couldn\'t duplicate</string>
     <string name="op_load_resource_details">Couldn\'t load the details</string>

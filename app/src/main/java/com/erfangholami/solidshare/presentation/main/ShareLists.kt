@@ -337,7 +337,6 @@ private fun ReceivedRow(
                     ResourceAction.RESHARE -> onReshare()
                     ResourceAction.DOWNLOAD -> onDownload()
                     ResourceAction.COPY_LINK -> onCopyLink()
-                    ResourceAction.OPEN_IN -> onOpen()
                     ResourceAction.INFO -> onInfo()
                     ResourceAction.DELETE -> onDelete()
                     else -> Unit
