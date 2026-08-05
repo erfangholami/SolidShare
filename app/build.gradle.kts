@@ -10,6 +10,32 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
+// The one place the app's version is declared. A release is cut by bumping this and pushing the
+// matching `v` tag; CI refuses to publish if the two disagree.
+//
+// It has to live in the source rather than come from the tag, because F-Droid builds from the tag
+// on its own servers and never runs our workflow — whatever it checks out must already know its
+// own version.
+val appVersionName = "0.3.0"
+
+// major * 10000 + minor * 100 + patch, so 1.2.3 is 10203. Deriving it means it can never drift
+// from the name, and it stays monotonic for as long as minor and patch stay below 100 — both
+// stores permanently reject a build whose versionCode did not increase.
+val appVersionCode = appVersionName.split(".").let { parts ->
+    require(parts.size == 3) {
+        "appVersionName must be MAJOR.MINOR.PATCH, was \"$appVersionName\""
+    }
+    val (major, minor, patch) = parts.map {
+        it.toIntOrNull() ?: throw GradleException(
+            "appVersionName has a non-numeric part: \"$appVersionName\"",
+        )
+    }
+    require(minor in 0..99 && patch in 0..99) {
+        "minor and patch must each stay below 100 to keep versionCode ordered, was \"$appVersionName\""
+    }
+    major * 10000 + minor * 100 + patch
+}
+
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
     if (keystorePropertiesFile.exists()) {
@@ -25,8 +51,8 @@ android {
         applicationId = "com.erfangholami.solidshare"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appAuthRedirectScheme"] = namespace.toString()
@@ -207,4 +233,16 @@ dependencies {
     androidTestImplementation(libs.kotlinx.coroutines.test)
     androidTestImplementation(libs.androidx.test.core)
 
+}
+
+// Lets CI read the version without re-implementing the versionCode rule in shell, so the two can
+// never disagree. Values are captured at configuration time to stay configuration-cache safe.
+tasks.register("printVersion") {
+    description = "Prints the app versionName and versionCode."
+    val name = appVersionName
+    val code = appVersionCode
+    doLast {
+        println("versionName=$name")
+        println("versionCode=$code")
+    }
 }
