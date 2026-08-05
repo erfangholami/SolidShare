@@ -12,14 +12,18 @@ import androidx.work.workDataOf
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
-import com.erfangholami.solidshare.data.repo.file.ResourceAccessException
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsBadgeStore
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
 import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
 import com.erfangholami.solidshare.data.repo.sharing.ReceivedSharesSignal
-import com.erfangholami.solidshare.data.repo.sharing.SharingError
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
-import com.erfangholami.solidshare.data.repo.sharing.toSharingError
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorAction
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.PublicProfile
@@ -32,7 +36,6 @@ import com.erfangholami.solidshare.presentation.sharing.SharedEntityRegistry
 import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
-import com.erfangholami.solidshare.presentation.sharing.toSharingErrorMessage
 import com.erfangholami.solidshare.util.MIME_TYPE_OCTET_STREAM
 import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.DownloadWorker
@@ -65,20 +68,8 @@ class ShareViewModel @Inject constructor(
     private val workManager: WorkManager,
     private val outboxRepository: OutboxRepository,
     private val entityRegistry: SharedEntityRegistry,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
-
-    data class UiError(
-        val message: String,
-        val action: ErrorAction? = null,
-    )
-
-    sealed interface ErrorAction {
-        data object Retry : ErrorAction
-        data class RequestAccess(
-            val resourceUri: String,
-            val ownerWebId: String?,
-        ) : ErrorAction
-    }
 
     @Immutable
     data class UiState(
@@ -194,7 +185,7 @@ class ShareViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isLoading = false)
-                fail(e, retry = ::load)
+                fail(e, AppOperation.LOAD_SHARES, retry = ::load)
             }
         }
     }
@@ -217,7 +208,7 @@ class ShareViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isRefreshing = false)
-                fail(e, retry = ::refresh)
+                fail(e, AppOperation.REFRESH_SHARES, retry = ::refresh)
             }
         }
     }
@@ -248,7 +239,7 @@ class ShareViewModel @Inject constructor(
                 )
             } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(isRefreshing = false)
-                fail(e, retry = ::rebuildIndex)
+                fail(e, AppOperation.REBUILD_SHARE_INDEX, retry = ::rebuildIndex)
             }
         }
     }
@@ -258,7 +249,8 @@ class ShareViewModel @Inject constructor(
         mode: ShareMode,
         receiver: ShareReceiver,
     ): GivenShare {
-        val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+        val webId = authRepository.getActiveWebId()
+            ?: throw AppError.NoActiveAccount.asException()
         val share = sharingRepository.createShare(webId, resourceUri, mode, receiver)
         load()
         return share
@@ -281,7 +273,13 @@ class ShareViewModel @Inject constructor(
                 )
                 load()
             } catch (e: Exception) {
-                fail(e, retry = { removeReceivedShare(share) })
+                fail(
+                    e,
+                    AppOperation.REMOVE_RECEIVED_SHARE,
+                    subject = displayNameForUri(share.resourceUri),
+                    origin = share.resourceUri,
+                    retry = { removeReceivedShare(share) },
+                )
             }
         }
     }
@@ -323,12 +321,19 @@ class ShareViewModel @Inject constructor(
                     val downloaded = fileRepository.downloadFile(webId, share.resourceUri)
                     _openEvent.emit(OpenEvent.OpenFile(File(downloaded.path), downloaded.mimeType))
                 }
-            } catch (e: ResourceAccessException.AccessDenied) {
-                _lostAccessShare.value = share
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(
-                    notice = e.message ?: stringProvider.getString(R.string.couldnt_open_item),
-                )
+                e.rethrowIfCancellation()
+                if (errors.classify(e, share.resourceUri) is AppError.PermissionDenied) {
+                    _lostAccessShare.value = share
+                } else {
+                    fail(
+                        e,
+                        AppOperation.OPEN_SHARED_ITEM,
+                        subject = displayNameForUri(share.resourceUri),
+                        origin = share.resourceUri,
+                        retry = { openReceivedShare(share) },
+                    )
+                }
             } finally {
                 _isOpening.value = false
             }
@@ -364,7 +369,11 @@ class ShareViewModel @Inject constructor(
     fun deleteReceivedShare(share: ReceivedShare) {
         if (share.mode != ShareMode.WRITE) {
             _uiState.value = _uiState.value.copy(
-                notice = stringProvider.getString(R.string.error_no_permission_for_action),
+                error = errors.present(
+                    AppError.PermissionDenied(share.resourceUri, share.ownerWebId),
+                    AppOperation.DELETE_RESOURCE,
+                    subject = displayNameForUri(share.resourceUri),
+                ),
             )
             return
         }
@@ -379,7 +388,13 @@ class ShareViewModel @Inject constructor(
                 }
                 load()
             } catch (e: Exception) {
-                fail(e, retry = { deleteReceivedShare(share) })
+                fail(
+                    e,
+                    AppOperation.DELETE_RESOURCE,
+                    subject = displayNameForUri(share.resourceUri),
+                    origin = share.resourceUri,
+                    retry = { deleteReceivedShare(share) },
+                )
             }
         }
     }
@@ -493,7 +508,13 @@ class ShareViewModel @Inject constructor(
                     notice = stringProvider.getString(R.string.access_request_sent),
                 )
             } catch (e: Exception) {
-                fail(e, retry = { requestAccess(resourceUri, ownerWebId) })
+                fail(
+                    e,
+                    AppOperation.REQUEST_ACCESS,
+                    subject = ownerWebId,
+                    origin = resourceUri,
+                    retry = { requestAccess(resourceUri, ownerWebId) },
+                )
             }
         }
     }
@@ -523,22 +544,17 @@ class ShareViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(notice = message)
     }
 
-    private fun fail(e: Throwable, retry: (suspend () -> Unit)?) {
-        val action = when (val error = e.toSharingError()) {
-            is SharingError.AccessDenied ->
-                ErrorAction.RequestAccess(error.resourceUri, error.ownerWebId)
-
-            is SharingError.StaleAcl,
-            is SharingError.AccessIndeterminate,
-            is SharingError.IncompleteScan ->
-                retry?.let { ErrorAction.Retry }
-
-            else -> null
-        }
-        pendingRetry = if (action is ErrorAction.Retry) retry else null
-        _uiState.value = _uiState.value.copy(
-            error = UiError(e.toSharingErrorMessage(stringProvider), action),
-        )
+    private fun fail(
+        e: Throwable,
+        operation: AppOperation,
+        subject: String? = null,
+        origin: String? = null,
+        retry: (suspend () -> Unit)? = null,
+    ) {
+        e.rethrowIfCancellation()
+        val uiError = errors.present(e, operation, subject, origin, allowRetry = retry != null)
+        pendingRetry = if (uiError.action is ErrorAction.Retry) retry else null
+        _uiState.value = _uiState.value.copy(error = uiError)
     }
 }
 

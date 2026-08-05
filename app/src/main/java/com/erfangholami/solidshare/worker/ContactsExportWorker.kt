@@ -12,6 +12,9 @@ import androidx.work.WorkerParameters
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.ContactDetail
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.notification.NotificationHelper
 import com.erfangholami.solidshare.util.VCardWriter
 import dagger.assisted.Assisted
@@ -22,6 +25,7 @@ class ContactsExportWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val contactsRepository: ContactsRepository,
+    private val errors: ErrorPresenter,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -65,10 +69,9 @@ class ContactsExportWorker @AssistedInject constructor(
             )
             Result.success()
         } catch (e: Exception) {
-            postComplete(
-                applicationContext.getString(R.string.contacts_export_complete_title),
-                applicationContext.getString(R.string.contacts_export_failed),
-            )
+            e.rethrowIfCancellation()
+            val failure = errors.present(e, AppOperation.EXPORT_CONTACTS)
+            postComplete(failure.title, failure.message)
             Result.failure()
         }
     }

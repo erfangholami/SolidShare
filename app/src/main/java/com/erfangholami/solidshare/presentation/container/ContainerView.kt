@@ -76,11 +76,15 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorAction
+import com.erfangholami.solidshare.domain.error.UiError
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceType
 import com.erfangholami.solidshare.presentation.components.BannerTone
 import com.erfangholami.solidshare.presentation.components.DismissibleBanner
-import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.UiErrorState
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RowDivider
 import com.erfangholami.solidshare.presentation.isScrollingUp
@@ -99,7 +103,7 @@ import kotlinx.coroutines.launch
 @Immutable
 sealed interface ContainerContent {
     data object Loading : ContainerContent
-    data class Error(val message: String) : ContainerContent
+    data class Error(val error: UiError) : ContainerContent
     data class Items(val items: List<ContainerItem>) : ContainerContent
 }
 
@@ -201,10 +205,9 @@ fun ContainerView(
                         }
 
                     is ContainerContent.Error ->
-                        ErrorState(
-                            message = content.message,
+                        UiErrorState(
+                            error = content.error,
                             modifier = Modifier.fillMaxSize(),
-                            retryLabel = stringResource(R.string.retry),
                             onRetry = onRetry,
                         )
 
@@ -797,7 +800,15 @@ private fun ContainerViewErrorPreview() {
     ContainerViewPreviewHost {
         PreviewContainerView(
             previewState(
-                content = ContainerContent.Error("Couldn't load this folder. Check your connection."),
+                content = ContainerContent.Error(
+                    UiError(
+                        title = "Couldn't open this folder",
+                        message = "You're offline. This will work again as soon as you reconnect.",
+                        action = ErrorAction.Retry,
+                        error = AppError.Offline,
+                        operation = AppOperation.OPEN_FOLDER,
+                    ),
+                ),
                 title = "Photos",
             ),
         )

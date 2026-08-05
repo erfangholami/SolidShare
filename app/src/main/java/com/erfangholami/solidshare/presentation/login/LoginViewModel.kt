@@ -12,6 +12,11 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import com.erfangholami.solidshare.telemetry.AuthAnalytics
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
@@ -22,6 +27,7 @@ import javax.inject.Inject
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
     private val authRepository: AuthRepository,
     private val authAnalytics: AuthAnalytics,
     savedStateHandle: SavedStateHandle,
@@ -68,8 +74,8 @@ class LoginViewModel @Inject constructor(
                     loginLoading.value = false
                 }
             } catch (e: Exception) {
-                loginBrowserIntentErrorMessage.value =
-                    e.message ?: stringProvider.getString(R.string.error_login_failed)
+                e.rethrowIfCancellation()
+                loginBrowserIntentErrorMessage.value = errors.message(e, AppOperation.SIGN_IN)
                 loginLoading.value = false
             }
         }
@@ -117,7 +123,8 @@ class LoginViewModel @Inject constructor(
             } else {
                 authAnalytics.loginFailed()
                 loginResult.value = false
-                loginBrowserIntentErrorMessage.value = stringProvider.getString(R.string.error_login_problem)
+                loginBrowserIntentErrorMessage.value =
+                    errors.present(AppError.SignInRequired, AppOperation.SIGN_IN).summary
             }
         }
     }

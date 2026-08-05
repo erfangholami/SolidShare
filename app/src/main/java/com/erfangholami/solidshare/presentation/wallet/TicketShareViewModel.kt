@@ -16,6 +16,12 @@ import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.presentation.navigation.TicketSharingRoute
 import com.erfangholami.solidshare.util.NetworkMonitor
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -32,6 +38,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class TicketShareViewModel @Inject constructor(
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val sharingRepository: SharingRepository,
@@ -54,7 +61,7 @@ class TicketShareViewModel @Inject constructor(
             val publicAvailability: PublicAvailability,
         ) : UiState
 
-        data class Error(val message: String) : UiState
+        data class Error(val error: UiError) : UiState
     }
 
     private val route = savedStateHandle.toRoute<TicketSharingRoute>()
@@ -84,14 +91,15 @@ class TicketShareViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(
-                    e.message ?: stringProvider.getString(R.string.manage_load_failed),
+                    errors.present(e, AppOperation.LOAD_SHARES),
                 )
             }
         }
     }
 
     private suspend fun loadedState(): UiState.Loaded {
-        val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+        val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
         ownerWebId = webId
         val ticket = resolveTicket(webId, route.target)
         val shareTarget = ticketsRepository.ticketShareTarget(ticket.uri)
@@ -131,7 +139,8 @@ class TicketShareViewModel @Inject constructor(
     }
 
     suspend fun addPersonSuspend(receiverWebId: String): GivenShare {
-        val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+        val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
         val loaded = _uiState.value as? UiState.Loaded ?: error("Not loaded")
         val share = sharingRepository.createShare(
             webId = webId,
@@ -150,11 +159,13 @@ class TicketShareViewModel @Inject constructor(
             val loaded = _uiState.value as? UiState.Loaded ?: return@launch
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 sharingRepository.revokeShare(webId, loaded.shareTarget, share.receiver)
                 _messages.emit(stringProvider.getString(R.string.access_revoked))
             } catch (e: Exception) {
-                _messages.emit(e.message ?: stringProvider.getString(R.string.error_revoke_access))
+                e.rethrowIfCancellation()
+                _messages.emit(errors.message(e, AppOperation.REVOKE_SHARE))
             }
             load()
         }
@@ -166,7 +177,8 @@ class TicketShareViewModel @Inject constructor(
             val artifactUri = loaded.ticket.artifactUri ?: return@launch
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 if (enabled) {
                     sharingRepository.createShare(
                         webId = webId,
@@ -183,7 +195,8 @@ class TicketShareViewModel @Inject constructor(
                     _messages.emit(stringProvider.getString(R.string.public_pass_disabled))
                 }
             } catch (e: Exception) {
-                _messages.emit(e.message ?: stringProvider.getString(R.string.share_create_failed))
+                e.rethrowIfCancellation()
+                _messages.emit(errors.message(e, AppOperation.CREATE_SHARE))
             }
             load()
         }

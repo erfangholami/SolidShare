@@ -49,6 +49,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.LocalErrorPresenter
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.LoadingState
@@ -242,6 +245,7 @@ internal fun EntityShareAddSheet(
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val scope = rememberCoroutineScope()
     val shareCreateFailedMsg = stringResource(R.string.share_create_failed)
+    val errors = LocalErrorPresenter.current
     val isOnline by rememberIsOnline()
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -259,7 +263,11 @@ internal fun EntityShareAddSheet(
                                 bareUrl = bareUrlFor(share.resourceUri),
                             )
                         } catch (e: Exception) {
-                            stage = EntityShareStage.Error(e.message ?: shareCreateFailedMsg)
+                            e.rethrowIfCancellation()
+                            stage = EntityShareStage.Error(
+                                errors?.message(e, AppOperation.CREATE_SHARE, subject = receiver)
+                                    ?: shareCreateFailedMsg,
+                            )
                         }
                     }
                 },

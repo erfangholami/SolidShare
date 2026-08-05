@@ -58,6 +58,7 @@ import com.erfangholami.solidshare.presentation.components.BlockingProgressOverl
 import com.erfangholami.solidshare.presentation.components.EmptyState
 import com.erfangholami.solidshare.presentation.components.EntityRow
 import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.UiErrorState
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
@@ -200,7 +201,7 @@ internal fun AddressBooksContent(
 ) {
     when {
         state.loading -> LoadingState()
-        state.error != null -> ErrorState(message = state.error, onRetry = onRetry)
+        state.error != null -> UiErrorState(error = state.error, onRetry = onRetry)
         state.books.isEmpty() -> EmptyState(
             title = stringResource(R.string.books_empty_title),
             subtitle = stringResource(R.string.books_empty_description),

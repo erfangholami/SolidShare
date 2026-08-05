@@ -8,6 +8,12 @@ import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
@@ -33,6 +39,7 @@ class ManageSharingViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val sharingRepository: SharingRepository,
     private val networkMonitor: NetworkMonitor,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     @Immutable
@@ -48,7 +55,7 @@ class ManageSharingViewModel @Inject constructor(
             val shares: List<GivenShare>,
         ) : UiState
 
-        data class Error(val message: String) : UiState
+        data class Error(val error: UiError) : UiState
     }
 
     private val route = savedStateHandle.toRoute<ManageSharingRoute>()
@@ -76,7 +83,12 @@ class ManageSharingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId() ?: run {
+                    _uiState.value = UiState.Error(
+                        errors.present(AppError.NoActiveAccount, AppOperation.LOAD_SHARES),
+                    )
+                    return@launch
+                }
                 ownerWebId = webId
                 val ownerName = runCatching { authRepository.activeProfileFlow.first() }
                     .getOrNull()
@@ -89,7 +101,9 @@ class ManageSharingViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = UiState.Error(e.message ?: stringProvider.getString(R.string.manage_load_failed))
+                _uiState.value = UiState.Error(
+                    errors.present(e, AppOperation.LOAD_SHARES, origin = resourceUri),
+                )
             }
         }
     }
@@ -98,11 +112,12 @@ class ManageSharingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = requireActiveWebId()
                 sharingRepository.revokeShare(webId, resourceUri, share.receiver)
                 _messages.emit(stringProvider.getString(R.string.access_revoked))
             } catch (e: Exception) {
-                _messages.emit(e.message ?: stringProvider.getString(R.string.error_revoke_access))
+                e.rethrowIfCancellation()
+                _messages.emit(errors.message(e, AppOperation.REVOKE_SHARE, origin = resourceUri))
             }
             load()
         }
@@ -113,11 +128,14 @@ class ManageSharingViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = requireActiveWebId()
                 sharingRepository.updateShare(webId, resourceUri, mode, share.receiver)
                 _messages.emit(stringProvider.getString(R.string.access_updated))
             } catch (e: Exception) {
-                _messages.emit(e.message ?: stringProvider.getString(R.string.error_update_access))
+                e.rethrowIfCancellation()
+                _messages.emit(
+                    errors.message(e, AppOperation.UPDATE_SHARE_ACCESS, origin = resourceUri),
+                )
             }
             load()
         }
@@ -128,11 +146,14 @@ class ManageSharingViewModel @Inject constructor(
         mode: ShareMode,
         receiver: ShareReceiver,
     ): GivenShare {
-        val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+        val webId = requireActiveWebId()
         val share = sharingRepository.createShare(webId, resourceUri, mode, receiver)
         load()
         return share
     }
+
+    private suspend fun requireActiveWebId(): String =
+        authRepository.getActiveWebId() ?: throw AppError.NoActiveAccount.asException()
 
     fun deepLinkFor(resourceUri: String): String =
         sharingRepository.deepLinkFor(resourceUri, ownerWebId)

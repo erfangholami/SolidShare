@@ -8,6 +8,11 @@ import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.ParsedTicketFile
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.TicketDraft
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -22,6 +27,7 @@ class TicketImportViewModel @Inject constructor(
     private val ticketsRepository: TicketsRepository,
     private val importHolder: TicketImportHolder,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class FoundPass(
@@ -84,14 +90,16 @@ class TicketImportViewModel @Inject constructor(
         viewModelScope.launch {
             _saving.value = true
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 indices.forEach { index ->
                     val item = parsed[index]
                     ticketsRepository.queueCreate(webId, withFallbackTitle(item.draft), item.artifact)
                     _added.update { it + index }
                 }
             }.onFailure {
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                it.rethrowIfCancellation()
+                _message.value = errors.message(it, AppOperation.IMPORT_TICKET)
             }
             _saving.value = false
             if (_added.value.size == parsed.size && parsed.isNotEmpty()) {

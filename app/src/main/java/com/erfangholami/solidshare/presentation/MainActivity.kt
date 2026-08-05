@@ -16,6 +16,7 @@ import androidx.compose.runtime.setValue
 import androidx.core.content.IntentCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import com.erfangholami.solidshare.domain.error.LocalErrorPresenter
 import com.erfangholami.solidshare.presentation.sharing.LocalReceiverPicker
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import com.erfangholami.solidshare.presentation.navigation.AppNavHost
@@ -55,7 +56,10 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
             }
             AppTheme(isDarkTheme = isDarkTheme) {
-                CompositionLocalProvider(LocalReceiverPicker provides viewModel.receiverPicker) {
+                CompositionLocalProvider(
+                    LocalReceiverPicker provides viewModel.receiverPicker,
+                    LocalErrorPresenter provides viewModel.errorPresenter,
+                ) {
                     AppNavHost(
                         openNotifications = openNotifications,
                         onOpenNotificationsHandled = { openNotifications = false },

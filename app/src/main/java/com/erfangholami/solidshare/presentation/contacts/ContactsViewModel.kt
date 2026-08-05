@@ -5,6 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.AddressBook
 import com.erfangholami.solidshare.domain.model.ContactListEntry
 import com.erfangholami.solidshare.sync.ContactsAccountManager
@@ -24,11 +30,12 @@ class ContactsViewModel @Inject constructor(
     private val contactsRepository: ContactsRepository,
     private val contactsAccountManager: ContactsAccountManager,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class UiState(
         val loading: Boolean = true,
-        val error: String? = null,
+        val error: UiError? = null,
         val books: List<AddressBook> = emptyList(),
         val entries: List<ContactListEntry> = emptyList(),
         val query: String = "",
@@ -57,7 +64,7 @@ class ContactsViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         loading = false,
-                        error = stringProvider.getString(R.string.error_no_active_user),
+                        error = errors.present(AppError.NoActiveAccount, AppOperation.LOAD_CONTACTS),
                     )
                 }
                 return@launch
@@ -105,7 +112,7 @@ class ContactsViewModel @Inject constructor(
                 } else {
                     current.copy(
                         loading = false,
-                        error = e.message ?: stringProvider.getString(R.string.error_unknown),
+                        error = errors.present(e, AppOperation.LOAD_CONTACTS),
                     )
                 }
             }

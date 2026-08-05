@@ -62,6 +62,7 @@ class ManageSharingViewModelTest {
         authRepository = authRepository,
         sharingRepository = sharingRepository,
         networkMonitor = networkMonitor,
+        errors = mockk(relaxed = true),
     )
 
     @Test

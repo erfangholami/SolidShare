@@ -71,6 +71,7 @@ import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.presentation.components.AccountSwitcherCircle
 import com.erfangholami.solidshare.presentation.components.BannerTone
 import com.erfangholami.solidshare.presentation.components.DismissibleBanner
+import com.erfangholami.solidshare.presentation.components.UiErrorBanner
 import com.erfangholami.solidshare.presentation.container.DeleteResourceDialog
 import com.erfangholami.solidshare.presentation.container.ResourceTypeIcon
 import com.erfangholami.solidshare.presentation.navigation.ConfirmAccessRoute
@@ -273,7 +274,7 @@ fun Share(
                     exit = fadeOut() + shrinkVertically(),
                 ) {
                     state.error?.let { err ->
-                        ErrorBanner(
+                        UiErrorBanner(
                             error = err,
                             onDismiss = viewModel::clearError,
                             onRetry = viewModel::retry,
@@ -518,36 +519,6 @@ internal fun ModeChip(
 }
 
 @Composable
-private fun ErrorBanner(
-    error: ShareViewModel.UiError,
-    onDismiss: () -> Unit,
-    onRetry: () -> Unit,
-    onRequestAccess: (ShareViewModel.ErrorAction.RequestAccess) -> Unit,
-) {
-    DismissibleBanner(
-        message = error.message,
-        onDismiss = onDismiss,
-        tone = BannerTone.ERROR,
-        action = when (val action = error.action) {
-            ShareViewModel.ErrorAction.Retry -> {
-                { TextButton(onClick = onRetry) { Text(stringResource(R.string.retry)) } }
-            }
-
-            is ShareViewModel.ErrorAction.RequestAccess -> {
-                {
-                    TextButton(
-                        onClick = { onRequestAccess(action) },
-                        enabled = action.ownerWebId != null,
-                    ) { Text(stringResource(R.string.request_access)) }
-                }
-            }
-
-            null -> null
-        },
-    )
-}
-
-@Composable
 private fun NoAccessDialog(
     resourceName: String,
     ownerWebId: String?,
@@ -648,25 +619,6 @@ private fun ModeChipWritePreview() {
         Column(modifier = Modifier.padding(16.dp)) {
             ModeChip(mode = ShareMode.WRITE)
         }
-    }
-}
-
-@Preview(showBackground = true, widthDp = 360)
-@Composable
-private fun ErrorBannerPreview() {
-    AppTheme {
-        ErrorBanner(
-            error = ShareViewModel.UiError(
-                message = "Couldn't load shares.",
-                action = ShareViewModel.ErrorAction.RequestAccess(
-                    resourceUri = PreviewSamples.RESOURCE,
-                    ownerWebId = PreviewSamples.OWNER_WEB_ID,
-                ),
-            ),
-            onDismiss = {},
-            onRetry = {},
-            onRequestAccess = {},
-        )
     }
 }
 

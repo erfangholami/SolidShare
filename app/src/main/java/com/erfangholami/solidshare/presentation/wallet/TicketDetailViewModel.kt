@@ -13,6 +13,12 @@ import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.domain.model.TicketFile
 import com.erfangholami.solidshare.domain.model.TicketSource
 import com.erfangholami.solidshare.presentation.navigation.TicketDetailRoute
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -29,11 +35,12 @@ class TicketDetailViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val ticketsRepository: TicketsRepository,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class UiState(
         val loading: Boolean = true,
-        val error: String? = null,
+        val error: UiError? = null,
         val ticket: Ticket? = null,
         val busy: Boolean = false,
     )
@@ -54,7 +61,8 @@ class TicketDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(loading = true, error = null) }
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 ticketsRepository.getTicket(webId, ticketUri)
             }.onSuccess { ticket ->
                 _state.update { it.copy(loading = false, ticket = ticket) }
@@ -63,8 +71,7 @@ class TicketDetailViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         loading = false,
-                        error = error.message
-                            ?: stringProvider.getString(R.string.error_something_went_wrong),
+                        error = errors.present(error, AppOperation.LOAD_TICKET, origin = ticketUri),
                     )
                 }
             }
@@ -75,7 +82,8 @@ class TicketDetailViewModel @Inject constructor(
         if (ticket.source != TicketSource.PKPASS) return
         viewModelScope.launch {
             _visuals.value = runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 ticketsRepository.getTicketImages(webId, ticket.uri, ticket.images)
                     ?: ticket.artifactUri?.let { artifactUri ->
                         val file = ticketsRepository.getTicketArtifact(webId, ticket.uri, artifactUri)
@@ -89,14 +97,16 @@ class TicketDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 ticketsRepository.queueDelete(webId, ticketUri)
             }.onSuccess {
                 _state.update { it.copy(busy = false) }
                 onDeleted()
             }.onFailure {
+                it.rethrowIfCancellation()
                 _state.update { it.copy(busy = false) }
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                _message.value = errors.message(it, AppOperation.DELETE_TICKET, origin = ticketUri)
             }
         }
     }
@@ -106,14 +116,16 @@ class TicketDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 ticketsRepository.getTicketArtifact(webId, ticketUri, artifactUri)
             }.onSuccess { file ->
                 _state.update { it.copy(busy = false) }
                 onReady(file)
             }.onFailure {
+                it.rethrowIfCancellation()
                 _state.update { it.copy(busy = false) }
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                _message.value = errors.message(it, AppOperation.LOAD_TICKET, origin = artifactUri)
             }
         }
     }

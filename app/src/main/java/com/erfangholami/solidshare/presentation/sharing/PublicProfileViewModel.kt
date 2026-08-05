@@ -8,6 +8,11 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.data.repo.profile.PublicProfileRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.ContactDraft
 import com.erfangholami.solidshare.domain.model.ContactEmail
 import com.erfangholami.solidshare.domain.model.ContactLinkType
@@ -32,12 +37,13 @@ class PublicProfileViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
     private val contactsAccountManager: ContactsAccountManager,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     sealed class UiState {
         data object Loading : UiState()
         data class Success(val profile: PublicProfile) : UiState()
-        data class Error(val message: String) : UiState()
+        data class Error(val error: UiError) : UiState()
     }
 
     val webId: String = savedStateHandle.toRoute<PublicProfileRoute>().webId
@@ -61,7 +67,9 @@ class PublicProfileViewModel @Inject constructor(
             val result = publicProfileRepository.fetchByWebId(webId)
             _state.value = result.fold(
                 onSuccess = { UiState.Success(it) },
-                onFailure = { UiState.Error(it.message ?: stringProvider.getString(R.string.error_unknown)) },
+                onFailure = {
+                    UiState.Error(errors.present(it, AppOperation.LOAD_PROFILE, origin = webId))
+                },
             )
         }
     }
@@ -97,7 +105,8 @@ class PublicProfileViewModel @Inject constructor(
             }.onSuccess { result ->
                 _message.value = result
             }.onFailure {
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                it.rethrowIfCancellation()
+                _message.value = errors.message(it, AppOperation.SAVE_CONTACT, subject = profile.name)
             }
             _addingToContacts.value = false
         }

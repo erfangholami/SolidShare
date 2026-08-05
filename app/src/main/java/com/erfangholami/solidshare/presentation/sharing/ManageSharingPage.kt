@@ -62,6 +62,7 @@ import com.erfangholami.solidshare.domain.model.ShareReceiver
 import com.erfangholami.solidshare.presentation.components.BadgeAvatar
 import com.erfangholami.solidshare.presentation.components.EntityRow
 import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.UiErrorState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
@@ -156,11 +157,9 @@ fun ManageSharingPage(
                         )
 
                     is ManageSharingViewModel.UiState.Error ->
-                        ErrorState(
-                            message = s.message,
-                            title = stringResource(R.string.manage_load_failed),
+                        UiErrorState(
+                            error = s.error,
                             icon = null,
-                            retryLabel = stringResource(R.string.retry),
                             onRetry = viewModel::load,
                         )
 

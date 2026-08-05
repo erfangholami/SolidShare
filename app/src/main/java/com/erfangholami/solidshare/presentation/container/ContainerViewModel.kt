@@ -14,6 +14,11 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.ResourceAccess
 import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
@@ -52,6 +57,7 @@ class ContainerViewModel @Inject constructor(
     private val fileRepository: FileRepository,
     private val networkMonitor: NetworkMonitor,
     private val outboxRepository: OutboxRepository,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     sealed class UiState {
@@ -59,7 +65,7 @@ class ContainerViewModel @Inject constructor(
 
         @Immutable
         data class Success(val items: List<ContainerItem>) : UiState()
-        data class Error(val message: String) : UiState()
+        data class Error(val error: UiError) : UiState()
     }
 
     sealed class FileOpenEvent {
@@ -181,21 +187,39 @@ class ContainerViewModel @Inject constructor(
         load()
     }
 
+    private val loadOperation: AppOperation
+        get() = if (containerUrl == null) AppOperation.LOAD_FILES else AppOperation.OPEN_FOLDER
+
+    private fun deniedMessage(operation: AppOperation, resourceUri: String? = null): String =
+        errors.present(
+            AppError.PermissionDenied(resourceUri ?: resolvedContainerUrl, sharedOwnerWebId),
+            operation,
+        ).summary
+
     fun onFileClick(item: ContainerItem) {
         if (item.isContainer || _screenState.value.isDownloading) return
         viewModelScope.launch {
             _screenState.update { it.copy(isDownloading = true) }
             try {
                 val webId = _activeWebId.value ?: run {
-                    _fileOpenEvent.emit(FileOpenEvent.Error(stringProvider.getString(R.string.error_no_active_user)))
+                    _fileOpenEvent.emit(
+                        FileOpenEvent.Error(
+                            errors.present(AppError.NoActiveAccount, AppOperation.OPEN_FILE).summary,
+                        ),
+                    )
                     return@launch
                 }
                 val downloaded = fileRepository.downloadFile(webId, item.identifier)
                 _fileOpenEvent.emit(
-                    FileOpenEvent.OpenFile(File(downloaded.path), downloaded.mimeType)
+                    FileOpenEvent.OpenFile(File(downloaded.path), downloaded.mimeType),
                 )
             } catch (e: Exception) {
-                _fileOpenEvent.emit(FileOpenEvent.Error(e.message ?: stringProvider.getString(R.string.error_open_file)))
+                e.rethrowIfCancellation()
+                _fileOpenEvent.emit(
+                    FileOpenEvent.Error(
+                        errors.message(e, AppOperation.OPEN_FILE, item.name, item.identifier),
+                    ),
+                )
             } finally {
                 _screenState.update { it.copy(isDownloading = false) }
             }
@@ -249,7 +273,10 @@ class ContainerViewModel @Inject constructor(
                 fileRepository.pinOffline(webId, item.identifier)
                 _offlineMessage.emit(stringProvider.getString(R.string.saved_for_offline))
             } catch (e: Exception) {
-                _offlineMessage.emit(e.message ?: stringProvider.getString(R.string.error_unknown))
+                e.rethrowIfCancellation()
+                _offlineMessage.emit(
+                    errors.message(e, AppOperation.SAVE_TO_DEVICE, item.name, item.identifier),
+                )
             }
         }
     }
@@ -266,7 +293,7 @@ class ContainerViewModel @Inject constructor(
     fun startUpload(fileUri: Uri, fileName: String, mimeType: String) {
         viewModelScope.launch {
             if (!_screenState.value.containerAccess.canAddTo) {
-                _folderCreationError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                _folderCreationError.emit(deniedMessage(AppOperation.UPLOAD_FILE))
                 return@launch
             }
             val webId = _activeWebId.value ?: return@launch
@@ -274,7 +301,10 @@ class ContainerViewModel @Inject constructor(
             runCatching {
                 outboxRepository.enqueueUpload(webId, containerUrl, fileUri, fileName, mimeType)
             }.onFailure {
-                _folderCreationError.emit(it.message ?: stringProvider.getString(R.string.error_unknown))
+                it.rethrowIfCancellation()
+                _folderCreationError.emit(
+                    errors.message(it, AppOperation.UPLOAD_FILE, fileName, containerUrl),
+                )
             }
             reloadFromCache()
         }
@@ -301,12 +331,16 @@ class ContainerViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             try {
                 val webId = _activeWebId.value ?: run {
-                    _uiState.value = UiState.Error(stringProvider.getString(R.string.error_no_active_user))
+                    _uiState.value = UiState.Error(
+                        errors.present(AppError.NoActiveAccount, loadOperation),
+                    )
                     return@launch
                 }
                 val url = containerUrl ?: run {
                     authRepository.getStorages(webId).firstOrNull() ?: run {
-                        _uiState.value = UiState.Error(stringProvider.getString(R.string.error_no_storage))
+                        _uiState.value = UiState.Error(
+                            errors.present(AppError.NoPodStorage(), loadOperation),
+                        )
                         return@launch
                     }
                 }
@@ -339,8 +373,7 @@ class ContainerViewModel @Inject constructor(
                         _isOfflineData.value = true
                         return@launch
                     }
-                    _uiState.value =
-                        UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
+                    _uiState.value = UiState.Error(errors.present(e, loadOperation, title, url))
                     return@launch
                 }
 
@@ -355,8 +388,9 @@ class ContainerViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 if (rawItems.isEmpty()) {
-                    _uiState.value =
-                        UiState.Error(e.message ?: stringProvider.getString(R.string.error_unknown))
+                    _uiState.value = UiState.Error(
+                        errors.present(e, loadOperation, title, resolvedContainerUrl),
+                    )
                 }
             } finally {
                 if (isActive) _screenState.update { it.copy(isRefreshing = false) }
@@ -400,7 +434,7 @@ class ContainerViewModel @Inject constructor(
     fun createNewFolder(folderName: String) {
         viewModelScope.launch {
             if (!_screenState.value.containerAccess.canAddTo) {
-                _folderCreationError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                _folderCreationError.emit(deniedMessage(AppOperation.CREATE_FOLDER))
                 return@launch
             }
             val webId = _activeWebId.value ?: return@launch
@@ -408,7 +442,10 @@ class ContainerViewModel @Inject constructor(
             runCatching {
                 outboxRepository.enqueueCreateFolder(webId, containerUrl, folderName)
             }.onFailure {
-                _folderCreationError.emit(it.message ?: stringProvider.getString(R.string.error_create_folder))
+                it.rethrowIfCancellation()
+                _folderCreationError.emit(
+                    errors.message(it, AppOperation.CREATE_FOLDER, folderName, containerUrl),
+                )
             }
             reloadFromCache()
         }
@@ -472,7 +509,9 @@ class ContainerViewModel @Inject constructor(
             val selectedItem = _screenState.value.selectedItem ?: return@launch
             if (!_screenState.value.containerAccess.canModify || !selectedItem.access.canWrite) {
                 dismissResourceActionsSheet()
-                _resourceDeletionError.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                _resourceDeletionError.emit(
+                    deniedMessage(AppOperation.DELETE_RESOURCE, selectedItem.identifier),
+                )
                 return@launch
             }
             dismissResourceActionsSheet()
@@ -480,7 +519,12 @@ class ContainerViewModel @Inject constructor(
             runCatching {
                 outboxRepository.enqueueDelete(webId, selectedItem.identifier, selectedItem.isContainer)
             }.onFailure {
-                _resourceDeletionError.emit(it.message ?: stringProvider.getString(R.string.error_delete_resource))
+                it.rethrowIfCancellation()
+                _resourceDeletionError.emit(
+                    errors.message(
+                        it, AppOperation.DELETE_RESOURCE, selectedItem.name, selectedItem.identifier,
+                    ),
+                )
             }
             reloadFromCache()
         }
@@ -491,7 +535,9 @@ class ContainerViewModel @Inject constructor(
         dismissResourceActionsSheet()
         viewModelScope.launch {
             if (!_screenState.value.containerAccess.canModify) {
-                _duplicateMessage.emit(stringProvider.getString(R.string.error_no_permission_for_action))
+                _duplicateMessage.emit(
+                    deniedMessage(AppOperation.DUPLICATE_RESOURCE, item.identifier),
+                )
                 return@launch
             }
             val webId = _activeWebId.value ?: return@launch
@@ -501,7 +547,10 @@ class ContainerViewModel @Inject constructor(
                 reloadFromCache()
                 _duplicateMessage.emit(stringProvider.getString(R.string.resource_duplicated))
             }.onFailure {
-                _duplicateMessage.emit(it.message ?: stringProvider.getString(R.string.error_duplicate))
+                it.rethrowIfCancellation()
+                _duplicateMessage.emit(
+                    errors.message(it, AppOperation.DUPLICATE_RESOURCE, item.name, item.identifier),
+                )
             }
         }
     }

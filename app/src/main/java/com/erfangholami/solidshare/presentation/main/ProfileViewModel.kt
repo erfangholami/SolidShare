@@ -6,6 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.data.repo.datamodule.DataModuleRegistry
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.outbox.OutboxRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
@@ -31,6 +35,7 @@ class ProfileViewModel @Inject constructor(
     private val outboxRepository: OutboxRepository,
     private val dataModules: DataModuleRegistry,
     private val authAnalytics: AuthAnalytics,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     val accounts: StateFlow<List<PublicProfile>> = authRepository.loggedInProfilesFlow
@@ -63,26 +68,29 @@ class ProfileViewModel @Inject constructor(
 
     val reconnectBrowserIntent = mutableStateOf<Intent?>(null)
     val reconnectLoading = mutableStateOf(false)
-    val reconnectError = mutableStateOf(false)
+    val reconnectError = mutableStateOf<UiError?>(null)
     val refreshlessReconnectWarning = mutableStateOf(false)
 
     fun reconnectAccount(webId: String) {
         viewModelScope.launch {
             reconnectLoading.value = true
-            reconnectError.value = false
-            val (intent, _) = runCatching {
+            reconnectError.value = null
+            val attempt = runCatching {
                 authRepository.createAuthenticationIntent(
                     webId = webId,
                     appName = LoginViewModel.APP_NAME,
                     redirectUri = LoginViewModel.REDIRECT_URI,
                     clientId = LoginViewModel.CLIENT_ID,
                 )
-            }.getOrDefault(Pair(null, null))
+            }
+            val intent = attempt.getOrNull()?.first
             if (intent != null) {
                 reconnectBrowserIntent.value = intent
             } else {
                 reconnectLoading.value = false
-                reconnectError.value = true
+                reconnectError.value = attempt.exceptionOrNull()
+                    ?.let { errors.present(it, AppOperation.SIGN_IN, origin = webId) }
+                    ?: errors.present(AppError.SignInRequired, AppOperation.SIGN_IN)
             }
         }
     }
@@ -101,7 +109,7 @@ class ProfileViewModel @Inject constructor(
                 }
             } else {
                 authAnalytics.loginFailed()
-                reconnectError.value = true
+                reconnectError.value = errors.present(AppError.SignInRequired, AppOperation.SIGN_IN)
             }
         }
     }

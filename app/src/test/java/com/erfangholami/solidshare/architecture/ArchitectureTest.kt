@@ -75,6 +75,47 @@ class ArchitectureTest {
     }
 
     @Test
+    fun `no screen builds its own message out of a throwable`() {
+        val violations = sourceFiles()
+            .flatMap { file ->
+                file.readLines().mapIndexedNotNull { index, line ->
+                    if (RAW_MESSAGE_FALLBACK.containsMatchIn(line)) {
+                        "${file.relativePath()}:${index + 1}"
+                    } else {
+                        null
+                    }
+                }
+            }
+            .toSortedSet()
+
+        assertEquals(
+            "`something.message ?: fallback` puts a server or library diagnostic in front of a " +
+                "user. Classify the throwable with ErrorPresenter instead (documents/ERRORS.md).",
+            emptySet<String>(),
+            violations,
+        )
+    }
+
+    @Test
+    fun `library error types stop at the data layer`() {
+        val violations = sourceFiles()
+            .filter { file -> UI_PACKAGES.any { file.packageOf().startsWith(it) } }
+            .filter { file ->
+                LIBRARY_ERROR_TYPES.any { file.readText().contains("import $LIBRARY_ROOT.$it") }
+            }
+            .map { it.relativePath() }
+            .toSortedSet()
+
+        assertEquals(
+            "screens, workers and the sync adapter speak AppError, never SolidError or " +
+                "SharingException — repositories throw and AppErrorMapper classifies " +
+                "(documents/ERRORS.md).",
+            emptySet<String>(),
+            violations,
+        )
+    }
+
+    @Test
     fun `production code carries no comments except KDoc`() {
         val violations = sourceFiles()
             .flatMap { file ->
@@ -106,6 +147,18 @@ class ArchitectureTest {
 
     private companion object {
         const val ROOT = "com.erfangholami.solidshare"
+
+        const val LIBRARY_ROOT = "com.erfangholami.androidsolidservices"
+
+        val RAW_MESSAGE_FALLBACK = Regex("""\.message\s*\?:""")
+
+        val UI_PACKAGES = listOf("presentation", "worker", "sync")
+
+        val LIBRARY_ERROR_TYPES = listOf(
+            "shared.result.SolidError",
+            "shared.result.SolidResultException",
+            "api.exceptions.SharingException",
+        )
 
         val DATA_MODULE_PACKAGES = listOf("presentation.contacts", "presentation.wallet")
         val DATA_MODULE_REPO_PACKAGES = listOf("data.repo.contacts", "data.repo.tickets")

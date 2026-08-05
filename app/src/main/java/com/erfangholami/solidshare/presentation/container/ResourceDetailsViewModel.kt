@@ -9,6 +9,12 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.ContainerItem
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.domain.model.ShareMode
@@ -33,6 +39,7 @@ class ResourceDetailsViewModel @Inject constructor(
     private val sharingRepository: SharingRepository,
     private val fileRepository: FileRepository,
     private val networkMonitor: NetworkMonitor,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     sealed interface SharesState {
@@ -41,7 +48,7 @@ class ResourceDetailsViewModel @Inject constructor(
 
         @Immutable
         data class Loaded(val shares: List<GivenShare>) : SharesState
-        data class Error(val message: String) : SharesState
+        data class Error(val error: UiError) : SharesState
     }
 
     private val routeItem: ContainerItem = savedStateHandle
@@ -99,7 +106,8 @@ class ResourceDetailsViewModel @Inject constructor(
         viewModelScope.launch {
             _sharesState.value = SharesState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+            ?: throw AppError.NoActiveAccount.asException()
                 _sharesState.value =
                     SharesState.Loaded(
                         sharingRepository.getGivenSharesForResource(
@@ -110,7 +118,14 @@ class ResourceDetailsViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _sharesState.value = SharesState.Error(e.message ?: stringProvider.getString(R.string.manage_load_failed))
+                _sharesState.value = SharesState.Error(
+                    errors.present(
+                        e,
+                        AppOperation.LOAD_SHARES,
+                        subject = routeItem.name,
+                        origin = routeItem.identifier,
+                    ),
+                )
             }
         }
     }
@@ -120,7 +135,8 @@ class ResourceDetailsViewModel @Inject constructor(
         mode: ShareMode,
         receiver: ShareReceiver,
     ): GivenShare {
-        val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+        val webId = authRepository.getActiveWebId()
+            ?: throw AppError.NoActiveAccount.asException()
         ownerWebId = webId
         val share = sharingRepository.createShare(webId, resourceUri, mode, receiver)
         loadShares()

@@ -6,11 +6,15 @@ import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.file.FileRepository
-import com.erfangholami.solidshare.data.repo.file.ResourceAccessException
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsBadgeStore
 import com.erfangholami.solidshare.data.repo.notifications.NotificationsRepository
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.AccessGrantDirection
 import com.erfangholami.solidshare.domain.model.NotificationItem
 import com.erfangholami.solidshare.domain.model.NotificationKind
@@ -18,9 +22,9 @@ import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareRequest
 import com.erfangholami.solidshare.presentation.sharing.SharedEntityRegistry
 import com.erfangholami.solidshare.presentation.sharing.SharedEntityUi
+import com.erfangholami.solidshare.presentation.sharing.displayNameForUri
 import com.erfangholami.solidshare.presentation.sharing.isContainerUri
 import com.erfangholami.solidshare.presentation.sharing.shareModeLabelRes
-import com.erfangholami.solidshare.presentation.sharing.toSharingErrorMessage
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
@@ -51,6 +55,7 @@ class NotificationsViewModel @Inject constructor(
     private val fileRepository: FileRepository,
     private val badgeStore: NotificationsBadgeStore,
     private val entityRegistry: SharedEntityRegistry,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class Row(
@@ -68,7 +73,7 @@ class NotificationsViewModel @Inject constructor(
         val isRefreshing: Boolean = false,
         val isOpening: Boolean = false,
         val infoMessage: String? = null,
-        val error: String? = null,
+        val error: UiError? = null,
     )
 
     sealed interface OpenEvent {
@@ -137,12 +142,16 @@ class NotificationsViewModel @Inject constructor(
                 }
             } catch (e: CancellationException) {
                 throw e
-            } catch (e: ResourceAccessException.AccessDenied) {
-                _uiState.value = _uiState.value.copy(
-                    error = stringProvider.getString(R.string.couldnt_open_item),
-                )
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.toSharingErrorMessage(stringProvider))
+                _uiState.value = _uiState.value.copy(
+                    error = errors.present(
+                        e,
+                        AppOperation.OPEN_SHARED_ITEM,
+                        subject = displayNameForUri(item.resourceUri),
+                        origin = item.resourceUri,
+                        allowRetry = false,
+                    ),
+                )
             } finally {
                 _uiState.value = _uiState.value.copy(isOpening = false)
             }
@@ -188,7 +197,7 @@ class NotificationsViewModel @Inject constructor(
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
                     isRefreshing = false,
-                    error = e.toSharingErrorMessage(stringProvider),
+                    error = errors.present(e, AppOperation.LOAD_NOTIFICATIONS, allowRetry = false),
                 )
             }
         }
@@ -212,7 +221,15 @@ class NotificationsViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.toSharingErrorMessage(stringProvider))
+                _uiState.value = _uiState.value.copy(
+                    error = errors.present(
+                        e,
+                        AppOperation.ANSWER_ACCESS_REQUEST,
+                        subject = item.counterpartWebId,
+                        origin = item.resourceUri,
+                        allowRetry = false,
+                    ),
+                )
             } finally {
                 markPending(item.id, false)
             }
@@ -233,7 +250,15 @@ class NotificationsViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.toSharingErrorMessage(stringProvider))
+                _uiState.value = _uiState.value.copy(
+                    error = errors.present(
+                        e,
+                        AppOperation.ANSWER_ACCESS_REQUEST,
+                        subject = item.counterpartWebId,
+                        origin = item.resourceUri,
+                        allowRetry = false,
+                    ),
+                )
             } finally {
                 markPending(item.id, false)
             }
@@ -252,7 +277,9 @@ class NotificationsViewModel @Inject constructor(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                _uiState.value = _uiState.value.copy(error = e.toSharingErrorMessage(stringProvider))
+                _uiState.value = _uiState.value.copy(
+                    error = errors.present(e, AppOperation.DELETE_NOTIFICATION, allowRetry = false),
+                )
             } finally {
                 markPending(item.id, false)
             }
@@ -271,8 +298,10 @@ class NotificationsViewModel @Inject constructor(
         runCatching { notificationsRepository.ensureInbox(webId) }
             .onSuccess { ensuredInboxes.add(webId) }
             .onFailure { e ->
-                if (e is CancellationException) throw e
-                _uiState.value = _uiState.value.copy(error = e.toSharingErrorMessage(stringProvider))
+                e.rethrowIfCancellation()
+                _uiState.value = _uiState.value.copy(
+                    error = errors.present(e, AppOperation.LOAD_NOTIFICATIONS, allowRetry = false),
+                )
             }
     }
 
@@ -282,7 +311,9 @@ class NotificationsViewModel @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _uiState.value = _uiState.value.copy(error = e.toSharingErrorMessage(stringProvider))
+            _uiState.value = _uiState.value.copy(
+                error = errors.present(e, AppOperation.LOAD_NOTIFICATIONS, allowRetry = false),
+            )
         }
     }
 

@@ -325,7 +325,7 @@ private fun SharedWithCard(
 
             is ResourceDetailsViewModel.SharesState.Error ->
                 Text(
-                    text = state.message,
+                    text = state.error.summary,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.error,
                 )

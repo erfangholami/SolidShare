@@ -86,6 +86,7 @@ import com.erfangholami.solidshare.domain.model.NotificationKind
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.presentation.components.BannerTone
 import com.erfangholami.solidshare.presentation.components.DismissibleBanner
+import com.erfangholami.solidshare.presentation.components.UiErrorBanner
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.RequiresConnectionHint
@@ -246,10 +247,9 @@ fun NotificationsPage(
                     enter = fadeIn() + expandVertically(),
                     exit = fadeOut() + shrinkVertically(),
                 ) {
-                    DismissibleBanner(
-                        message = state.error.orEmpty(),
-                        onDismiss = viewModel::clearError,
-                    )
+                    state.error?.let { err ->
+                        UiErrorBanner(error = err, onDismiss = viewModel::clearError)
+                    }
                 }
 
                 if (state.rows.isNotEmpty()) {

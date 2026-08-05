@@ -12,6 +12,12 @@ import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.Ticket
 import com.erfangholami.solidshare.presentation.navigation.SharedTicketRoute
 import com.erfangholami.solidshare.util.NetworkMonitor
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -27,6 +33,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SharedTicketViewModel @Inject constructor(
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val ticketsRepository: TicketsRepository,
@@ -45,7 +52,7 @@ class SharedTicketViewModel @Inject constructor(
             val adding: Boolean,
         ) : UiState
 
-        data class Error(val message: String) : UiState
+        data class Error(val error: UiError) : UiState
     }
 
     private val route = savedStateHandle.toRoute<SharedTicketRoute>()
@@ -69,7 +76,8 @@ class SharedTicketViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 val ticket = ticketsRepository.getSharedTicket(webId, route.resourceUri)
                 val visuals = runCatching {
                     ticketsRepository.getSharedTicketImages(webId, ticket)
@@ -87,7 +95,7 @@ class SharedTicketViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(
-                    e.message ?: stringProvider.getString(R.string.entity_share_load_failed),
+                    errors.present(e, AppOperation.OPEN_SHARED_ITEM, origin = route.resourceUri),
                 )
             }
         }
@@ -99,7 +107,8 @@ class SharedTicketViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = loaded.copy(adding = true)
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 ticketsRepository.addSharedTicketToWallet(webId, loaded.ticket)
                 _uiState.value = loaded.copy(inWallet = true, adding = false)
                 _messages.emit(stringProvider.getString(R.string.added_to_wallet))
@@ -108,7 +117,7 @@ class SharedTicketViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = loaded.copy(adding = false)
                 _messages.emit(
-                    e.message ?: stringProvider.getString(R.string.error_something_went_wrong),
+                    errors.message(e, AppOperation.COPY_SHARED_ITEM, origin = route.resourceUri),
                 )
             }
         }

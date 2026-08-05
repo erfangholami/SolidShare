@@ -570,7 +570,7 @@ class FileRepositoryImplementation @Inject constructor(
 
     private fun accessAwareError(error: SolidError, resourceUri: String): Throwable =
         if (error.code == SolidErrorCode.UNAUTHORIZED || error.code == SolidErrorCode.FORBIDDEN)
-            ResourceAccessException.AccessDenied(resourceUri)
+            SolidError.AccessDenied(resourceUri).asException()
         else error.asException()
 
     private fun WacAllow.toResourceAccess(): ResourceAccess = ResourceAccess(

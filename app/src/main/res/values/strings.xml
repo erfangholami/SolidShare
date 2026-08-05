@@ -64,8 +64,6 @@
     <string name="logout_all">Logout all</string>
     <string name="login_url_invalid">URL is not valid</string>
     <string name="login_url_not_https">URL must use HTTPS</string>
-    <string name="error_login_failed">Login failed</string>
-    <string name="error_login_problem">A problem during login occurred!</string>
     <string name="login_no_refresh_title">Signed in for a limited time</string>
     <string name="login_no_refresh_message">Your pod provider didn\'t let Solid Share stay signed in, so this session will end when its access token expires — usually within an hour.\n\nTo stay signed in: open the provider\'s login page, sign out there (or choose “Use a different WebID”), then sign in again with “Remember this client” ticked.</string>
 
@@ -128,7 +126,6 @@
     <string name="manage_owner">Owner</string>
     <string name="manage_you_suffix">%1$s (you)</string>
     <string name="add_people">Add people</string>
-    <string name="manage_load_failed">Couldn\'t load sharing</string>
     <string name="manage_no_access_title">No one else has access</string>
     <string name="manage_no_access_message">Add people to give them access to this resource.</string>
     <string name="revoke">Revoke</string>
@@ -190,6 +187,7 @@
     <string name="rebuild_share_index">Rebuild share index</string>
     <string name="scan_or_paste">Scan or paste</string>
     <string name="show_share_link">Show share link</string>
+    <string name="open_in">Open in</string>
     <string name="open_in_container">Open in container</string>
     <string name="reshare">Reshare</string>
     <string name="remove_from_list">Remove from list</string>
@@ -287,11 +285,8 @@
     <string name="saved_for_offline">Saved for offline use</string>
     <string name="offline_copy_removed">Offline copy removed</string>
     <string name="shared_with_offline">You\'re offline. Connect to see who has access.</string>
-    <string name="open_in">Open in</string>
-    <string name="open_in_unavailable">Open in isn\'t available yet</string>
     <string name="duplicating">Duplicating…</string>
     <string name="resource_duplicated">Copy created</string>
-    <string name="error_duplicate">Couldn\'t duplicate</string>
     <string name="qr_saved_to_gallery">QR code saved to Pictures/SolidShare</string>
     <string name="qr_save_failed">Couldn\'t save the QR code</string>
     <string name="share_via">Share via</string>
@@ -325,7 +320,6 @@
 
     <!-- Public profile -->
     <string name="loading_profile">Loading profile…</string>
-    <string name="profile_load_failed">Couldn\'t load the profile</string>
 
     <!-- Notifications -->
     <string name="notifications">Notifications</string>
@@ -375,29 +369,111 @@
     <string name="choose_receiver_subtitle">Choose which account should receive this shared resource.</string>
 
     <!-- Errors -->
-    <string name="not_signed_in">Not signed in</string>
-    <string name="error_no_active_user">No active user</string>
-    <string name="error_no_storage">No storage found</string>
-    <string name="error_unknown">Unknown error</string>
-    <string name="error_open_file">Failed to open file</string>
-    <string name="error_create_folder">Failed to create folder</string>
-    <string name="error_delete_resource">Failed to delete resource</string>
-    <string name="error_revoke_access">Couldn\'t revoke access</string>
-    <string name="error_update_access">Couldn\'t update access</string>
-    <string name="couldnt_open_item">Couldn\'t open this item.</string>
-    <string name="error_no_permission_for_action">You don\'t have permission to do that here.</string>
-    <string name="error_access_denied_with_owner">You don\'t have access to this resource. You can request access from %1$s.</string>
-    <string name="error_access_denied_no_owner">You don\'t have access to this resource. You can request access from the owner.</string>
-    <string name="error_stale_acl">This share was changed somewhere else. Please try again.</string>
-    <string name="error_access_indeterminate">Couldn\'t verify access right now. Please try again.</string>
     <string name="error_incomplete_scan">Couldn\'t read your whole pod just now, so the share list wasn\'t rebuilt. Please try again.</string>
-    <string name="error_no_inbox">The recipient can\'t receive share notifications (no inbox advertised).</string>
-    <string name="error_inbox_unauthorized">Not authorized to notify the recipient\'s inbox.</string>
-    <string name="error_inbox_forbidden">The recipient\'s inbox refused the notification.</string>
-    <string name="error_notification_delivery">Couldn\'t deliver the notification to the recipient.</string>
-    <string name="error_impersonation">That notification failed an authenticity check and was ignored.</string>
-    <string name="error_unsupported_auth">This server\'s access-control system isn\'t supported yet.</string>
-    <string name="error_something_went_wrong">Something went wrong.</string>
+
+    <!-- Error layer: operation headlines (AppOperation) -->
+    <string name="op_load_files">Couldn\'t load your files</string>
+    <string name="op_open_folder">Couldn\'t open this folder</string>
+    <string name="op_open_file">Couldn\'t open this file</string>
+    <string name="op_create_folder">Couldn\'t create the folder</string>
+    <string name="op_upload_file">Couldn\'t upload</string>
+    <string name="op_download_file">Couldn\'t download</string>
+    <string name="op_delete_resource">Couldn\'t delete</string>
+    <string name="op_duplicate_resource">Couldn\'t duplicate</string>
+    <string name="op_load_resource_details">Couldn\'t load the details</string>
+    <string name="op_load_shares">Couldn\'t load sharing</string>
+    <string name="op_refresh_shares">Couldn\'t refresh your shares</string>
+    <string name="op_rebuild_share_index">Couldn\'t rebuild your share list</string>
+    <string name="op_create_share">Couldn\'t share this</string>
+    <string name="op_update_share_access">Couldn\'t change access</string>
+    <string name="op_revoke_share">Couldn\'t revoke access</string>
+    <string name="op_check_access">Couldn\'t check your access</string>
+    <string name="op_add_received_share">Couldn\'t add this share</string>
+    <string name="op_remove_received_share">Couldn\'t remove this share</string>
+    <string name="op_request_access">Couldn\'t send your access request</string>
+    <string name="op_open_shared_item">Couldn\'t open this shared item</string>
+    <string name="op_copy_shared_item">Couldn\'t save a copy</string>
+    <string name="op_load_notifications">Couldn\'t load notifications</string>
+    <string name="op_delete_notification">Couldn\'t delete the notification</string>
+    <string name="op_answer_access_request">Couldn\'t send your reply</string>
+    <string name="op_load_contacts">Couldn\'t load contacts</string>
+    <string name="op_refresh_contacts">Couldn\'t refresh contacts</string>
+    <string name="op_load_address_books">Couldn\'t load address books</string>
+    <string name="op_save_contact">Couldn\'t save the contact</string>
+    <string name="op_delete_contact">Couldn\'t delete the contact</string>
+    <string name="op_merge_contacts">Couldn\'t merge these contacts</string>
+    <string name="op_import_contacts">Couldn\'t import contacts</string>
+    <string name="op_export_contacts">Couldn\'t export contacts</string>
+    <string name="op_sync_contacts">Contact sync didn\'t finish</string>
+    <string name="op_load_wallet">Couldn\'t load your wallet</string>
+    <string name="op_load_ticket">Couldn\'t load this ticket</string>
+    <string name="op_save_ticket">Couldn\'t save the ticket</string>
+    <string name="op_delete_ticket">Couldn\'t delete the ticket</string>
+    <string name="op_import_ticket">Couldn\'t import this pass</string>
+    <string name="op_refresh_pass">Couldn\'t refresh this pass</string>
+    <string name="op_sign_in">Couldn\'t sign in</string>
+    <string name="op_sign_out">Couldn\'t sign out</string>
+    <string name="op_switch_account">Couldn\'t switch account</string>
+    <string name="op_load_pod_providers">Couldn\'t load pod providers</string>
+    <string name="op_load_profile">Couldn\'t load the profile</string>
+    <string name="op_update_profile">Couldn\'t update your profile</string>
+    <string name="op_scan_code">Couldn\'t use this code</string>
+    <string name="op_save_to_device">Couldn\'t save to your device</string>
+    <string name="op_sync_pending_changes">Couldn\'t sync your pending changes</string>
+    <string name="op_generic">Something went wrong</string>
+
+    <!-- Error layer: cause sentences (AppError) -->
+    <string name="error_subject_your_pod">your pod</string>
+    <string name="error_subject_this_item">This item</string>
+    <string name="error_subject_the_recipient">the recipient</string>
+    <string name="error_offline">You\'re offline. This will work again as soon as you reconnect.</string>
+    <string name="error_server_unreachable">Couldn\'t reach %1$s. Your device is online, so the pod may be down or blocked on this network.</string>
+    <string name="error_timeout">%1$s took too long to answer. It may be busy — try again in a moment.</string>
+    <string name="error_insecure_connection">The secure connection to %1$s couldn\'t be verified, so nothing was sent. Avoid retrying on a public network.</string>
+    <string name="error_requires_connection">This needs a live connection to your pod, so it can\'t be queued for later.</string>
+    <string name="error_sign_in_required">You\'re signed out. Sign in to continue.</string>
+    <string name="error_session_expired">Your session on %1$s has expired. Sign in again to continue.</string>
+    <string name="error_no_active_account">No account is active right now. Sign in, or pick one from your profile.</string>
+    <string name="error_no_pod_storage">Your WebID profile doesn\'t point to a storage space, so there\'s no pod to read from.</string>
+    <string name="error_permission_denied">You don\'t have permission for this. Only the owner can grant it.</string>
+    <string name="error_permission_denied_owner">You don\'t have permission for this. %1$s owns it and can grant you access.</string>
+    <string name="error_permission_denied_not_owner">Only the owner of this item can change who has access to it.</string>
+    <string name="error_permission_denied_ask_owner">You don\'t have access to this yet. %1$s can share it with you.</string>
+    <string name="error_permission_denied_ask_owner_unknown">You don\'t have access to this yet. Its owner can share it with you.</string>
+    <string name="error_access_unverified">Your pod didn\'t give a clear answer about your access. Try again in a moment.</string>
+    <string name="error_not_found">%1$s isn\'t on the pod anymore. It may have been moved, renamed, or deleted.</string>
+    <string name="error_not_found_cannot_share">%1$s isn\'t on your pod anymore, so there\'s nothing to share.</string>
+    <string name="error_conflict">Something already exists at that name, or the folder it belongs in is missing.</string>
+    <string name="error_changed_elsewhere">This changed on your pod after you opened it. Reload and try again.</string>
+    <string name="error_sharing_changed_elsewhere">Someone changed who can access this at the same time. Reopen sharing and try again.</string>
+    <string name="error_operation_not_allowed">%1$s doesn\'t allow this on this resource.</string>
+    <string name="error_unsupported_access_control">%1$s controls access in a way SolidShare doesn\'t support yet, so sharing isn\'t available there.</string>
+    <string name="error_rate_limited">%1$s is limiting how often SolidShare may contact it. Wait a moment and try again.</string>
+    <string name="error_server_problem">%1$s hit a problem on its side (error %2$d). That\'s usually temporary.</string>
+    <string name="error_server_problem_no_status">%1$s hit a problem on its side. That\'s usually temporary.</string>
+    <string name="error_unexpected_response">%1$s replied in a way SolidShare didn\'t expect (HTTP %2$d).</string>
+    <string name="error_unexpected_response_no_status">%1$s replied in a way SolidShare didn\'t expect.</string>
+    <string name="error_too_large">This is larger than %1$s accepts in a single resource.</string>
+    <string name="error_pod_storage_full">Your pod on %1$s is out of space. Free some up and try again.</string>
+    <string name="error_device_storage_full">Your device is out of storage. Free some space and try again.</string>
+    <string name="error_unreadable_data">The data %1$s sent back couldn\'t be read. It may use a format SolidShare doesn\'t understand.</string>
+    <string name="error_recipient_no_inbox">%1$s hasn\'t set up an inbox, so SolidShare can\'t notify them. Send them the link another way.</string>
+    <string name="error_no_inbox_for_request">%1$s hasn\'t set up an inbox, so your request can\'t be delivered. Ask them another way.</string>
+    <string name="error_recipient_inbox_refused">%1$s\'s inbox turned the message away. They may need to allow messages from you.</string>
+    <string name="error_notification_not_delivered">Couldn\'t deliver the message to %1$s. They can still open a link you send them.</string>
+    <string name="error_authenticity_check_failed">That notification claimed to come from someone it didn\'t, so it was ignored.</string>
+    <string name="error_cancelled">That stopped before it finished.</string>
+    <string name="error_local_file_unavailable">That file couldn\'t be read from your device. It may have moved, or SolidShare may no longer have permission to open it.</string>
+    <string name="error_invalid_input">That couldn\'t be read.</string>
+    <string name="error_invalid_scan">That code isn\'t a Solid Share link or a WebID profile.</string>
+    <string name="error_invalid_pass">That file isn\'t a pass SolidShare can read.</string>
+    <string name="error_unexpected">Something unexpected went wrong. Try again — if it keeps happening, note what you were doing and report it.</string>
+    <string name="error_sign_in_incomplete">Sign-in didn\'t complete. Try again.</string>
+    <string name="error_sign_in_rejected">%1$s turned down the sign-in. Check the account and try again.</string>
+    <string name="error_sign_in_provider_not_found">That pod provider couldn\'t be found. Check the address and try again.</string>
+    <string name="error_sign_in_not_a_provider">%1$s didn\'t answer like a Solid identity provider. Check the address and try again.</string>
+    <string name="error_details">Details</string>
+    <string name="error_action_sign_in">Sign in</string>
 
     <!-- Home hub -->
     <string name="home_greeting">Hi %1$s</string>
@@ -498,7 +574,6 @@
     <string name="contacts_export_progress">Exporting %1$d of %2$d…</string>
     <string name="contacts_export_started">Export started — you\'ll get a notification when it finishes</string>
     <string name="contacts_export_saved">Contacts exported</string>
-    <string name="contacts_export_failed">Couldn\'t export contacts</string>
     <string name="contacts_merge_title">Review duplicates</string>
     <string name="contacts_merge_found">%1$d possible duplicates to review</string>
     <string name="contacts_merge_review_action">Review</string>
@@ -554,7 +629,6 @@
     <string name="add_to_my_contacts">Add to my contacts</string>
     <string name="already_in_wallet">Already in your wallet</string>
     <string name="added_to_wallet">Added to your wallet</string>
-    <string name="entity_share_load_failed">Couldn\'t load this share</string>
     <string name="entity_view_ticket">View ticket</string>
     <string name="entity_view_contact">View contact</string>
     <string name="entity_chip_label">%1$s · %2$s</string>

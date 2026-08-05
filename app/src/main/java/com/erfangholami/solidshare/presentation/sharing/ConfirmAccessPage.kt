@@ -53,6 +53,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
+import com.erfangholami.solidshare.domain.error.ErrorAction
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.presentation.components.LoadingLayout
 import com.erfangholami.solidshare.presentation.components.LoadingState
@@ -162,9 +163,11 @@ fun ConfirmAccessPage(
                     is ConfirmAccessViewModel.State.Failure ->
                         StatusMessage(
                             positive = false,
-                            text = s.message,
-                            title = null,
-                            onRetry = if (s.canRetry) viewModel::check else null,
+                            text = s.error.message,
+                            title = s.error.title,
+                            onRetry = viewModel::check.takeIf {
+                                s.error.action == ErrorAction.Retry
+                            },
                         )
                 }
 

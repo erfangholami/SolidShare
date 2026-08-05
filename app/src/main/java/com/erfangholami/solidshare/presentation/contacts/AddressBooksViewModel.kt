@@ -5,6 +5,12 @@ import androidx.lifecycle.viewModelScope
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.AddressBook
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -19,11 +25,12 @@ class AddressBooksViewModel @Inject constructor(
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class UiState(
         val loading: Boolean = true,
-        val error: String? = null,
+        val error: UiError? = null,
         val books: List<AddressBook> = emptyList(),
         val busy: Boolean = false,
     )
@@ -46,8 +53,7 @@ class AddressBooksViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         loading = false,
-                        error = error.message
-                            ?: stringProvider.getString(R.string.error_something_went_wrong),
+                        error = errors.present(error, AppOperation.LOAD_ADDRESS_BOOKS),
                     )
                 }
             }
@@ -83,8 +89,7 @@ class AddressBooksViewModel @Inject constructor(
                 load()
             }.onFailure { error ->
                 _state.update { it.copy(busy = false) }
-                _message.value = error.message
-                    ?: stringProvider.getString(R.string.error_something_went_wrong)
+                _message.value = errors.message(error, AppOperation.LOAD_ADDRESS_BOOKS)
             }
         }
     }

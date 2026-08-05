@@ -11,6 +11,11 @@ import com.erfangholami.solidshare.data.repo.tickets.toDraft
 import com.erfangholami.solidshare.domain.model.TicketDraft
 import com.erfangholami.solidshare.presentation.navigation.TicketEditRoute
 import com.erfangholami.solidshare.presentation.navigation.ticketEditTypeMap
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -26,6 +31,7 @@ class TicketEditViewModel @Inject constructor(
     private val ticketsRepository: TicketsRepository,
     private val importHolder: TicketImportHolder,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class UiState(
@@ -57,13 +63,15 @@ class TicketEditViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 ticketsRepository.getTicket(webId, uri)
             }.onSuccess { ticket ->
                 _state.update { it.copy(loading = false, draft = ticket.toDraft()) }
             }.onFailure {
+                it.rethrowIfCancellation()
                 _state.update { state -> state.copy(loading = false) }
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                _message.value = errors.message(it, AppOperation.LOAD_TICKET, origin = uri)
             }
         }
     }
@@ -81,7 +89,8 @@ class TicketEditViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(saving = true) }
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 if (ticketUri == null) {
                     ticketsRepository.queueCreate(webId, draft, importHolder.consume())
                 } else {
@@ -91,8 +100,9 @@ class TicketEditViewModel @Inject constructor(
                 _state.update { it.copy(saving = false) }
                 onSaved()
             }.onFailure {
-                _state.update { it.copy(saving = false) }
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                it.rethrowIfCancellation()
+                _state.update { state -> state.copy(saving = false) }
+                _message.value = errors.message(it, AppOperation.SAVE_TICKET, subject = draft.title)
             }
         }
     }

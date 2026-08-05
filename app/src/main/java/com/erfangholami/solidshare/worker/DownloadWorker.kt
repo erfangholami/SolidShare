@@ -12,6 +12,9 @@ import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import com.erfangholami.androidsolidservices.shared.http.HTTPAcceptType.OCTET_STREAM
 import com.erfangholami.solidshare.data.repo.file.FileRepository
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.notification.NotificationHelper
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -21,6 +24,7 @@ class DownloadWorker @AssistedInject constructor(
     @Assisted appContext: Context,
     @Assisted params: WorkerParameters,
     private val fileRepository: FileRepository,
+    private val errors: ErrorPresenter,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -68,13 +72,15 @@ class DownloadWorker @AssistedInject constructor(
 
             Result.success(workDataOf(KEY_RESULT_URI to uri.toString()))
         } catch (e: Exception) {
+            e.rethrowIfCancellation()
+            val failure = errors.present(e, AppOperation.DOWNLOAD_FILE, fileName, fileUrl)
             post(
                 NotificationHelper.NOTIFICATION_ID_DOWNLOAD_COMPLETE,
                 NotificationHelper.buildErrorNotification(
-                    applicationContext, "Download failed", e.message ?: "Unknown error",
+                    applicationContext, failure.title, failure.message,
                 ),
             )
-            Result.failure(workDataOf("error" to (e.message ?: "Unknown error")))
+            Result.failure(workDataOf("error" to failure.summary))
         }
     }
 

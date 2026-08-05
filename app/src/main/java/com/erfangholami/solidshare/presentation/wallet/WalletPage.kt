@@ -64,6 +64,7 @@ import com.erfangholami.solidshare.domain.model.TicketCategory
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
 import com.erfangholami.solidshare.presentation.components.EmptyState
 import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.UiErrorState
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.SheetActionRow
@@ -158,10 +159,9 @@ fun WalletPage(
             when {
                 state.loading -> LoadingState(modifier = Modifier.align(Alignment.Center))
 
-                state.error != null -> ErrorState(
-                    message = state.error.orEmpty(),
+                state.error != null -> UiErrorState(
+                    error = state.error!!,
                     modifier = Modifier.align(Alignment.Center),
-                    retryLabel = stringResource(R.string.retry),
                     onRetry = { viewModel.load() },
                 )
 

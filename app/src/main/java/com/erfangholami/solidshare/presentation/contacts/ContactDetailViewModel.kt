@@ -10,6 +10,12 @@ import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.domain.model.ContactGroup
 import com.erfangholami.solidshare.domain.model.ContactRef
@@ -30,11 +36,12 @@ class ContactDetailViewModel @Inject constructor(
     private val contactsRepository: ContactsRepository,
     private val contactsAccountManager: ContactsAccountManager,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class UiState(
         val loading: Boolean = true,
-        val error: String? = null,
+        val error: UiError? = null,
         val contact: ContactDetail? = null,
         val memberGroups: List<ContactGroup> = emptyList(),
         val photo: ImageBitmap? = null,
@@ -87,8 +94,7 @@ class ContactDetailViewModel @Inject constructor(
                 _state.update {
                     it.copy(
                         loading = false,
-                        error = error.message
-                            ?: stringProvider.getString(R.string.error_something_went_wrong),
+                        error = errors.present(error, AppOperation.LOAD_CONTACTS),
                     )
                 }
             }
@@ -104,7 +110,8 @@ class ContactDetailViewModel @Inject constructor(
             }.onSuccess {
                 onDeleted()
             }.onFailure {
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                it.rethrowIfCancellation()
+                _message.value = errors.message(it, AppOperation.DELETE_CONTACT)
             }
         }
     }

@@ -131,11 +131,10 @@ fun Profile(
     }
 
     val snackbarHostState = remember { SnackbarHostState() }
-    val reconnectFailedMessage = stringResource(R.string.error_login_problem)
     LaunchedEffect(viewModel.reconnectError.value) {
-        if (viewModel.reconnectError.value) {
-            snackbarHostState.showSnackbar(reconnectFailedMessage)
-            viewModel.reconnectError.value = false
+        viewModel.reconnectError.value?.let { failure ->
+            snackbarHostState.showSnackbar(failure.summary)
+            viewModel.reconnectError.value = null
         }
     }
 

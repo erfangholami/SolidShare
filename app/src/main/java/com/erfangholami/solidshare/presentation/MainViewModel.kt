@@ -10,6 +10,7 @@ import com.erfangholami.solidshare.presentation.sharing.ScanRouter
 import com.erfangholami.solidshare.presentation.sharing.ReceiverPickerContributor
 import com.erfangholami.solidshare.data.repo.settings.SettingsRepository
 import com.erfangholami.solidshare.data.repo.sharing.SharingRepository
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
 import com.erfangholami.solidshare.domain.model.ParsedShareLink
 import com.erfangholami.solidshare.domain.model.ThemeMode
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,6 +26,7 @@ import javax.inject.Inject
 class MainViewModel @Inject constructor(
     receiverPickers: ReceiverPickerRegistry,
     navGraphs: NavGraphRegistry,
+    val errorPresenter: ErrorPresenter,
     private val sharingRepository: SharingRepository,
     private val scanRouter: ScanRouter,
     settingsRepository: SettingsRepository,

@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.UiErrorState
 import com.erfangholami.solidshare.presentation.components.LoadingState
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
 
@@ -104,12 +105,10 @@ fun PublicProfilePage(
                     label = stringResource(R.string.loading_profile),
                 )
 
-                is PublicProfileViewModel.UiState.Error -> ErrorState(
-                    message = s.message,
+                is PublicProfileViewModel.UiState.Error -> UiErrorState(
+                    error = s.error,
                     modifier = Modifier.fillMaxSize(),
-                    title = stringResource(R.string.profile_load_failed),
                     icon = null,
-                    retryLabel = stringResource(R.string.retry),
                     onRetry = viewModel::load,
                 )
 

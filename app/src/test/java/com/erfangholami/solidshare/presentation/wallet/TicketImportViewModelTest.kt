@@ -44,6 +44,7 @@ class TicketImportViewModelTest {
         ticketsRepository = ticketsRepository,
         importHolder = holder,
         stringProvider = stringProvider,
+        errors = mockk(relaxed = true),
     )
 
     @Test

@@ -1,15 +1,10 @@
 package com.erfangholami.solidshare
 
-import com.erfangholami.androidsolidservices.api.exceptions.SharingException
-import com.erfangholami.solidshare.data.repo.sharing.SharingError
 import com.erfangholami.solidshare.data.repo.sharing.toDomain
 import com.erfangholami.solidshare.data.repo.sharing.toLib
-import com.erfangholami.solidshare.data.repo.sharing.toSharingError
 import com.erfangholami.solidshare.domain.model.ShareMode
 import com.erfangholami.solidshare.domain.model.ShareReceiver
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertSame
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.erfangholami.androidsolidservices.shared.model.sharing.GivenShare as LibGivenShare
 import com.erfangholami.androidsolidservices.shared.model.sharing.ReceivedShare as LibReceivedShare
@@ -94,28 +89,4 @@ class SharingMappersTest {
         assertEquals("2026-06-04T08:30:00Z", domain.addedAt)
     }
 
-    @Test
-    fun toSharingError_mapsAccessDeniedWithFields() {
-        val error = SharingException
-            .AccessDenied("https://pod.example/secret", "https://owner.example/card#me")
-            .toSharingError()
-
-        assertTrue(error is SharingError.AccessDenied)
-        error as SharingError.AccessDenied
-        assertEquals("https://pod.example/secret", error.resourceUri)
-        assertEquals("https://owner.example/card#me", error.ownerWebId)
-    }
-
-    @Test
-    fun toSharingError_passesThroughExistingDomainError() {
-        val original = SharingError.StaleAcl()
-        assertSame(original, original.toSharingError())
-    }
-
-    @Test
-    fun toSharingError_wrapsUnknownThrowable() {
-        val error = IllegalStateException("boom").toSharingError()
-        assertTrue(error is SharingError.Unknown)
-        assertEquals("boom", error.message)
-    }
 }

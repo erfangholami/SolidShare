@@ -12,6 +12,11 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.sync.ContactsAccountManager
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.ContactsDeviceImportWorker
 import com.erfangholami.solidshare.worker.ContactsExportWorker
@@ -30,6 +35,7 @@ class ContactsSettingsViewModel @Inject constructor(
     private val contactsAccountManager: ContactsAccountManager,
     private val workManager: WorkManager,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class UiState(
@@ -48,13 +54,15 @@ class ContactsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val count = _state.value.contactCount
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 contactsRepository.queueDeleteAll(webId)
                 contactsAccountManager.requestSync(webId)
             }.onSuccess {
                 _message.value = stringProvider.getString(R.string.contacts_delete_all_done, count)
             }.onFailure {
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                it.rethrowIfCancellation()
+                _message.value = errors.message(it, AppOperation.DELETE_CONTACT)
             }
             _state.update { it.copy(mergeCount = 0, contactCount = 0) }
         }
@@ -91,7 +99,8 @@ class ContactsSettingsViewModel @Inject constructor(
     fun syncNow() {
         viewModelScope.launch {
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 contactsAccountManager.requestSync(webId)
             }
             _message.value = stringProvider.getString(R.string.contacts_sync_requested)

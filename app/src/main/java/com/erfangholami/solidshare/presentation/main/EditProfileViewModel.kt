@@ -7,6 +7,11 @@ import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.profile.PublicProfileRepository
 import com.erfangholami.solidshare.domain.model.ProfileEdits
 import com.erfangholami.solidshare.domain.model.PublicProfile
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +25,7 @@ import javax.inject.Inject
 @HiltViewModel
 class EditProfileViewModel @Inject constructor(
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
     private val authRepository: AuthRepository,
     private val publicProfileRepository: PublicProfileRepository,
 ) : ViewModel() {
@@ -48,7 +54,11 @@ class EditProfileViewModel @Inject constructor(
                     runCatching { authRepository.reloadProfile(webId) }
                     SaveState.Success
                 },
-                onFailure = { SaveState.Error(it.message ?: stringProvider.getString(R.string.error_unknown)) },
+                onFailure = {
+                    SaveState.Error(
+                        errors.message(it, AppOperation.UPDATE_PROFILE, origin = webId),
+                    )
+                },
             )
         }
     }

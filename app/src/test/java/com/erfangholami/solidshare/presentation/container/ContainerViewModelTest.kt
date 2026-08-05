@@ -126,6 +126,7 @@ class ContainerViewModelTest {
         fileRepository = fileRepository,
         networkMonitor = networkMonitor,
         outboxRepository = outboxRepository,
+        errors = mockk(relaxed = true),
     )
 
     private fun shownItems(vm: ContainerViewModel): List<ContainerItem> =

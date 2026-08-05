@@ -11,6 +11,12 @@ import androidx.navigation.toRoute
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.domain.model.ContactDetail
 import com.erfangholami.solidshare.presentation.navigation.SharedContactRoute
 import com.erfangholami.solidshare.util.NetworkMonitor
@@ -29,6 +35,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SharedContactViewModel @Inject constructor(
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository,
     private val contactsRepository: ContactsRepository,
@@ -47,7 +54,7 @@ class SharedContactViewModel @Inject constructor(
             val adding: Boolean,
         ) : UiState
 
-        data class Error(val message: String) : UiState
+        data class Error(val error: UiError) : UiState
     }
 
     private val route = savedStateHandle.toRoute<SharedContactRoute>()
@@ -71,7 +78,8 @@ class SharedContactViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = UiState.Loading
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 val contact = contactsRepository.getSharedContact(webId, route.resourceUri)
                 val photo = contact.photoUri
                     ?.let { contactsRepository.getSharedContactPhoto(webId, it) }
@@ -88,7 +96,7 @@ class SharedContactViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 _uiState.value = UiState.Error(
-                    e.message ?: stringProvider.getString(R.string.entity_share_load_failed),
+                    errors.present(e, AppOperation.OPEN_SHARED_ITEM, origin = route.resourceUri),
                 )
             }
         }
@@ -100,7 +108,8 @@ class SharedContactViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = loaded.copy(adding = true)
             try {
-                val webId = authRepository.getActiveWebId() ?: error("Not signed in")
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 val sharedWebId = loaded.contact.webId
                 if (sharedWebId != null && sharedWebId == webId) {
                     _uiState.value = loaded.copy(adding = false)
@@ -133,7 +142,7 @@ class SharedContactViewModel @Inject constructor(
             } catch (e: Exception) {
                 _uiState.value = loaded.copy(adding = false)
                 _messages.emit(
-                    e.message ?: stringProvider.getString(R.string.error_something_went_wrong),
+                    errors.message(e, AppOperation.SAVE_CONTACT),
                 )
             }
         }

@@ -42,6 +42,7 @@ import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.domain.model.GivenShare
 import com.erfangholami.solidshare.presentation.components.ErrorState
+import com.erfangholami.solidshare.presentation.components.UiErrorState
 import com.erfangholami.solidshare.presentation.navigation.PublicProfileRoute
 import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.sharing.EntityHeaderRow
@@ -115,13 +116,7 @@ fun ContactSharingPage(
                     )
 
                 is ContactShareViewModel.UiState.Error ->
-                    ErrorState(
-                        message = s.message,
-                        title = stringResource(R.string.manage_load_failed),
-                        icon = null,
-                        retryLabel = stringResource(R.string.retry),
-                        onRetry = viewModel::load,
-                    )
+                    UiErrorState(error = s.error, icon = null, onRetry = viewModel::load)
 
                 is ContactShareViewModel.UiState.Loaded -> {
                     EntityHeaderRow(

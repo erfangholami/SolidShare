@@ -7,6 +7,12 @@ import com.erfangholami.solidshare.R
 import com.erfangholami.solidshare.data.repo.auth.AuthRepository
 import com.erfangholami.solidshare.data.repo.tickets.TicketsRepository
 import com.erfangholami.solidshare.domain.model.TicketSummaryItem
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.UiError
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import com.erfangholami.solidshare.worker.PassRefreshWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,12 +30,13 @@ class WalletViewModel @Inject constructor(
     private val ticketsRepository: TicketsRepository,
     private val importHolder: TicketImportHolder,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
     private val workManager: WorkManager,
 ) : ViewModel() {
 
     data class UiState(
         val loading: Boolean = true,
-        val error: String? = null,
+        val error: UiError? = null,
         val upcoming: List<TicketSummaryItem> = emptyList(),
         val past: List<TicketSummaryItem> = emptyList(),
     ) {
@@ -55,7 +62,9 @@ class WalletViewModel @Inject constructor(
 
     fun load() {
         viewModelScope.launch {
-            runCatching { requireNotNull(authRepository.getActiveWebId()) }
+            runCatching {
+                authRepository.getActiveWebId() ?: throw AppError.NoActiveAccount.asException()
+            }
                 .onSuccess { webId ->
                     startObserving(webId)
                     PassRefreshWorker.enqueue(workManager)
@@ -65,8 +74,7 @@ class WalletViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             loading = false,
-                            error = error.message
-                                ?: stringProvider.getString(R.string.error_something_went_wrong),
+                            error = errors.present(error, AppOperation.LOAD_WALLET),
                         )
                     }
                 }
@@ -114,8 +122,7 @@ class WalletViewModel @Inject constructor(
                         error = if (hadContent) {
                             null
                         } else {
-                            error.message
-                                ?: stringProvider.getString(R.string.error_something_went_wrong)
+                            errors.present(error, AppOperation.LOAD_WALLET)
                         },
                     )
                 }

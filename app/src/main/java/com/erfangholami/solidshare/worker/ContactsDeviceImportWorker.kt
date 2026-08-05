@@ -13,6 +13,9 @@ import com.erfangholami.solidshare.data.device.DeviceContactsSource
 import com.erfangholami.solidshare.data.repo.contacts.ContactMergeEngine
 import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.ContactDraft
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.notification.NotificationHelper
 import com.erfangholami.solidshare.sync.ContactsAccountManager
 import com.erfangholami.solidshare.sync.SolidAccounts
@@ -27,6 +30,7 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
     private val deviceContactsSource: DeviceContactsSource,
     private val mergeEngine: ContactMergeEngine,
     private val contactsAccountManager: ContactsAccountManager,
+    private val errors: ErrorPresenter,
 ) : CoroutineWorker(appContext, params) {
 
     companion object {
@@ -123,11 +127,9 @@ class ContactsDeviceImportWorker @AssistedInject constructor(
             )
             Result.success()
         } catch (e: Exception) {
-            postComplete(
-                applicationContext.getString(R.string.contacts_import_complete_title),
-                e.message ?: applicationContext.getString(R.string.error_something_went_wrong),
-                openContacts = false,
-            )
+            e.rethrowIfCancellation()
+            val failure = errors.present(e, AppOperation.IMPORT_CONTACTS)
+            postComplete(failure.title, failure.message, openContacts = false)
             Result.failure()
         }
     }

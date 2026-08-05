@@ -10,6 +10,11 @@ import com.erfangholami.solidshare.data.repo.contacts.ContactsRepository
 import com.erfangholami.solidshare.domain.model.ContactRef
 import com.erfangholami.solidshare.domain.model.MergeSuggestion
 import com.erfangholami.solidshare.sync.ContactsAccountManager
+import com.erfangholami.solidshare.domain.error.AppError
+import com.erfangholami.solidshare.domain.error.AppOperation
+import com.erfangholami.solidshare.domain.error.ErrorPresenter
+import com.erfangholami.solidshare.domain.error.asException
+import com.erfangholami.solidshare.domain.error.rethrowIfCancellation
 import com.erfangholami.solidshare.util.StringProvider
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -26,6 +31,7 @@ class ContactsMergeViewModel @Inject constructor(
     private val mergePrefs: ContactsMergePrefs,
     private val contactsAccountManager: ContactsAccountManager,
     private val stringProvider: StringProvider,
+    private val errors: ErrorPresenter,
 ) : ViewModel() {
 
     data class MemberUi(
@@ -59,7 +65,8 @@ class ContactsMergeViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(loading = true) }
             val suggestions = runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 contactsRepository.findMergeSuggestions(webId)
             }.getOrDefault(emptyList())
             raw = suggestions
@@ -74,7 +81,8 @@ class ContactsMergeViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(busy = true) }
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 val survivor = mergeEngine.chooseSurvivor(suggestion.members.map { it.contact })
                 val survivorMember = suggestion.members.first { it.contact.uri == survivor.uri }
                 val losers = suggestion.members
@@ -89,7 +97,8 @@ class ContactsMergeViewModel @Inject constructor(
             }.onSuccess {
                 _message.value = stringProvider.getString(R.string.contacts_merge_done)
             }.onFailure {
-                _message.value = stringProvider.getString(R.string.error_something_went_wrong)
+                it.rethrowIfCancellation()
+                _message.value = errors.message(it, AppOperation.MERGE_CONTACTS)
             }
             _state.update { it.copy(busy = false) }
             load()
@@ -99,7 +108,8 @@ class ContactsMergeViewModel @Inject constructor(
     fun dismiss(signature: String) {
         viewModelScope.launch {
             runCatching {
-                val webId = requireNotNull(authRepository.getActiveWebId())
+                val webId = authRepository.getActiveWebId()
+                    ?: throw AppError.NoActiveAccount.asException()
                 mergePrefs.dismiss(webId, signature)
             }
             raw = raw.filterNot { it.signature == signature }
