@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.outlined.DarkMode
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.Policy
 import androidx.compose.material.icons.outlined.QrCode2
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +67,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import com.erfangholami.solidshare.R
@@ -77,6 +79,7 @@ import com.erfangholami.solidshare.presentation.rememberIsOnline
 import com.erfangholami.solidshare.presentation.components.PreviewSamples
 import com.erfangholami.solidshare.presentation.components.ProfileAvatar
 import com.erfangholami.solidshare.presentation.components.ProfileHeader
+import com.erfangholami.solidshare.presentation.components.SheetActionRow
 import com.erfangholami.solidshare.presentation.theme.AppTheme
 import com.erfangholami.solidshare.presentation.navigation.AuthNavItem
 import com.erfangholami.solidshare.presentation.navigation.EditProfileRoute
@@ -457,33 +460,51 @@ private fun AboutSheet(onDismiss: () -> Unit) {
         }.getOrNull() ?: "0.0"
     }
 
+    val privacyPolicyUrl = stringResource(R.string.about_privacy_policy_url)
+
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 24.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+                .padding(vertical = 16.dp),
         ) {
-            Text(
-                stringResource(R.string.app_name),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                stringResource(R.string.about_app_version, version),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                stringResource(R.string.about_app_description),
-                style = MaterialTheme.typography.bodyMedium,
+            Column(
+                modifier = Modifier.padding(horizontal = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    stringResource(R.string.app_name),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    stringResource(R.string.about_app_version, version),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    stringResource(R.string.about_app_description),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            SheetActionRow(
+                icon = Icons.Outlined.Policy,
+                label = stringResource(R.string.about_privacy_policy),
+                onClick = {
+                    runCatching {
+                        context.startActivity(Intent(Intent.ACTION_VIEW, privacyPolicyUrl.toUri()))
+                    }
+                },
             )
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(
-                onClick = onDismiss,
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-            ) { Text(stringResource(R.string.close)) }
+            Column(modifier = Modifier.padding(horizontal = 24.dp)) {
+                OutlinedButton(
+                    onClick = onDismiss,
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                ) { Text(stringResource(R.string.close)) }
+            }
         }
     }
 }

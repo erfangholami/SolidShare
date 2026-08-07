@@ -250,6 +250,8 @@
     <string name="theme_dark">Dark</string>
     <string name="about_app_version">Version %1$s</string>
     <string name="about_app_description">Solid Share lets you take your data with you across the decentralized Solid web.</string>
+    <string name="about_privacy_policy">Privacy policy</string>
+    <string name="about_privacy_policy_url" translatable="false">https://solidshare.app/privacy</string>
     <string name="profile_updated">Profile updated</string>
     <string name="profile_update_failed">Couldn\'t update your profile: %1$s</string>
     <string name="profile_field_read_only">Read-only</string>
