@@ -308,6 +308,44 @@ Pushing a `v` tag is therefore the whole publish step. The `Release` workflow ru
 verification as every pull request, builds both flavours, checks that the FOSS APK carries no
 proprietary code, and attaches the artifacts to a GitHub release.
 
+### Store metadata
+
+The store listing lives in the repository, in the Fastlane layout F-Droid reads directly:
+
+```
+fastlane/metadata/android/en-US/
+├── title.txt                 # 11 chars  (Play caps the app name at 30)
+├── short_description.txt     # 70 chars  (cap 80)
+├── full_description.txt      # 2989 chars (cap 4000)
+├── changelogs/400.txt        # 453 chars (Play caps "what's new" at 500)
+├── changelogs/401.txt        # one file per release, named for its versionCode
+└── images/
+    ├── icon.png              # 512×512, rendered from the vector mark
+    └── phoneScreenshots/     # 30 × 1080×2340, shown in filename order
+```
+
+Two conventions matter. **A changelog is named after its `versionCode`**, which the build derives
+from the tag as `major × 10000 + minor × 100 + patch` — so `v0.4.0` is `400.txt` and `v0.4.1` is
+`401.txt`. Every new tag needs its own file, or that release ships with no "what's new"; check the
+number with `./gradlew -q :app:printVersion -PappVersionName=X.Y.Z`. **Screenshots are ordered by
+filename**, and the order is the one a new user meets the screens in: first run, then Home and the
+two cards it opens, then the tabs left to right — Files, scan, Share, Profile — with each tab's
+sheets in the order you reach them. Keep the prefix zero-padded, or a tenth screenshot sorts
+between the first and the second, and name each file after its screen so a re-shoot keeps its slot.
+
+`phoneScreenshots/` mirrors the repository's own `screenshots/` directory file for file; keep the
+two in step so there is one place to re-shoot a screen.
+
+Google Play accepts at most **eight** phone screenshots, and journey order is not the order that
+sells. Upload these eight, which cover every feature area and stand alone without captions:
+
+```
+05_home_hub  08_files_browser  16_share_create  17_share_link_qr
+23_shared_by_me  27_notifications_access_request  06_wallet_ticket_pass  29_profile_share_qr
+```
+
+Adding a locale means a sibling directory (`de-DE`, `fa-IR`, …) with the same shape.
+
 ## Project Structure
 
 ```

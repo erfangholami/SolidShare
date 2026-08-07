@@ -1,0 +1,4 @@
+A small follow-up to 0.4.0.
+
+* The privacy policy is now one tap away, under About on your Profile
+* Built for Android 16

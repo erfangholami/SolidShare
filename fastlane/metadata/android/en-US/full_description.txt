@@ -1,0 +1,51 @@
+Solid Share brings the Solid ecosystem to everyday Android users. Sign in with your Solid pod and use it as a personal data wallet: browse and manage your files, keep your address book and your tickets and passes on it, and share any of it with the people you choose.
+
+Solid is an open web standard for personal data stores, called pods. Your pod is yours — pick a provider or run your own. Solid Share has no server of its own: the app talks to your pod directly, and nothing you store passes through us.
+
+FILES
+
+* Browse containers and resources in list or grid, sorted by name, type or date
+* Upload from device storage, or capture a photo or video and upload it straight away
+* Download resources and open them with any compatible app
+* Duplicate a file or folder as a private copy, reset to owner-only access
+
+SHARING
+
+* Grant a specific Solid user, by WebID, or anyone with the link, access to any file or folder
+* View, Add and Edit access levels instead of raw Read, Append and Write
+* Every share produces a QR code and a link that opens straight back into the app
+* Two pod-backed lists: what you have shared, and what has been shared with you
+* Widen, narrow or revoke a share at any time; the recipient is told when their access changes
+* Ask an owner for access when a resource denies you, and accept or decline requests on your own
+* Works across Solid servers, using Web Access Control with an Access Control Policy fallback
+
+WALLET
+
+* Event tickets, boarding passes, cinema tickets, loyalty cards and coupons, stored as ordinary Solid resources you own
+* Apple Wallet .pkpass import, read in full, with the original file kept on your pod beside the ticket
+* Barcodes re-rendered in the symbology the issuer used, so gate scanners read the identical code, with a screen-brightness boost when you open one
+* Passes carrying an issuer web service keep themselves current
+* An open ticket-QR format, so any issuer can offer one-tap add-to-pod with no integration
+
+CONTACTS
+
+* Your address book on your pod, in the standard vCard vocabulary, round-tripped in full
+* Two-way sync with the phone's Contacts app, one Android account per pod
+* Import from the phone's own accounts or from a .vcf file, and export everything back out
+* Near-duplicates are suggested for review and merged only when you say so, never silently
+
+OFFLINE
+
+* Everything you have seen is on the device, in an encrypted database, and opens with no connection
+* Every write queues and drains by itself when the connection comes back
+* Pin a file to keep its content available offline
+
+ACCOUNTS
+
+* Log into several pods at once and switch between them
+* Inrupt, Solid Community, Data Pod, or any custom OIDC issuer URL
+* An expired session is a state, not a logout — reconnect in one tap, keeping your data in place
+
+Solid Share is free software under the MIT licence. It ships in two builds: the F-Droid build links no proprietary dependency at all, and the Google Play build adds crash reporting.
+
+Source code: https://github.com/erfangholami/SolidShare

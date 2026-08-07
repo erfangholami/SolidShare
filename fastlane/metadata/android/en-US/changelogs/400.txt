@@ -1,0 +1,6 @@
+Wallet and Contacts arrive, and everything works offline.
+
+* Wallet — event tickets, boarding passes and loyalty cards on your pod, with .pkpass import and scanner-faithful barcodes
+* Contacts — your address book on your pod, two-way sync with the phone, .vcf import and export, duplicate review
+* Share a ticket or a contact as itself, not as a file
+* Offline-first — what you have seen opens with no connection, and every write queues until it can go
