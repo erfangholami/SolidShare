@@ -82,7 +82,7 @@ android {
     defaultConfig {
         applicationId = "com.erfangholami.solidshare"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = appVersionCode
         versionName = appVersionName
 
