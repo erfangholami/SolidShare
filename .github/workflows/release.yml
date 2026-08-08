@@ -139,6 +139,24 @@ jobs:
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
+      # F-Droid names a changelog after the versionCode and shows nothing when the file is absent.
+      # It is read from the tagged commit, so it cannot be added afterwards — a release that ships
+      # without one has no "what's new" until the release after it. This is the only step of the
+      # release that would otherwise fail silently, so it fails here instead.
+      - name: Check the store changelog for this version
+        run: |
+          file="fastlane/metadata/android/en-US/changelogs/${{ steps.version.outputs.code }}.txt"
+          if [ ! -s "$file" ]; then
+            echo "::error::$file is missing. Write it before tagging ${{ steps.version.outputs.tag }}."
+            exit 1
+          fi
+          chars=$(tr -d '\n' < "$file" | wc -c | tr -d ' ')
+          if [ "$chars" -gt 500 ]; then
+            echo "::error::$file is $chars characters; F-Droid and Play both cap it at 500."
+            exit 1
+          fi
+          echo "$file ok ($chars characters)"
+
       # Flavours are built as separate tasks: `assembleRelease` would build both at once and the two
       # dex merges together exhaust the default daemon heap.
       - name: Build FOSS APK
