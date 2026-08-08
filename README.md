@@ -13,7 +13,21 @@ The goal is to make Solid accessible to regular people: a smooth, familiar mobil
 
 ## Features
 
-### v0.4.0 - Current
+### v0.4.1 - Current
+
+A small follow-up to 0.4.0, and the release that puts Solid Share on the stores.
+
+- **The privacy policy from inside the app** — one tap under About on your Profile, next to the
+  version
+- **Built for Android 16** — targets API 36, the level both stores now require of a new release
+- **A store listing that lives in the repository** — title, descriptions, per-version changelogs,
+  icon, feature graphic and screenshots in the Fastlane layout F-Droid reads straight from the
+  tagged commit, so the listing is reviewed and versioned like the code
+- **A release cannot ship without its changelog** — the release workflow fails when the changelog
+  for the tag's `versionCode` is missing or over the 500-character store limit, because that file is
+  read from the tag and cannot be added afterwards
+
+### v0.4.0
 
 The release that turns Solid Share from a pod file browser into a pod **data** app: a wallet and an
 address book of your own, everything usable offline, and sharing that understands what it is
@@ -237,7 +251,7 @@ A tour of all of it is in [documents/ARCHITECTURE.md](documents/ARCHITECTURE.md)
 | SQLCipher              | 4.17.0           |
 | Android Solid Services | 0.7.0            |
 | Min SDK                | 26 (Android 8.0) |
-| Target SDK             | 35               |
+| Target SDK             | 36 (Android 16)  |
 | Compile SDK            | 37               |
 | JVM Toolchain          | 17               |
 
