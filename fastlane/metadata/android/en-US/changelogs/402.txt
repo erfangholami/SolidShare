@@ -1,0 +1,4 @@
+A maintenance release on the road to F-Droid.
+
+* The app is now built with Java 21, matching F-Droid's standard build environment
+* Nothing changes in the app itself
