@@ -41,10 +41,10 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: gradle
 
@@ -116,7 +116,7 @@ jobs:
 
           ./gradlew -q :app:printVersion \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64 > version.txt
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64 > version.txt
 
           NAME=$(sed -n 's/^versionName=//p' version.txt)
           CODE=$(sed -n 's/^versionCode=//p' version.txt)
@@ -163,13 +163,13 @@ jobs:
         run: |
           ./gradlew :app:assembleFossRelease \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       - name: Build Play APK and bundle
         run: |
           ./gradlew :app:assembleGmsRelease :app:bundleGmsRelease \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       - name: Verify the FOSS build carries no proprietary code
         run: |

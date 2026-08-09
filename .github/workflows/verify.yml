@@ -44,10 +44,10 @@ jobs:
           ref: ${{ inputs.ref || github.ref }}
           fetch-depth: 0
 
-      - name: Set up JDK 17
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
+          java-version: '21'
           distribution: 'temurin'
           cache: gradle
 
@@ -75,7 +75,7 @@ jobs:
           chmod +x gradlew
           ./gradlew -q :app:printVersion \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       # Includes ArchitectureTest: the layering, error-handling and comment rules with shrink-only
       # baselines. A baseline that grows fails here.
@@ -83,27 +83,27 @@ jobs:
         run: |
           ./gradlew :app:testFossDebugUnitTest \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       - name: Unit tests — gms
         if: steps.gms.outputs.available == 'true'
         run: |
           ./gradlew :app:testGmsDebugUnitTest \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       - name: Lint — foss release
         run: |
           ./gradlew :app:lintFossRelease \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       - name: Lint — gms release
         if: steps.gms.outputs.available == 'true'
         run: |
           ./gradlew :app:lintGmsRelease \
             -Dorg.gradle.java.installations.auto-detect=false \
-            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_17_X64
+            -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
       # Reports are only interesting when something failed, and a failed run is exactly when you
       # cannot reproduce it locally.

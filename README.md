@@ -253,14 +253,14 @@ A tour of all of it is in [documents/ARCHITECTURE.md](documents/ARCHITECTURE.md)
 | Min SDK                | 26 (Android 8.0) |
 | Target SDK             | 36 (Android 16)  |
 | Compile SDK            | 37               |
-| JVM Toolchain          | 17               |
+| JVM Toolchain          | 21               |
 
 ## Getting Started
 
 ### Prerequisites
 
 - Android Studio (latest stable)
-- JDK 17
+- JDK 21
 - An Android device or emulator running Android 8.0+
 - A Solid pod account (you can create one at [Inrupt](https://login.inrupt.com) or [solidcommunity.net](https://solidcommunity.net))
 
