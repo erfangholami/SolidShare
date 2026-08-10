@@ -32,9 +32,9 @@ jobs:
       # For a dispatch, build the tag that was asked for rather than whatever the default branch
       # currently holds — otherwise the version check below would compare against the wrong tree.
       #
-      # fetch-depth: 0 because the version *is* the tag: Gradle resolves it with `git describe`, so
-      # a shallow checkout with no tag objects would build something numbered after an older
-      # release, or 0.0.0.
+      # fetch-depth: 0 keeps the tag objects available: Gradle cross-checks HEAD's tag against
+      # the version declared in defaultConfig, and that guard can only fire when the checkout
+      # still carries the tags.
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -100,10 +100,11 @@ jobs:
             || { echo "::error::GOOGLE_SERVICES_JSON did not decode to valid JSON"; exit 1; }
 
       # Runs before the two long builds so a bad tag fails in seconds rather than twenty minutes.
-      # Gradle is asked for the version instead of the workflow re-deriving it, so the tag-to-
-      # versionCode rule lives in exactly one place. Gradle derives the version from the tag, so
-      # this is not a drift check any more — it catches a checkout whose tag objects are missing,
-      # where `git describe` would silently answer with an older release.
+      # Gradle is asked for the version instead of the workflow re-deriving it, so the version
+      # rule lives in exactly one place. The version is declared in defaultConfig and Gradle
+      # itself fails a tagged build that disagrees with its tag — this step repeats the
+      # comparison against the tag this run was asked to release, which catches a dispatch that
+      # names the wrong tag.
       - name: Resolve version and check it matches the tag
         id: version
         run: |
@@ -127,10 +128,10 @@ jobs:
           fi
 
           if [ "v$NAME" != "$TAG" ]; then
-            echo "::error::Gradle resolved version '$NAME', but this run is releasing '$TAG'."
-            echo "::error::The version comes from the tag via 'git describe', so this means the"
-            echo "::error::checkout is missing its tag objects. Check that the Checkout step still"
-            echo "::error::sets fetch-depth: 0, and that '$TAG' exists on the remote."
+            echo "::error::Gradle declares version '$NAME', but this run is releasing '$TAG'."
+            echo "::error::The version is declared in app/build.gradle.kts and the tag has to"
+            echo "::error::agree with it — bump the defaultConfig literals before tagging, or"
+            echo "::error::fix the tag this run was given."
             exit 1
           fi
 

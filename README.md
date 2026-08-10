@@ -313,13 +313,16 @@ root, which must exist for any Gradle task:
 ./gradlew :app:bundleGmsRelease      # the Play upload artifact
 ```
 
-**The release tag is the version.** Nothing in the source declares it: the build resolves it with
-`git describe` and derives `versionCode` from it, so a tag and a build can never disagree. Check
-what a checkout resolves to with `./gradlew -q :app:printVersion`, and override it with
-`-PappVersionName=0.4.0` when building from a source archive that carries no git metadata.
+**The version is declared in `app/build.gradle.kts`.** The `versionCode` and `versionName`
+literals in `defaultConfig` are what F-Droid's update checker reads — it parses the file
+statically, so nothing computed can stand in for them. The build fails if the two literals fall
+out of step with each other, or if HEAD carries a release tag that disagrees with them, so a tag
+and a build still cannot disagree. Check what a checkout declares with
+`./gradlew -q :app:printVersion`.
 
-Pushing a `v` tag is therefore the whole publish step. The `Release` workflow runs the same
-verification as every pull request, builds both flavours, checks that the FOSS APK carries no
+Cutting a release is bumping those two literals and pushing the matching `v` tag. The `Release`
+workflow runs the same verification as every pull request, builds both flavours, checks that the
+FOSS APK carries no
 proprietary code, and attaches the artifacts to a GitHub release.
 
 ### Store metadata

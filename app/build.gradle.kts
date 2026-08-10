@@ -10,19 +10,14 @@ plugins {
     alias(libs.plugins.firebase.crashlytics)
 }
 
-// The app's version is the release tag. Nothing declares it in the source, so a tag and a build
-// can no longer disagree — cutting a release is pushing `v0.4.0` and nothing else.
+// The app's version is declared literally on the versionCode and versionName lines in
+// defaultConfig, because F-Droid's update checker reads this file statically and only recognises
+// a bare number and a quoted string sitting directly on those two lines — a variable there is
+// invisible to it, and an invisible version means no automatic updates on F-Droid.
 //
-// Resolution order, first hit wins:
-//   1. -PappVersionName=0.4.0, or APP_VERSION_NAME in the environment. The escape hatch for a
-//      build from a source archive, which carries no git metadata at all.
-//   2. The tag on the commit being built (`--exact-match`) — what a release build resolves to.
-//   3. The most recent tag before it, so a development build reports the release it descends from.
-//   4. DEV_VERSION_NAME, for a checkout that has no tags yet.
-//
-// F-Droid builds from the tag in a real git clone, so (2) answers there; if their builder ever
-// hands us a tree without git, (1) is how the metadata supplies the version.
-val DEV_VERSION_NAME = "0.0.0"
+// The release tag still rules the release: it moved from defining the version to policing it.
+// The checks at the bottom of this file fail any tagged build whose tag disagrees with the
+// declared literals, so a tag and a build still cannot ship disagreeing.
 
 fun gitOutput(vararg args: String): String? = runCatching {
     val output = providers.exec {
@@ -35,38 +30,6 @@ fun gitOutput(vararg args: String): String? = runCatching {
         output.standardOutput.asText.get().trim().ifEmpty { null }
     }
 }.getOrNull()
-
-val appVersionName = (
-    providers.gradleProperty("appVersionName")
-        .orElse(providers.environmentVariable("APP_VERSION_NAME"))
-        .orNull
-        ?: gitOutput("describe", "--tags", "--exact-match")
-        ?: gitOutput("describe", "--tags", "--abbrev=0")
-        ?: DEV_VERSION_NAME
-    ).removePrefix("v")
-
-// major * 10000 + minor * 100 + patch, so 1.2.3 is 10203. Deriving it means it can never drift
-// from the name, and it stays monotonic for as long as minor and patch stay below 100 — both
-// stores permanently reject a build whose versionCode did not increase.
-//
-// The failures below are all about the tag, because that is where the version now comes from: a
-// tag of the wrong shape has to fail the build rather than quietly ship as something else.
-val appVersionCode = appVersionName.split(".").let { parts ->
-    require(parts.size == 3) {
-        "the version must be MAJOR.MINOR.PATCH, was \"$appVersionName\" — tag releases as vX.Y.Z"
-    }
-    val (major, minor, patch) = parts.map {
-        it.toIntOrNull() ?: throw GradleException(
-            "the version has a non-numeric part: \"$appVersionName\" — tag releases as vX.Y.Z, " +
-                "with no suffix",
-        )
-    }
-    require(minor in 0..99 && patch in 0..99) {
-        "minor and patch must each stay below 100 to keep versionCode ordered, was \"$appVersionName\""
-    }
-    // The untagged fallback would otherwise be 0, which no device will install.
-    (major * 10000 + minor * 100 + patch).coerceAtLeast(1)
-}
 
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties = Properties().apply {
@@ -83,8 +46,8 @@ android {
         applicationId = "com.erfangholami.solidshare"
         minSdk = 26
         targetSdk = 36
-        versionCode = appVersionCode
-        versionName = appVersionName
+        versionCode = 402
+        versionName = "0.4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appAuthRedirectScheme"] = namespace.toString()
@@ -267,12 +230,48 @@ dependencies {
 
 }
 
+val declaredVersionName = android.defaultConfig.versionName!!
+val declaredVersionCode = android.defaultConfig.versionCode!!
+
+// major * 10000 + minor * 100 + patch, so 1.2.3 is 10203. Recomputing it from the name means the
+// two literals cannot drift apart, and the code stays monotonic for as long as minor and patch
+// stay below 100 — both stores permanently reject a build whose versionCode did not increase.
+val derivedVersionCode = declaredVersionName.split(".").let { parts ->
+    require(parts.size == 3) {
+        "the version must be MAJOR.MINOR.PATCH, was \"$declaredVersionName\""
+    }
+    val (major, minor, patch) = parts.map {
+        it.toIntOrNull() ?: throw GradleException(
+            "the version has a non-numeric part: \"$declaredVersionName\"",
+        )
+    }
+    require(minor in 0..99 && patch in 0..99) {
+        "minor and patch must each stay below 100 to keep versionCode ordered, was \"$declaredVersionName\""
+    }
+    (major * 10000 + minor * 100 + patch).coerceAtLeast(1)
+}
+require(declaredVersionCode == derivedVersionCode) {
+    "versionCode must be $derivedVersionCode for version \"$declaredVersionName\", was " +
+            "$declaredVersionCode — keep the two defaultConfig literals in step"
+}
+
+// A release-shaped tag on HEAD makes this a release build, and then the tag has to agree with
+// the declared version — otherwise the release ships as something other than what its tag says.
+gitOutput("describe", "--tags", "--exact-match")
+    ?.takeIf { it.matches(Regex("""v\d+\.\d+\.\d+""")) }
+    ?.let { tag ->
+        require(tag == "v$declaredVersionName") {
+            "HEAD is tagged $tag but the source declares \"$declaredVersionName\" — bump the " +
+                    "defaultConfig literals before tagging, or fix the tag"
+        }
+    }
+
 // Lets CI read the version without re-implementing the versionCode rule in shell, so the two can
 // never disagree. Values are captured at configuration time to stay configuration-cache safe.
 tasks.register("printVersion") {
     description = "Prints the app versionName and versionCode."
-    val name = appVersionName
-    val code = appVersionCode
+    val name = declaredVersionName
+    val code = declaredVersionCode
     doLast {
         println("versionName=$name")
         println("versionCode=$code")

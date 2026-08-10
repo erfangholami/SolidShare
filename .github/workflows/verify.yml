@@ -37,7 +37,8 @@ jobs:
 
     steps:
       # A release run verifies the tag it is about to publish, not whatever the default branch
-      # holds. fetch-depth: 0 because the version is resolved with `git describe`.
+      # holds. fetch-depth: 0 so a tagged checkout keeps its tag and Gradle's tag-to-version
+      # cross-check can see it.
       - name: Checkout
         uses: actions/checkout@v4
         with:
