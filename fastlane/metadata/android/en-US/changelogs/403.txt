@@ -1,0 +1,5 @@
+Another maintenance release on the road to F-Droid.
+
+* Builds are now byte-for-byte reproducible, so F-Droid can publish the very APK the developer signs
+* The APK no longer embeds Play-only metadata or version-control details
+* Nothing changes in the app itself
