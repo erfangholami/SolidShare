@@ -10,9 +10,9 @@ plugins {
 }
 
 // Crash reporting is Play-only tooling: its plugin id arrives through a Gradle property that only
-// the Play release invocation defines, so the committed tree carries no reference to it and the
-// F-Droid scanner sees a fully FOSS checkout. A build without the property applies nothing; when
-// the property is present, the task gate below still keeps the plugin's tasks out of foss variants.
+// Play invocations define, so the Gradle files carry no reference to it and the F-Droid scanner
+// finds nothing to flag. A build without the property applies nothing; when the property is
+// present, the task gate below still keeps the plugin's tasks out of foss variants.
 providers.gradleProperty("solidshare.play.crashReportingPluginId").orNull?.let {
     apply(plugin = it)
 }

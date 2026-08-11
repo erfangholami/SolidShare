@@ -166,9 +166,14 @@ jobs:
             -Dorg.gradle.java.installations.auto-detect=false \
             -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 
+      # The Crashlytics Gradle plugin reaches the build only through these two properties (see
+      # build.gradle.kts); the FOSS step above deliberately omits them so that APK is built exactly
+      # the way F-Droid rebuilds it.
       - name: Build Play APK and bundle
         run: |
           ./gradlew :app:assembleGmsRelease :app:bundleGmsRelease \
+            -Psolidshare.play.crashReportingPlugin=com.google.firebase:firebase-crashlytics-gradle:3.0.7 \
+            -Psolidshare.play.crashReportingPluginId=com.google.firebase.crashlytics \
             -Dorg.gradle.java.installations.auto-detect=false \
             -Dorg.gradle.java.installations.fromEnv=JAVA_HOME_21_X64
 

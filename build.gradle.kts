@@ -1,7 +1,8 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
-// The Crashlytics Gradle plugin is Play-only tooling, so its Maven coordinate never appears in the
-// checkout: the Play release invocation supplies it through the two solidshare.play.* Gradle
-// properties (see app/build.gradle.kts), and a build without them adds nothing here.
+// The Crashlytics Gradle plugin is Play-only tooling, so its Maven coordinate stays out of the
+// Gradle files that F-Droid's scanner reads: Play invocations supply it through the two
+// solidshare.play.* Gradle properties (see .github/workflows/release.yml), and a build without
+// them adds nothing here.
 buildscript {
     repositories {
         google()
