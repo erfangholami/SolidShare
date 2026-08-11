@@ -7,7 +7,14 @@ plugins {
     alias(libs.plugins.google.hilt.android)
     alias(libs.plugins.jetbrains.kotlin.serialization)
     alias(libs.plugins.google.services)
-    alias(libs.plugins.firebase.crashlytics)
+}
+
+// Crash reporting is Play-only tooling: its plugin id arrives through a Gradle property that only
+// the Play release invocation defines, so the committed tree carries no reference to it and the
+// F-Droid scanner sees a fully FOSS checkout. A build without the property applies nothing; when
+// the property is present, the task gate below still keeps the plugin's tasks out of foss variants.
+providers.gradleProperty("solidshare.play.crashReportingPluginId").orNull?.let {
+    apply(plugin = it)
 }
 
 // The app's version is declared literally on the versionCode and versionName lines in
@@ -80,6 +87,9 @@ android {
             buildConfigField("boolean", "TELEMETRY_ENABLED", "false")
         }
         release {
+            // F-Droid rebuilds from a fresh clone, so baking local VCS state into the APK would be
+            // the one difference between two otherwise identical release builds.
+            vcsInfo.include = false
             isMinifyEnabled = true
             isShrinkResources = true
             manifestPlaceholders["crashlyticsEnabled"] = true
@@ -99,9 +109,20 @@ android {
     }
 
     packaging {
+        // The published APK must byte-match F-Droid's rebuild, so never strip the native libs that
+        // arrive inside AARs — stripped output depends on which NDK, if any, the build host has.
+        jniLibs {
+            keepDebugSymbols += "**/*.so"
+        }
         resources {
             excludes += setOf("META-INF/NOTICE.md", "META-INF/LICENSE.md", "META-INF/DEPENDENCIES")
         }
+    }
+
+    dependenciesInfo {
+        // AGP embeds a dependency list readable only by Google Play into the APK signing block; an
+        // opaque blob has no place in the F-Droid artifact. The Play bundle keeps its own copy.
+        includeInApk = false
     }
 
     testOptions {
