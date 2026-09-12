@@ -249,7 +249,7 @@ A tour of all of it is in [documents/ARCHITECTURE.md](documents/ARCHITECTURE.md)
 | WorkManager            | 2.11.2           |
 | Room                   | 2.8.4            |
 | SQLCipher              | 4.17.0           |
-| Android Solid Services | 0.7.0            |
+| Android Solid Services | 0.7.2            |
 | Min SDK                | 26 (Android 8.0) |
 | Target SDK             | 36 (Android 16)  |
 | Compile SDK            | 37               |
