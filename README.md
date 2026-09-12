@@ -8,6 +8,12 @@
 
 The goal is to make Solid accessible to regular people: a smooth, familiar mobile experience that puts users in control of their own data.
 
+<p align="center">
+  <a href="https://f-droid.org/packages/com.erfangholami.solidshare/"><img src="documents/badges/f-droid.png" alt="Get it on F-Droid" height="80"></a>
+  &nbsp;&nbsp;
+  <a href="https://play.google.com/store/apps/details?id=com.erfangholami.solidshare"><img src="documents/badges/google-play.png" alt="Get it on Google Play" height="80"></a>
+</p>
+
 <img width="14060" height="7908" alt="solid share coverr" src="https://github.com/user-attachments/assets/502e4bfb-cc60-4271-ad32-70a96c41ae4a" />
 
 
