@@ -33,9 +33,9 @@
 
     <!-- Onboarding -->
     <string name="onboarding_slide1_title">About Solid</string>
-    <string name="onboarding_slide1_description">Solid allows to have your own online storage, which you control. You store information once and decide who can access what.</string>
+    <string name="onboarding_slide1_description">Solid allows you to have your own online storage, which you control. You store information once and decide who can access what.</string>
     <string name="onboarding_slide2_title">Solid File Wallet</string>
-    <string name="onboarding_slide2_description">Allows you to access your Personal Online Data Stores (PODs) on Solid. You can view, upload, edit and shares your files on your Pods.</string>
+    <string name="onboarding_slide2_description">Allows you to access your Personal Online Data Stores (Pods) on Solid. You can view, upload, edit and share your files on your Pods.</string>
     <string name="onboarding_slide3_title">Getting Started</string>
     <string name="onboarding_slide3_description">Register and log in with any Solid Pod provider. We\'ll show you a list to choose from or you can set up your own. It\'s open source!</string>
 

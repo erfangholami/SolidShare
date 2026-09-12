@@ -45,8 +45,11 @@ internal fun bindCamera(
             .build()
 
         val executor = Executors.newSingleThreadExecutor()
+        val mainExecutor = ContextCompat.getMainExecutor(context)
         analyzer.setAnalyzer(executor) { proxy: ImageProxy ->
-            processImageProxy(proxy, decoder, onScan)
+            processImageProxy(proxy, decoder) { value, format ->
+                mainExecutor.execute { onScan(value, format) }
+            }
         }
 
         try {
