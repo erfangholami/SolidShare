@@ -5,6 +5,24 @@ links to the commits it contains. The short "what's new" text that the stores sh
 [`fastlane/metadata/android/en-US/changelogs/`](fastlane/metadata/android/en-US/changelogs/),
 one file per release, named after its `versionCode`.
 
+## [0.4.4] — 2026-09-12
+
+A bug-fix release, driven by the first crash reports from the stores and by the move to
+AndroidSolidServices 0.7.2. No new features.
+
+- **Donation links** — the repository carries a `FUNDING.yml`, so GitHub shows how to support the
+  project (GitHub Sponsors, Liberapay, Ko-fi, Buy Me a Coffee)
+- **Scanning a QR code no longer crashes** — the camera thread handed its result straight to
+  navigation, which must run on the main thread
+- **Built against AndroidSolidServices 0.7.2** — an expired account no longer floods crash reporting
+  with one non-fatal per request, inbox notifications parse with no network, an expired session
+  reaches the app as a typed error, and pods that answer a conditional read with a `304` carrying a
+  `Content-Length` (Community Solid Server, e.g. solid.redpencil.io) no longer break the Share
+  screen and share creation
+- **Two onboarding typos fixed**
+- **A changelog and a feature-overview README** — the version history moved out of the README into
+  this file, and the README carries the F-Droid and Google Play badges
+
 ## [0.4.3] — 2026-08-11
 
 Another maintenance release on the road to F-Droid. Nothing changes in the app itself.
@@ -193,6 +211,7 @@ sharing.
 - **Re-login with previous WebIDs** — previously logged-in accounts are remembered for quick re-authentication
 - **Profile & account management** — view active account, switch accounts, log out individually or all at once
 
+[0.4.4]: https://github.com/erfangholami/SolidShare/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/erfangholami/SolidShare/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/erfangholami/SolidShare/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/erfangholami/SolidShare/compare/v0.4.0...v0.4.1

@@ -1,0 +1,7 @@
+A bug-fix release.
+
+* Scanning a QR code no longer crashes the app
+* Community Solid Server pods no longer fail every second read with "could not reach your pod"
+* Inbox notifications load with no connection
+* A signed-out account no longer floods crash reports
+* Two onboarding typos fixed

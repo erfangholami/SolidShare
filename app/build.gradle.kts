@@ -53,8 +53,8 @@ android {
         applicationId = "com.erfangholami.solidshare"
         minSdk = 26
         targetSdk = 36
-        versionCode = 403
-        versionName = "0.4.3"
+        versionCode = 404
+        versionName = "0.4.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         manifestPlaceholders["appAuthRedirectScheme"] = namespace.toString()
